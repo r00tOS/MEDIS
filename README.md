@@ -1,8 +1,8 @@
 
-# 🚑 Trupp Status Tracker
+# 🚑 MEDIS
 
 ## Projektbeschreibung
-Der Trupp Status Tracker ist eine webbasierte Anwendung zur Überwachung und Dokumentation von Einsatzkräften bei Veranstaltungen oder Einsätzen.
+MEDIS ist eine webbasierte Anwendung zur Überwachung und Dokumentation von Einsatzkräften bei Veranstaltungen oder Einsätzen.
 
 > Einsatzbereiche:  
 Sanitätsdienste, Feuerwehr, Sicherheitsdienste, Event-Management
