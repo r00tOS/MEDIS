@@ -1,764 +1,850 @@
 <!DOCTYPE html>
 <html lang="de">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Patienten-Tracking</title>
-<style>
-body {
-  font-family: sans-serif;
-}
-.list {
-  flex:1;
-  border:1px solid #ccc;
-  border-radius:4px;
-  overflow-y:auto;
-  padding:8px;
-}
-.list div.item {
-  padding:6px 8px;
-  cursor:pointer;
-  border-bottom:1px solid #eee;
-}
-.list div.item:hover {
-  background:#f0f0f0;
-}
-.list div.item.selected {
-  background:#d0e6ff;
-}
-.modal {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.5);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 1000;
-}
-.modal-content {
-  position: relative;
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  width: 600px;       /* vorher 300px */
-  max-width: 90vw;    /* passt sich am Viewport an */
-  max-height: 90vh;   /* höher als vorher */
-  overflow-y: auto;
-}
-
-.close {
-  position: absolute;
-  top: 8px; right: 12px;
-  font-size: 1.2em;
-  cursor: pointer;
-}
-.patient-card {
-  border: 1px solid #ccc;
-  padding: 10px;
-  margin-bottom: 10px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: flex-start;
-}
-.patient-card.gemeldet { background-color: #ffe5e5; }
-.patient-card.disponiert { background-color: #ffffe0; }
-.patient-card.in-Behandlung { background-color: #e2f7e2; }
-.patient-card.verlegt-in-UHS { background-color: #e0f0ff; }
-.patient-card.Behandlung-in-UHS { background-color: #d0e6ff; }
-.patient-card.Transport-in-KH, .patient-card.Entlassen { background-color: #f0f0f0; }
-.patient-card div {
-  min-width: 220px;
-  max-width: 220px;
-  box-sizing: border-box;
-  margin-right: 10px;
-  border-right: 1px solid #ddd;
-  padding-right: 10px;
-}
-.patient-card div:last-child {
-  border-right: none;
-}
-.patient-card .buttons {
-  display: flex;
-  gap: 5px;
-  margin-left: auto;
-}
-button {
-  padding: 8px 14px;
-  cursor: pointer;
-  border: none;
-  border-radius: 5px;
-  font-weight: bold;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: background-color 0.2s ease-in-out;
-}
-
-button.status-gemeldet { background-color: #f28b82; color: white; }
-button.status-disponiert { background-color: #fff475; color: black; }
-button.status-in-Behandlung { background-color: #81c995; color: white; }
-button.status-verlegt-in-UHS,
-button.status-Behandlung-in-UHS { background-color: #a7c7e7; color: black; }
-button.status-Transport-in-KH,
-button.status-Entlassen { background-color: #d3d3d3; color: black; }
-section {
-  margin-top: 20px;
-}
-
-button:hover {
-  background-color: #005f73;
-}
-h2 {
-  border-bottom: 1px solid #ccc;
-  padding-bottom: 5px;
-}
-
-@keyframes slide-out-right {
-  from   { opacity: 1; transform: translateX(0); }
-  to     { opacity: 0; transform: translateX(20px); }
-}
-
-@keyframes slide-in-left {
-  from   { opacity: 0; transform: translateX(-20px); }
-  to     { opacity: 1; transform: translateX(0); }
-}
-
-/* Slide-Out-Klasse: Karte verschwindet nach rechts */
-.patient-card.slide-out {
-  animation: slide-out-right 0.3s ease forwards;
-}
-
-/* Slide-In-Klasse: Karte kommt von links rein */
-.patient-card.slide-in {
-  animation: slide-in-left 0.3s ease forwards;
-}
-
-.zeitdaten table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 8px;
-}
-.zeitdaten th,
-.zeitdaten td {
-  border: 1px solid #ddd;
-  padding: 6px 8px;
-  text-align: left;
-}
-.zeitdaten th {
-  background-color: #f5f5f5;
-  font-weight: bold;
-}
-.zeitdaten tr:nth-child(even) td {
-  background-color: #fafafa;
-}
-.button-group {
-  display: inline-flex; /* nebeneinander */
-  gap: 8px;             /* Abstand zwischen den Buttons */
-}
-@media print {
-     /* Alles außerhalb von #exportArea ausblenden */
-     body * { visibility: hidden; }
-     #exportArea, #exportArea * { visibility: visible; }
-
-     /* Buttons, Status-Controls und Nachforderung ausblenden */
-     #exportArea button,
-     #exportArea .status-gemeldet,
-     #exportArea .status-disponiert,
-     #exportArea .status-in-Behandlung,
-     #exportArea .status-verlegt-in-UHS,
-     #exportArea .status-Behandlung-in-UHS,
-     #exportArea .status-Transport-in-KH,
-     #exportArea .status-Entlassen,
-     #exportArea .buttons,
-     #exportArea .nachforderung {
-       display: none !important;
-     }
-
-     /* Cards in voller Breite, kein Split über Seitenumbruch */
-     #exportArea {
-       position: absolute;
-       top: 0; left: 0; width: 100%;
-     }
-     .patient-card {
-       width: 100% !important;
-       page-break-inside: avoid;
-       break-inside: avoid;
-       border: 1px solid #333 !important;
-       margin-bottom: 16px !important;
-     }
-   }
-
-</style>
-
-</head>
-<body>
-  <header>
-    <button id="btnNewPatient">Neuen Patienten erstellen</button>
-
-  </header>
-
-  <!-- Bereich, der für den Export genutzt wird -->
-  <main id="exportArea">
-    <section id="sectionActive"><h2>Aktiv</h2><div id="activePatients"></div></section>
-    <section id="sectionInUHS"><h2>In UHS</h2><div id="inUhsPatients"></div></section>
-    <section id="sectionDismissed"><h2>Entlassen</h2><div id="dismissedPatients"></div></section>
-  </main>
-<script src="categories.js"></script>
-<!-- html2canvas für jsPDF.html() -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<!-- jsPDF -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-
-<script>
-const alarmConfig = window.alarmConfig.categories;
-
-function recordStatusChange(patient, newStatus) {
-  const now = Date.now();
-  patient.statusTimestamps = patient.statusTimestamps || {};
-  patient.durations       = patient.durations       || {};
-
-  // 1) Timestamp für den neuen Status nur einmal setzen
-  if (!patient.statusTimestamps[newStatus]) {
-    patient.statusTimestamps[newStatus] = now;
-  }
-
-  // 2) Einsatzdauer → erst beim finalen Status
-  if (
-    (newStatus === 'Entlassen' || newStatus === 'Transport in KH') &&
-    !patient.durations.einsatzdauer
-  ) {
-    patient.durations.einsatzdauer = formatMS(now - patient.createdAt);
-  }
-
-  // 3) Dispositionsdauer: gemeldet → disponiert
-  if (
-    newStatus === 'disponiert' &&
-    patient.statusTimestamps.gemeldet &&
-    !patient.durations.dispositionsdauer
-  ) {
-    patient.durations.dispositionsdauer =
-      formatMS(now - patient.statusTimestamps.gemeldet);
-  }
-
-  // 4) Ausrückdauer: disponiert → in Behandlung/UHS
-  if (
-    ['in Behandlung','verlegt in UHS','Behandlung in UHS'].includes(newStatus) &&
-    patient.statusTimestamps.disponiert &&
-    !patient.durations.ausrueckdauer
-  ) {
-    patient.durations.ausrueckdauer =
-      formatMS(now - patient.statusTimestamps.disponiert);
-  }
-
-  // 5) Verlegedauer UHS: verlegt in UHS → Behandlung in UHS
-  if (
-    newStatus === 'Behandlung in UHS' &&
-    patient.statusTimestamps['verlegt in UHS'] &&
-    !patient.durations.verlegedauerUHS
-  ) {
-    patient.durations.verlegedauerUHS =
-      formatMS(now - patient.statusTimestamps['verlegt in UHS']);
-  }
-  if (
-    (newStatus === 'Entlassen' || newStatus === 'Transport in KH')
-    && patient.durations.einsatzdauer === ''
-  ) {
-    patient.durations.einsatzdauer = formatMS(now - patient.createdAt);
-  }
-
-  // 6) Behandlungsdauer: in Behandlung oder Behandlung in UHS → finaler Status
-if (
-  (newStatus === 'Entlassen' || newStatus === 'Transport in KH') &&
-  !patient.durations.behandlungsdauer
-) {
-  const start =
-    patient.statusTimestamps['in Behandlung']
-    ?? patient.statusTimestamps['Behandlung in UHS'];
-  if (start) {
-    patient.durations.behandlungsdauer = formatMS(now - start);
-  }
-}
-
-}
-
-
-
-// öffnet das Modal mit Keyword-Liste
-
-let currentPatientId = null;
-let selectedCategory = null;
-let selectedKeyword = null;
-
-// Wird bei jeder Eingabe im Suchfeld aufgerufen
-function onSearchInput() {
-  const term = document.getElementById('searchInput').value.trim().toLowerCase();
-  const resultsDiv = document.getElementById('searchResults');
-
-  if (term === '') {
-    // Leeres Suchfeld → zurück zu normalem Modus
-    resultsDiv.style.display = 'none';
-    document.getElementById('categoryList').style.display = 'block';
-    document.getElementById('keywordList').style.display = 'block';
-    return;
-  }
-
-  // Suche in allen Kategorien→Keywords
-  const hits = [];
-  alarmConfig.forEach((cat, ci) => {
-    cat.keywords.forEach((kw, ki) => {
-      if (kw.word.toLowerCase().includes(term)) {
-        hits.push({ ci, ki, word: kw.word });
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Patienten-Tracking</title>
+    <style>
+      body {
+        font-family: sans-serif;
       }
-    });
-  });
-
-  // Ergebnis-Liste aufbauen
-  resultsDiv.innerHTML = '';
-  hits.forEach(hit => {
-    const div = document.createElement('div');
-    div.className = 'item';
-    div.textContent = `${alarmConfig[hit.ci].name} ➔ ${hit.word}`;
-    div.onclick = () => {
-      // Treffer auswählen und Modal zurücksetzen
-      selectedCategory = hit.ci;
-      selectedKeyword  = hit.ki;
-      document.getElementById('searchInput').value = hit.word;
-      document.getElementById('otherDetail').style.display = /^sonstiger/i.test(hit.word) ? 'block' : 'none';
-    };
-    resultsDiv.appendChild(div);
-  });
-
-  // UI-Umschaltung
-  resultsDiv.style.display = 'block';
-  document.getElementById('categoryList').style.display = 'none';
-  document.getElementById('keywordList').style.display = 'none';
-}
-
-function openKeywordModal(patientId) {
-  currentPatientId = patientId;
-  selectedCategory = null;
-  selectedKeyword  = null;
-  document.getElementById('searchInput').value = '';
-  document.getElementById('searchResults').style.display = 'none';
-  document.getElementById('categoryList').style.display = 'block';
-  document.getElementById('keywordList').style.display = 'block';
-  renderCategoryList();
-  document.getElementById('keywordList').innerHTML = '';
-  document.getElementById('keywordModal').style.display = 'flex';
-}
-
-
-function renderCategoryList() {
-  const catDiv = document.getElementById('categoryList');
-  catDiv.innerHTML = '';
-  alarmConfig.forEach((c, i) => {
-    const d = document.createElement('div');
-    d.textContent = c.name;
-    d.className = 'item' + (selectedCategory === i ? ' selected' : '');
-    d.onclick = () => {
-      selectedCategory = i;
-      selectedKeyword  = null;
-      renderCategoryList();
-      renderKeywordList();
-    };
-    catDiv.appendChild(d);
-  });
-}
-
-function renderKeywordList() {
-  const kwDiv = document.getElementById('keywordList');
-  kwDiv.innerHTML = '';
-  document.getElementById('otherDetail').style.display = 'none';  // immer verstecken
-  if (selectedCategory === null) return;
-
-  alarmConfig[selectedCategory].keywords.forEach((kw, j) => {
-    const d = document.createElement('div');
-    d.textContent = kw.word;
-    d.className = 'item' + (selectedKeyword === j ? ' selected' : '');
-    d.onclick = () => {
-      selectedKeyword = j;
-      renderKeywordList();
-      // Wenn das Wort mit "sonstiger" (case-insensitive) anfängt → Feld einblenden
-      if (/^sonstiger/i.test(kw.word)) {
-        document.getElementById('otherDetail').style.display = 'block';
-        document.getElementById('otherInput').value = '';
-      } else {
-        document.getElementById('otherDetail').style.display = 'none';
+      .list {
+        flex: 1;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        overflow-y: auto;
+        padding: 8px;
       }
-    };
-    kwDiv.appendChild(d);
-  });
-}
+      .list div.item {
+        padding: 6px 8px;
+        cursor: pointer;
+        border-bottom: 1px solid #eee;
+      }
+      .list div.item:hover {
+        background: #f0f0f0;
+      }
+      .list div.item.selected {
+        background: #d0e6ff;
+      }
+      .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+      .modal-content {
+        position: relative;
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        width: 600px; /* vorher 300px */
+        max-width: 90vw; /* passt sich am Viewport an */
+        max-height: 90vh; /* höher als vorher */
+        overflow-y: auto;
+      }
 
+      .close {
+        position: absolute;
+        top: 8px;
+        right: 12px;
+        font-size: 1.2em;
+        cursor: pointer;
+      }
+      .patient-card {
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin-bottom: 10px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: flex-start;
+      }
+      .patient-card.gemeldet {
+        background-color: #ffe5e5;
+      }
+      .patient-card.disponiert {
+        background-color: #ffffe0;
+      }
+      .patient-card.in-Behandlung {
+        background-color: #e2f7e2;
+      }
+      .patient-card.verlegt-in-UHS {
+        background-color: #e0f0ff;
+      }
+      .patient-card.Behandlung-in-UHS {
+        background-color: #d0e6ff;
+      }
+      .patient-card.Transport-in-KH,
+      .patient-card.Entlassen {
+        background-color: #f0f0f0;
+      }
+      .patient-card div {
+        min-width: 220px;
+        max-width: 220px;
+        box-sizing: border-box;
+        margin-right: 10px;
+        border-right: 1px solid #ddd;
+        padding-right: 10px;
+      }
+      .patient-card div:last-child {
+        border-right: none;
+      }
+      .patient-card .buttons {
+        display: flex;
+        gap: 5px;
+        margin-left: auto;
+      }
+      button {
+        padding: 8px 14px;
+        cursor: pointer;
+        border: none;
+        border-radius: 5px;
+        font-weight: bold;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        transition: background-color 0.2s ease-in-out;
+      }
 
-function confirmKeyword() {
-  if (selectedCategory === null || selectedKeyword === null) {
-    return alert('Bitte Kategorie und Stichwort wählen');
-  }
-  let cfg = alarmConfig[selectedCategory].keywords[selectedKeyword];
-  let finalWord = cfg.word;
+      button.status-gemeldet {
+        background-color: #f28b82;
+        color: white;
+      }
+      button.status-disponiert {
+        background-color: #fff475;
+        color: black;
+      }
+      button.status-in-Behandlung {
+        background-color: #81c995;
+        color: white;
+      }
+      button.status-verlegt-in-UHS,
+      button.status-Behandlung-in-UHS {
+        background-color: #a7c7e7;
+        color: black;
+      }
+      button.status-Transport-in-KH,
+      button.status-Entlassen {
+        background-color: #d3d3d3;
+        color: black;
+      }
+      section {
+        margin-top: 20px;
+      }
 
-  // Wenn Zusatz-Feld sichtbar, hänge den Input an
-  if (document.getElementById('otherDetail').style.display === 'block') {
-    const extra = document.getElementById('otherInput').value.trim();
-    if (!extra) {
-      return alert('Bitte die Art des Notfalls genauer beschreiben.');
-    }
-    finalWord += ' – ' + extra;
-  }
+      button:hover {
+        background-color: #005f73;
+      }
+      h2 {
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 5px;
+      }
 
-  // 1) Diagnosis-Feld setzen
-  updatePatientData(currentPatientId, 'diagnosis', finalWord);
+      @keyframes slide-out-right {
+        from {
+          opacity: 1;
+          transform: translateX(0);
+        }
+        to {
+          opacity: 0;
+          transform: translateX(20px);
+        }
+      }
 
-  // 2) vorgeschlagene Ressourcen speichern
-  const patients = JSON.parse(localStorage.getItem('patients')) || [];
-  const p = patients.find(x => x.id === currentPatientId);
-  p.suggestedResources = cfg.resources;
-  localStorage.setItem('patients', JSON.stringify(patients));
+      @keyframes slide-in-left {
+        from {
+          opacity: 0;
+          transform: translateX(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
 
-  closeKeywordModal();
-  loadPatients(currentPatientId);
-}
+      /* Slide-Out-Klasse: Karte verschwindet nach rechts */
+      .patient-card.slide-out {
+        animation: slide-out-right 0.3s ease forwards;
+      }
 
+      /* Slide-In-Klasse: Karte kommt von links rein */
+      .patient-card.slide-in {
+        animation: slide-in-left 0.3s ease forwards;
+      }
 
+      .zeitdaten table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 8px;
+      }
+      .zeitdaten th,
+      .zeitdaten td {
+        border: 1px solid #ddd;
+        padding: 6px 8px;
+        text-align: left;
+      }
+      .zeitdaten th {
+        background-color: #f5f5f5;
+        font-weight: bold;
+      }
+      .zeitdaten tr:nth-child(even) td {
+        background-color: #fafafa;
+      }
+      .button-group {
+        display: inline-flex; /* nebeneinander */
+        gap: 8px; /* Abstand zwischen den Buttons */
+      }
+      @media print {
+        /* Alles außerhalb von #exportArea ausblenden */
+        body * {
+          visibility: hidden;
+        }
+        #exportArea,
+        #exportArea * {
+          visibility: visible;
+        }
 
-function closeKeywordModal() {
-  document.getElementById('keywordModal').style.display = 'none';
-}
+        /* Buttons, Status-Controls und Nachforderung ausblenden */
+        #exportArea button,
+        #exportArea .status-gemeldet,
+        #exportArea .status-disponiert,
+        #exportArea .status-in-Behandlung,
+        #exportArea .status-verlegt-in-UHS,
+        #exportArea .status-Behandlung-in-UHS,
+        #exportArea .status-Transport-in-KH,
+        #exportArea .status-Entlassen,
+        #exportArea .buttons,
+        #exportArea .nachforderung {
+          display: none !important;
+        }
 
+        /* Cards in voller Breite, kein Split über Seitenumbruch */
+        #exportArea {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+        }
+        .patient-card {
+          width: 100% !important;
+          page-break-inside: avoid;
+          break-inside: avoid;
+          border: 1px solid #333 !important;
+          margin-bottom: 16px !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <button id="btnNewPatient">Neuen Patienten erstellen</button>
+    </header>
 
+    <!-- Bereich, der für den Export genutzt wird -->
+    <main id="exportArea">
+      <section id="sectionActive">
+        <h2>Aktiv</h2>
+        <div id="activePatients"></div>
+      </section>
+      <section id="sectionInUHS">
+        <h2>In UHS</h2>
+        <div id="inUhsPatients"></div>
+      </section>
+      <section id="sectionDismissed">
+        <h2>Entlassen</h2>
+        <div id="dismissedPatients"></div>
+      </section>
+    </main>
+    <script src="categories.js"></script>
+    <!-- html2canvas für jsPDF.html() -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
+    <script>
+      const alarmConfig = window.alarmConfig.categories;
 
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('btnNewPatient').addEventListener('click', createNewPatient);
-  loadPatients();
-});
+      function recordStatusChange(patient, newStatus) {
+        const now = Date.now();
+        patient.statusTimestamps = patient.statusTimestamps || {};
+        patient.durations = patient.durations || {};
 
-function clearAssignments(patientId, finalStatus) {
-  const now = Date.now();
+        // 1) Timestamp für den neuen Status nur einmal setzen
+        if (!patient.statusTimestamps[newStatus]) {
+          patient.statusTimestamps[newStatus] = now;
+        }
 
-  // 1) Patienten-Status auf den finalStatus setzen (wird auch 'Transport in KH' unterstützen)
-  const patients = JSON.parse(localStorage.getItem('patients')) || [];
-  const patient  = patients.find(p => p.id === patientId);
-  if (!patient) return;
+        // 2) Einsatzdauer → erst beim finalen Status
+        if (
+          (newStatus === "Entlassen" || newStatus === "Transport in KH") &&
+          !patient.durations.einsatzdauer
+        ) {
+          patient.durations.einsatzdauer = formatMS(now - patient.createdAt);
+        }
 
-  patient.status = finalStatus;
-  localStorage.setItem('patients', JSON.stringify(patients));
-  loadPatients(patientId);  // neu rendern (Team bleibt erhalten)
+        // 3) Dispositionsdauer: gemeldet → disponiert
+        if (
+          newStatus === "disponiert" &&
+          patient.statusTimestamps.gemeldet &&
+          !patient.durations.dispositionsdauer
+        ) {
+          patient.durations.dispositionsdauer = formatMS(
+            now - patient.statusTimestamps.gemeldet
+          );
+        }
 
-  // 2) Trupp-Tracker updaten: alle Trupps, die patientInput === patientId haben,
-  //    bekommen ihren Einsatz beendet
-  const trupps = JSON.parse(localStorage.getItem('trupps')) || [];
-  trupps.forEach(t => {
-    if (t.patientInput === patientId) {
-      // a) Patienteneinsatz abschließen
-      if (t.patientStart) {
-        t.patientHistorie = t.patientHistorie || [];
-        t.patientHistorie.push({
-          nummer: patientId,
-          von:    t.patientStart,
-          bis:    now
+        // 4) Ausrückdauer: disponiert → in Behandlung/UHS
+        if (
+          ["in Behandlung", "verlegt in UHS", "Behandlung in UHS"].includes(
+            newStatus
+          ) &&
+          patient.statusTimestamps.disponiert &&
+          !patient.durations.ausrueckdauer
+        ) {
+          patient.durations.ausrueckdauer = formatMS(
+            now - patient.statusTimestamps.disponiert
+          );
+        }
+
+        // 5) Verlegedauer UHS: verlegt in UHS → Behandlung in UHS
+        if (
+          newStatus === "Behandlung in UHS" &&
+          patient.statusTimestamps["verlegt in UHS"] &&
+          !patient.durations.verlegedauerUHS
+        ) {
+          patient.durations.verlegedauerUHS = formatMS(
+            now - patient.statusTimestamps["verlegt in UHS"]
+          );
+        }
+        if (
+          (newStatus === "Entlassen" || newStatus === "Transport in KH") &&
+          patient.durations.einsatzdauer === ""
+        ) {
+          patient.durations.einsatzdauer = formatMS(now - patient.createdAt);
+        }
+
+        // 6) Behandlungsdauer: in Behandlung oder Behandlung in UHS → finaler Status
+        if (
+          (newStatus === "Entlassen" || newStatus === "Transport in KH") &&
+          !patient.durations.behandlungsdauer
+        ) {
+          const start =
+            patient.statusTimestamps["in Behandlung"] ??
+            patient.statusTimestamps["Behandlung in UHS"];
+          if (start) {
+            patient.durations.behandlungsdauer = formatMS(now - start);
+          }
+        }
+      }
+
+      // öffnet das Modal mit Keyword-Liste
+
+      let currentPatientId = null;
+      let selectedCategory = null;
+      let selectedKeyword = null;
+
+      // Wird bei jeder Eingabe im Suchfeld aufgerufen
+      function onSearchInput() {
+        const term = document
+          .getElementById("searchInput")
+          .value.trim()
+          .toLowerCase();
+        const resultsDiv = document.getElementById("searchResults");
+
+        if (term === "") {
+          // Leeres Suchfeld → zurück zu normalem Modus
+          resultsDiv.style.display = "none";
+          document.getElementById("categoryList").style.display = "block";
+          document.getElementById("keywordList").style.display = "block";
+          return;
+        }
+
+        // Suche in allen Kategorien→Keywords
+        const hits = [];
+        alarmConfig.forEach((cat, ci) => {
+          cat.keywords.forEach((kw, ki) => {
+            if (kw.word.toLowerCase().includes(term)) {
+              hits.push({ ci, ki, word: kw.word });
+            }
+          });
+        });
+
+        // Ergebnis-Liste aufbauen
+        resultsDiv.innerHTML = "";
+        hits.forEach((hit) => {
+          const div = document.createElement("div");
+          div.className = "item";
+          div.textContent = `${alarmConfig[hit.ci].name} ➔ ${hit.word}`;
+          div.onclick = () => {
+            // Treffer auswählen und Modal zurücksetzen
+            selectedCategory = hit.ci;
+            selectedKeyword = hit.ki;
+            document.getElementById("searchInput").value = hit.word;
+            document.getElementById("otherDetail").style.display =
+              /^sonstiger/i.test(hit.word) ? "block" : "none";
+          };
+          resultsDiv.appendChild(div);
+        });
+
+        // UI-Umschaltung
+        resultsDiv.style.display = "block";
+        document.getElementById("categoryList").style.display = "none";
+        document.getElementById("keywordList").style.display = "none";
+      }
+
+      function openKeywordModal(patientId) {
+        currentPatientId = patientId;
+        selectedCategory = null;
+        selectedKeyword = null;
+        document.getElementById("searchInput").value = "";
+        document.getElementById("searchResults").style.display = "none";
+        document.getElementById("categoryList").style.display = "block";
+        document.getElementById("keywordList").style.display = "block";
+        renderCategoryList();
+        document.getElementById("keywordList").innerHTML = "";
+        document.getElementById("keywordModal").style.display = "flex";
+      }
+
+      function renderCategoryList() {
+        const catDiv = document.getElementById("categoryList");
+        catDiv.innerHTML = "";
+        alarmConfig.forEach((c, i) => {
+          const d = document.createElement("div");
+          d.textContent = c.name;
+          d.className = "item" + (selectedCategory === i ? " selected" : "");
+          d.onclick = () => {
+            selectedCategory = i;
+            selectedKeyword = null;
+            renderCategoryList();
+            renderKeywordList();
+          };
+          catDiv.appendChild(d);
         });
       }
-      // b) Input­Felder zurücksetzen
-      t.patientInput        = null;
-      t.patientStart        = null;
-      t.currentEinsatzStart = null;
 
-      // c) Status auf "Einsatz beendet" setzen
-      t.status = 'Einsatz beendet';
+      function renderKeywordList() {
+        const kwDiv = document.getElementById("keywordList");
+        kwDiv.innerHTML = "";
+        document.getElementById("otherDetail").style.display = "none"; // immer verstecken
+        if (selectedCategory === null) return;
 
-      // d) Eigene Historie ergänzen
-      t.history = t.history || [];
-      t.history.push({
-        when:  now,
-        event: 'Einsatz beendet'
-      });
-    }
-  });
-
-  // 3) Speichern & Storage‐Event feuern
-  localStorage.setItem('trupps', JSON.stringify(trupps));
-  window.dispatchEvent(new StorageEvent('storage', {
-    key:      'trupps',
-    newValue: JSON.stringify(trupps)
-  }));
-}
-
-
-
-
-function formatMS(ms) {
-  if (!isFinite(ms) || ms < 0) return '–';
-  const totalSec = Math.floor(ms / 1000);
-  const mm = String(Math.floor(totalSec / 60)).padStart(2, '0');
-  const ss = String(totalSec % 60).padStart(2, '0');
-  return `${mm}:${ss}`;
-}
-
-
-function getCurrentTime() {
-  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-function getNextPatientId() {
-  const patients = JSON.parse(localStorage.getItem('patients')) || [];
-  return patients.length + 1;
-}
-
-function createNewPatient() {
-  // 1) als ID die global synchronisierte Nummer nehmen
-  const id = window.nextPatientNumber;
-  // 2) Nummer erhöhen und in localStorage persistieren
-  window.nextPatientNumber++;
-  localStorage.setItem('nextPatientNumber', String(window.nextPatientNumber));
-
-  // Aktueller Zeitstempel
-  const now = Date.now();
-
-  // 3) Patientenobjekt bauen
-  const patient = {
-    id,
-    createdAt: now,           // Zeitpunkt der Anlage in ms
-    statusTimestamps: {       // wird beim Statuswechsel ergänzt
-      gemeldet: now
-    },
-    durations: {              // wird beim ersten Erreichen der jeweiligen Status gefüllt
-      einsatzdauer: '',
-      dispositionsdauer: '',
-      ausrueckdauer: '',
-	  behandlungsdauer: '',
-      verlegedauerUHS: ''
-    },
-    status: 'gemeldet',
-    age: '',
-    gender: 'M',
-    diagnosis: '',
-    location: '',
-    remarks: '',
-    team: '',
-    rtm: '',
-    discharge: '',
-    additionalRequest: '',
-    history: [`${getCurrentTime()} Status: gemeldet`]
-  };
-
-  // 4) in das Array schieben und speichern
-  const patients = JSON.parse(localStorage.getItem('patients')) || [];
-  patients.push(patient);
-  localStorage.setItem('patients', JSON.stringify(patients));
-
-  // 5) neu rendern
-  loadPatients();
-}
-
-
-function clearAllData() {
-  // Zeige das Bestätigungsfeld an
-  if (confirm('Willst du wirklich alle Daten löschen?')) {
-    // Wenn der Benutzer auf OK klickt, lösche die Daten
-    localStorage.removeItem('patients');
-    localStorage.setItem('nextPatientNumber', '1'); // Setze die Patientennummer zurück
-
-    // Optional: Lade die Seite neu oder führe weitere Aktionen aus
-    loadPatients(); // Eine Funktion, um die Anzeige zu aktualisieren, nachdem die Daten gelöscht wurden
-  } else {
-    // Wenn der Benutzer auf Abbrechen klickt, passiert nichts
-    console.log("Daten wurden nicht gelöscht");
-  }
-}
-
-
-// 1) Zentrale Update-Funktion
-function updatePatientData(id, field, value) {
-  const patients = JSON.parse(localStorage.getItem('patients')) || [];
-  const patient  = patients.find(p => p.id === id);
-  if (!patient) return;
-  // History-Array initialisieren, falls nötig
-  if (!patient.history) patient.history = [];
-
-  // Hilfs-Objekte sicherstellen
-  patient.statusTimestamps = patient.statusTimestamps || {};
-  patient.durations        = patient.durations        || {};
-
-  const now = Date.now();
-
-  // 1) Timestamp & Dauer-Kalkulation zentral in recordStatusChange
-  function doTimeTracking() {
-    recordStatusChange(patient, value);
-  }
-
-  // 2) Update von History, Feld, Triggern von recordStatusChange und Speichern
-  function applyUpdate() {
-    // a) History-Eintrag
-    if (field === 'status') {
-      patient.history.push(`${getCurrentTime()} Status: ${value}`);
-    } else if (field === 'diagnosis') {
-      patient.history.push(`${getCurrentTime()} Verdachtsdiagnose geändert: ${value}`);
-    } else if (field === 'discharge') {
-      patient.history.push(`${getCurrentTime()} Entlassen: ${value}`);
-    } else if (field === 'additionalRequest') {
-      patient.history.push(`${getCurrentTime()} ${value}`);
-    } else if (!['age','gender','location','team','rtm','remarks'].includes(field)) {
-      patient.history.push(`${getCurrentTime()} ${field} geändert: ${value}`);
-    }
-
-    // b) Feld setzen
-    patient[field] = value;
-
-    // c) Timestamp & Dauer-Berechnungen
-    doTimeTracking();
-
-    // d) persistieren
-    localStorage.setItem('patients', JSON.stringify(patients));
-  }
-
-  // 3) Sonderfall Status → Animation + Delayed Update
-  if (field === 'status') {
-    // sofort Timestamp setzen, damit updateLiveTimers ihn findet
-    doTimeTracking();
-
-    const oldCard = document.querySelector(`.patient-card[data-id='${id}']`);
-    const finish = () => {
-      applyUpdate();
-      if (value === 'Transport in KH' || value === 'Entlassen') {
-        clearAssignments(id);
+        alarmConfig[selectedCategory].keywords.forEach((kw, j) => {
+          const d = document.createElement("div");
+          d.textContent = kw.word;
+          d.className = "item" + (selectedKeyword === j ? " selected" : "");
+          d.onclick = () => {
+            selectedKeyword = j;
+            renderKeywordList();
+            // Wenn das Wort mit "sonstiger" (case-insensitive) anfängt → Feld einblenden
+            if (/^sonstiger/i.test(kw.word)) {
+              document.getElementById("otherDetail").style.display = "block";
+              document.getElementById("otherInput").value = "";
+            } else {
+              document.getElementById("otherDetail").style.display = "none";
+            }
+          };
+          kwDiv.appendChild(d);
+        });
       }
-      loadPatients(id);
-      // sofort die Live-Timer-Funktion einmal ausführen
-      updateLiveTimers();
-    };
 
-    if (oldCard) {
-      oldCard.classList.add('slide-out');
-      oldCard.addEventListener('animationend', finish, { once: true });
-    } else {
-      // falls Karte nicht gefunden wurde, direkt updaten
-      finish();
-    }
-    return;
-  }
+      function confirmKeyword() {
+        if (selectedCategory === null || selectedKeyword === null) {
+          return alert("Bitte Kategorie und Stichwort wählen");
+        }
+        let cfg = alarmConfig[selectedCategory].keywords[selectedKeyword];
+        let finalWord = cfg.word;
 
-  // 4) Alle anderen Felder → direkt updaten
-  applyUpdate();
-  loadPatients();
-}
+        // Wenn Zusatz-Feld sichtbar, hänge den Input an
+        if (document.getElementById("otherDetail").style.display === "block") {
+          const extra = document.getElementById("otherInput").value.trim();
+          if (!extra) {
+            return alert("Bitte die Art des Notfalls genauer beschreiben.");
+          }
+          finalWord += " – " + extra;
+        }
 
+        // 1) Diagnosis-Feld setzen
+        updatePatientData(currentPatientId, "diagnosis", finalWord);
 
-function disposeRequest(id, request) {
-  const patients = JSON.parse(localStorage.getItem('patients')) || [];
-  const patient = patients.find(p => p.id === id);
-  patient.additionalRequest = request;
-  if (!patient.history) patient.history = [];
-  patient.history.push(`${getCurrentTime()} ${request}`);
-  if (!patient.disposed) patient.disposed = {};
-  patient.disposed[request] = false;
-  localStorage.setItem('patients', JSON.stringify(patients));
-  loadPatients();
-}
+        // 2) vorgeschlagene Ressourcen speichern
+        const patients = JSON.parse(localStorage.getItem("patients")) || [];
+        const p = patients.find((x) => x.id === currentPatientId);
+        p.suggestedResources = cfg.resources;
+        localStorage.setItem("patients", JSON.stringify(patients));
 
-function markAsDisposed(id, request) {
-  const patients = JSON.parse(localStorage.getItem('patients')) || [];
-  const patient = patients.find(p => p.id === id);
-  if (!patient.disposed) patient.disposed = {};
-  patient.disposed[request] = true;
-  // entfernt: kein Eintrag in Historie bei Disponiert
-  localStorage.setItem('patients', JSON.stringify(patients));
-  loadPatients();
-}
+        closeKeywordModal();
+        loadPatients(currentPatientId);
+      }
 
-function dischargePatient(id) {
-  const location = prompt('Wohin wurde der Patient entlassen?');
-  if (!location) return;
+      function closeKeywordModal() {
+        document.getElementById("keywordModal").style.display = "none";
+      }
 
-  // 1) Discharge-Feld
-  updatePatientData(id, 'discharge', location);
-  // 2) Status auf Entlassen
-  updatePatientData(id, 'status', 'Entlassen');
+      document.addEventListener("DOMContentLoaded", () => {
+        document
+          .getElementById("btnNewPatient")
+          .addEventListener("click", createNewPatient);
+        loadPatients();
+      });
 
-  // 3) Noch einmal sicherstellen, dass der Trupp beendet wird:
-  clearAssignments(id, 'Entlassen');
-}
+      function clearAssignments(patientId, finalStatus) {
+        const now = Date.now();
 
+        // 1) Patienten-Status auf den finalStatus setzen (wird auch 'Transport in KH' unterstützen)
+        const patients = JSON.parse(localStorage.getItem("patients")) || [];
+        const patient = patients.find((p) => p.id === patientId);
+        if (!patient) return;
 
-/**
- * Deaktiviert alle Checkboxen mit demselben name außer der gerade geklickten.
- */
-function selectOnly(box) {
-  const gruppe = document.getElementsByName(box.name);
-  gruppe.forEach(cb => {
-    if (cb !== box) cb.checked = false;
-  });
-  // Falls der Klick eine Checkbox deaktiviert hat, sorgen wir dafür,
-  // dass mindestens eine immer ausgewählt bleibt:
-  if (!box.checked) {
-    box.checked = true;
-  }
-}
+        patient.status = finalStatus;
+        localStorage.setItem("patients", JSON.stringify(patients));
+        loadPatients(patientId); // neu rendern (Team bleibt erhalten)
 
+        // 2) Trupp-Tracker updaten: alle Trupps, die patientInput === patientId haben,
+        //    bekommen ihren Einsatz beendet
+        const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+        trupps.forEach((t) => {
+          if (t.patientInput === patientId) {
+            // a) Patienteneinsatz abschließen
+            if (t.patientStart) {
+              t.patientHistorie = t.patientHistorie || [];
+              t.patientHistorie.push({
+                nummer: patientId,
+                von: t.patientStart,
+                bis: now,
+              });
+            }
+            // b) Input­Felder zurücksetzen
+            t.patientInput = null;
+            t.patientStart = null;
+            t.currentEinsatzStart = null;
 
-function loadPatients(highlightId) {
-  const patients = JSON.parse(localStorage.getItem('patients')) || [];
-  const trupps   = JSON.parse(localStorage.getItem('trupps'))   || [];
+            // c) Status auf "Einsatz beendet" setzen
+            t.status = "Einsatz beendet";
 
-patients.forEach(p => {
-    // 1) createdAt sicher als Zahl
-    if (typeof p.createdAt !== 'number') {
-      p.createdAt = Number(p.createdAt) || Date.now();
-    }
-    // 2) statusTimestamps-Objekt sicherstellen und alle Einträge als Zahl
-    p.statusTimestamps = p.statusTimestamps || {};
-    for (const key in p.statusTimestamps) {
-      p.statusTimestamps[key] = Number(p.statusTimestamps[key]) || p.statusTimestamps[key];
-    }
-    // 3) durations-Objekt sicherstellen
-    p.durations = {
-      einsatzdauer:       p.durations?.einsatzdauer       ?? '',
-      dispositionsdauer:  p.durations?.dispositionsdauer  ?? '',
-      ausrueckdauer:      p.durations?.ausrueckdauer      ?? '',
-      behandlungsdauer:   p.durations?.behandlungsdauer   ?? '',
-      verlegedauerUHS:    p.durations?.verlegedauerUHS    ?? ''
-    };
-  });
+            // d) Eigene Historie ergänzen
+            t.history = t.history || [];
+            t.history.push({
+              when: now,
+              event: "Einsatz beendet",
+            });
+          }
+        });
 
+        // 3) Speichern & Storage‐Event feuern
+        localStorage.setItem("trupps", JSON.stringify(trupps));
+        window.dispatchEvent(
+          new StorageEvent("storage", {
+            key: "trupps",
+            newValue: JSON.stringify(trupps),
+          })
+        );
+      }
 
-  document.getElementById('activePatients').innerHTML = '';
-  document.getElementById('inUhsPatients').innerHTML = '';
-  document.getElementById('dismissedPatients').innerHTML = '';
+      function formatMS(ms) {
+        if (!isFinite(ms) || ms < 0) return "–";
+        const totalSec = Math.floor(ms / 1000);
+        const mm = String(Math.floor(totalSec / 60)).padStart(2, "0");
+        const ss = String(totalSec % 60).padStart(2, "0");
+        return `${mm}:${ss}`;
+      }
 
-  const order = [
-    "gemeldet","disponiert","in Behandlung",
-    "verlegt in UHS","Behandlung in UHS"
-  ];
-  const sorted = patients.slice().sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status));
+      function getCurrentTime() {
+        return new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      }
 
-  sorted.forEach(patient => {
-    const isFinal = (patient.status === 'Transport in KH' || patient.status === 'Entlassen');
+      function getNextPatientId() {
+        const patients = JSON.parse(localStorage.getItem("patients")) || [];
+        return patients.length + 1;
+      }
 
-    // --- Trupp-Dropdown ---
-    const excluded = ['Nicht Einsatzbereit','Patient','Spielfeldrand'];
-    const options = trupps
-      .filter(t => !excluded.includes(t.status))
-      .map(t => `<option value="${t.name}">${t.name}</option>`)
-      .join('');
-    const truppSelect = `
-      <select id="teamSelect-${patient.id}" ${isFinal ? 'disabled' : ''}>
+      function createNewPatient() {
+        // 1) als ID die global synchronisierte Nummer nehmen
+        const id = window.nextPatientNumber;
+        // 2) Nummer erhöhen und in localStorage persistieren
+        window.nextPatientNumber++;
+        localStorage.setItem(
+          "nextPatientNumber",
+          String(window.nextPatientNumber)
+        );
+
+        // Aktueller Zeitstempel
+        const now = Date.now();
+
+        // 3) Patientenobjekt bauen
+        const patient = {
+          id,
+          createdAt: now, // Zeitpunkt der Anlage in ms
+          statusTimestamps: {
+            // wird beim Statuswechsel ergänzt
+            gemeldet: now,
+          },
+          durations: {
+            // wird beim ersten Erreichen der jeweiligen Status gefüllt
+            einsatzdauer: "",
+            dispositionsdauer: "",
+            ausrueckdauer: "",
+            behandlungsdauer: "",
+            verlegedauerUHS: "",
+          },
+          status: "gemeldet",
+          age: "",
+          gender: "M",
+          diagnosis: "",
+          location: "",
+          remarks: "",
+          team: "",
+          rtm: "",
+          discharge: "",
+          additionalRequest: "",
+          history: [`${getCurrentTime()} Status: gemeldet`],
+        };
+
+        // 4) in das Array schieben und speichern
+        const patients = JSON.parse(localStorage.getItem("patients")) || [];
+        patients.push(patient);
+        localStorage.setItem("patients", JSON.stringify(patients));
+
+        // 5) neu rendern
+        loadPatients();
+      }
+
+      function clearAllData() {
+        // Zeige das Bestätigungsfeld an
+        if (confirm("Willst du wirklich alle Daten löschen?")) {
+          // Wenn der Benutzer auf OK klickt, lösche die Daten
+          localStorage.removeItem("patients");
+          localStorage.setItem("nextPatientNumber", "1"); // Setze die Patientennummer zurück
+
+          // Optional: Lade die Seite neu oder führe weitere Aktionen aus
+          loadPatients(); // Eine Funktion, um die Anzeige zu aktualisieren, nachdem die Daten gelöscht wurden
+        } else {
+          // Wenn der Benutzer auf Abbrechen klickt, passiert nichts
+          console.log("Daten wurden nicht gelöscht");
+        }
+      }
+
+      // 1) Zentrale Update-Funktion
+      function updatePatientData(id, field, value) {
+        const patients = JSON.parse(localStorage.getItem("patients")) || [];
+        const patient = patients.find((p) => p.id === id);
+        if (!patient) return;
+        // History-Array initialisieren, falls nötig
+        if (!patient.history) patient.history = [];
+
+        // Hilfs-Objekte sicherstellen
+        patient.statusTimestamps = patient.statusTimestamps || {};
+        patient.durations = patient.durations || {};
+
+        const now = Date.now();
+
+        // 1) Timestamp & Dauer-Kalkulation zentral in recordStatusChange
+        function doTimeTracking() {
+          recordStatusChange(patient, value);
+        }
+
+        // 2) Update von History, Feld, Triggern von recordStatusChange und Speichern
+        function applyUpdate() {
+          // a) History-Eintrag
+          if (field === "status") {
+            patient.history.push(`${getCurrentTime()} Status: ${value}`);
+          } else if (field === "diagnosis") {
+            patient.history.push(
+              `${getCurrentTime()} Verdachtsdiagnose geändert: ${value}`
+            );
+          } else if (field === "discharge") {
+            patient.history.push(`${getCurrentTime()} Entlassen: ${value}`);
+          } else if (field === "additionalRequest") {
+            patient.history.push(`${getCurrentTime()} ${value}`);
+          } else if (
+            !["age", "gender", "location", "team", "rtm", "remarks"].includes(
+              field
+            )
+          ) {
+            patient.history.push(
+              `${getCurrentTime()} ${field} geändert: ${value}`
+            );
+          }
+
+          // b) Feld setzen
+          patient[field] = value;
+
+          // c) Timestamp & Dauer-Berechnungen
+          doTimeTracking();
+
+          // d) persistieren
+          localStorage.setItem("patients", JSON.stringify(patients));
+        }
+
+        // 3) Sonderfall Status → Animation + Delayed Update
+        if (field === "status") {
+          // sofort Timestamp setzen, damit updateLiveTimers ihn findet
+          doTimeTracking();
+
+          const oldCard = document.querySelector(
+            `.patient-card[data-id='${id}']`
+          );
+          const finish = () => {
+            applyUpdate();
+            if (value === "Transport in KH" || value === "Entlassen") {
+              clearAssignments(id);
+            }
+            loadPatients(id);
+            // sofort die Live-Timer-Funktion einmal ausführen
+            updateLiveTimers();
+          };
+
+          if (oldCard) {
+            oldCard.classList.add("slide-out");
+            oldCard.addEventListener("animationend", finish, { once: true });
+          } else {
+            // falls Karte nicht gefunden wurde, direkt updaten
+            finish();
+          }
+          return;
+        }
+
+        // 4) Alle anderen Felder → direkt updaten
+        applyUpdate();
+        loadPatients();
+      }
+
+      function disposeRequest(id, request) {
+        const patients = JSON.parse(localStorage.getItem("patients")) || [];
+        const patient = patients.find((p) => p.id === id);
+        patient.additionalRequest = request;
+        if (!patient.history) patient.history = [];
+        patient.history.push(`${getCurrentTime()} ${request}`);
+        if (!patient.disposed) patient.disposed = {};
+        patient.disposed[request] = false;
+        localStorage.setItem("patients", JSON.stringify(patients));
+        loadPatients();
+      }
+
+      function markAsDisposed(id, request) {
+        const patients = JSON.parse(localStorage.getItem("patients")) || [];
+        const patient = patients.find((p) => p.id === id);
+        if (!patient.disposed) patient.disposed = {};
+        patient.disposed[request] = true;
+        // entfernt: kein Eintrag in Historie bei Disponiert
+        localStorage.setItem("patients", JSON.stringify(patients));
+        loadPatients();
+      }
+
+      function dischargePatient(id) {
+        const location = prompt("Wohin wurde der Patient entlassen?");
+        if (!location) return;
+
+        // 1) Discharge-Feld
+        updatePatientData(id, "discharge", location);
+        // 2) Status auf Entlassen
+        updatePatientData(id, "status", "Entlassen");
+
+        // 3) Noch einmal sicherstellen, dass der Trupp beendet wird:
+        clearAssignments(id, "Entlassen");
+      }
+
+      /**
+       * Deaktiviert alle Checkboxen mit demselben name außer der gerade geklickten.
+       */
+      function selectOnly(box) {
+        const gruppe = document.getElementsByName(box.name);
+        gruppe.forEach((cb) => {
+          if (cb !== box) cb.checked = false;
+        });
+        // Falls der Klick eine Checkbox deaktiviert hat, sorgen wir dafür,
+        // dass mindestens eine immer ausgewählt bleibt:
+        if (!box.checked) {
+          box.checked = true;
+        }
+      }
+
+      function loadPatients(highlightId) {
+        const patients = JSON.parse(localStorage.getItem("patients")) || [];
+        const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+
+        patients.forEach((p) => {
+          // 1) createdAt sicher als Zahl
+          if (typeof p.createdAt !== "number") {
+            p.createdAt = Number(p.createdAt) || Date.now();
+          }
+          // 2) statusTimestamps-Objekt sicherstellen und alle Einträge als Zahl
+          p.statusTimestamps = p.statusTimestamps || {};
+          for (const key in p.statusTimestamps) {
+            p.statusTimestamps[key] =
+              Number(p.statusTimestamps[key]) || p.statusTimestamps[key];
+          }
+          // 3) durations-Objekt sicherstellen
+          p.durations = {
+            einsatzdauer: p.durations?.einsatzdauer ?? "",
+            dispositionsdauer: p.durations?.dispositionsdauer ?? "",
+            ausrueckdauer: p.durations?.ausrueckdauer ?? "",
+            behandlungsdauer: p.durations?.behandlungsdauer ?? "",
+            verlegedauerUHS: p.durations?.verlegedauerUHS ?? "",
+          };
+        });
+
+        document.getElementById("activePatients").innerHTML = "";
+        document.getElementById("inUhsPatients").innerHTML = "";
+        document.getElementById("dismissedPatients").innerHTML = "";
+
+        const order = [
+          "gemeldet",
+          "disponiert",
+          "in Behandlung",
+          "verlegt in UHS",
+          "Behandlung in UHS",
+        ];
+        const sorted = patients
+          .slice()
+          .sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status));
+
+        sorted.forEach((patient) => {
+          const isFinal =
+            patient.status === "Transport in KH" ||
+            patient.status === "Entlassen";
+
+          // --- Trupp-Dropdown ---
+          const excluded = ["Nicht Einsatzbereit", "Patient", "Spielfeldrand"];
+          const options = trupps
+            .filter((t) => !excluded.includes(t.status))
+            .map((t) => `<option value="${t.name}">${t.name}</option>`)
+            .join("");
+          const truppSelect = `
+      <select id="teamSelect-${patient.id}" ${isFinal ? "disabled" : ""}>
         <option value="">Wählen…</option>
         ${options}
       </select>
-      <button class="meldung-btn" onclick="assignSelectedTrupp(${patient.id})" ${isFinal ? 'disabled' : ''}>
+      <button class="meldung-btn" onclick="assignSelectedTrupp(${
+        patient.id
+      })" ${isFinal ? "disabled" : ""}>
         Trupp disponieren
       </button>`;
 
-    // --- Nachforderungen ---
-    let requestBox = '';
-    if (patient.disposed) {
-      requestBox = Object.entries(patient.disposed).map(([req, done]) => {
-        const style = done ? 'background:#ccffcc' : 'background:#ffcccc';
-        const btn   = done ? '' : `<button onclick="markAsDisposed(${patient.id}, '${req}')">Disponiert</button>`;
-        return `<div style="${style};padding:4px;margin-bottom:4px;">${req} ${btn}</div>`;
-      }).join('');
-    }
-    const dispoButtons = isFinal ? ''
-      : `<div class="buttons" style="display:flex; flex-direction:column; gap:5px; margin-top:8px;">
+          // --- Nachforderungen ---
+          let requestBox = "";
+          if (patient.disposed) {
+            requestBox = Object.entries(patient.disposed)
+              .map(([req, done]) => {
+                const style = done
+                  ? "background:#ccffcc"
+                  : "background:#ffcccc";
+                const btn = done
+                  ? ""
+                  : `<button onclick="markAsDisposed(${patient.id}, '${req}')">Disponiert</button>`;
+                return `<div style="${style};padding:4px;margin-bottom:4px;">${req} ${btn}</div>`;
+              })
+              .join("");
+          }
+          const dispoButtons = isFinal
+            ? ""
+            : `<div class="buttons" style="display:flex; flex-direction:column; gap:5px; margin-top:8px;">
   <button class="meldung-btn" onclick="disposeRequest(${patient.id}, 'Tragetrupp nachgefordert')">
     Tragetrupp
   </button>
@@ -777,23 +863,28 @@ patients.forEach(p => {
 </div>
 `;
 
-    // --- Historie ---
-    const histItems = (patient.history||[]).map(h => `<li>${h}</li>`).join('');
-    const addEntry = `<button class="meldung-btn" style="width:100%;margin-top:6px;"
+          // --- Historie ---
+          const histItems = (patient.history || [])
+            .map((h) => `<li>${h}</li>`)
+            .join("");
+          const addEntry = `<button class="meldung-btn" style="width:100%;margin-top:6px;"
                  onclick="promptAddEntry(${patient.id})">Eintrag hinzufügen</button>`;
-    const historyHTML = `
+          const historyHTML = `
       <div style="min-width:300px;max-width:300px;">
         <strong>Historie:</strong>
         <ul>${histItems}</ul>
         ${addEntry}
       </div>`;
 
-    // --- Karte ---
-    const card = document.createElement('div');
-    const statusClass = (patient.status || 'undefined').replace(/\s/g, '-');
-    card.className = 'patient-card ' + statusClass;
-    card.dataset.id = patient.id;
-    card.innerHTML = `
+          // --- Karte ---
+          const card = document.createElement("div");
+          const statusClass = (patient.status || "undefined").replace(
+            /\s/g,
+            "-"
+          );
+          card.className = "patient-card " + statusClass;
+          card.dataset.id = patient.id;
+          card.innerHTML = `
       <!-- ① Titel als Überschrift oberhalb aller Spalten -->
   <h2 style="width:100%; margin:0 0 10px; font-size:1.5em; color:#333;">
     Patient ${patient.id}
@@ -802,8 +893,12 @@ patients.forEach(p => {
   <!-- ② Jetzt alle Spalten ohne den alten Titel-Span -->
   <div style="display:flex; flex-wrap:wrap; gap:10px;">
         <div class="button-group">
-  <button class="meldung-btn" onclick="copyPatientData(${patient.id})">Meldung</button>
-  <button class="reset-btn"   onclick="deletePatient(${patient.id})">Löschen</button>
+  <button class="meldung-btn" onclick="copyPatientData(${
+    patient.id
+  })">Meldung</button>
+  <button class="reset-btn"   onclick="deletePatient(${
+    patient.id
+  })">Löschen</button>
 </div>
 
 		<div style="margin-top:8px;">
@@ -819,7 +914,10 @@ patients.forEach(p => {
         <td>Einsatzdauer</td>
         <td>
           <span class="timer einsatzdauer" data-id="${patient.id}">
-            ${patient.durations.einsatzdauer || formatMS(Date.now() - patient.createdAt)}
+            ${
+              patient.durations.einsatzdauer ||
+              formatMS(Date.now() - patient.createdAt)
+            }
           </span>
         </td>
       </tr>
@@ -827,7 +925,7 @@ patients.forEach(p => {
         <td>Dispositionsdauer</td>
         <td>
           <span class="timer dispositionsdauer" data-id="${patient.id}">
-            ${patient.durations.dispositionsdauer || '–'}
+            ${patient.durations.dispositionsdauer || "–"}
           </span>
         </td>
       </tr>
@@ -835,7 +933,7 @@ patients.forEach(p => {
         <td>Ausrückdauer</td>
         <td>
           <span class="timer ausrueckdauer" data-id="${patient.id}">
-            ${patient.durations.ausrueckdauer || '–'}
+            ${patient.durations.ausrueckdauer || "–"}
           </span>
         </td>
       </tr>
@@ -843,7 +941,7 @@ patients.forEach(p => {
   <td>Behandlungsdauer</td>
   <td>
     <span class="timer behandlungsdauer" data-id="${patient.id}">
-      ${patient.durations.behandlungsdauer || '–'}
+      ${patient.durations.behandlungsdauer || "–"}
     </span>
   </td>
 </tr>
@@ -851,7 +949,7 @@ patients.forEach(p => {
         <td>Verlegedauer (in UHS)</td>
         <td>
           <span class="timer verlegedauerUHS" data-id="${patient.id}">
-            ${patient.durations.verlegedauerUHS || '–'}
+            ${patient.durations.verlegedauerUHS || "–"}
           </span>
         </td>
       </tr>
@@ -876,19 +974,29 @@ patients.forEach(p => {
        disponiert
      </button></p>
   <p><button class="status-in-Behandlung"
-             onclick="updatePatientData(${patient.id}, 'status', 'in Behandlung')">
+             onclick="updatePatientData(${
+               patient.id
+             }, 'status', 'in Behandlung')">
        in Behandlung
      </button></p>
   <p><button class="status-verlegt-in-UHS"
-             onclick="updatePatientData(${patient.id}, 'status', 'verlegt in UHS')">
+             onclick="updatePatientData(${
+               patient.id
+             }, 'status', 'verlegt in UHS')">
        verlegt in UHS
      </button></p>
   <p><button class="status-Behandlung-in-UHS"
-             onclick="updatePatientData(${patient.id}, 'status', 'Behandlung in UHS')">
+             onclick="updatePatientData(${
+               patient.id
+             }, 'status', 'Behandlung in UHS')">
        Behandlung in UHS
      </button></p>
        <p><button class="status-Transport-in-KH"
-            onclick="updatePatientData(${patient.id}, 'status', 'Transport in KH'); clearAssignments(${patient.id}, 'Transport in KH');">
+            onclick="updatePatientData(${
+              patient.id
+            }, 'status', 'Transport in KH'); clearAssignments(${
+            patient.id
+          }, 'Transport in KH');">
              Transport in KH
           </button></p>
   <p><button class="status-Entlassen"
@@ -903,17 +1011,17 @@ patients.forEach(p => {
 	  <div style="margin-top:6px;">
   <strong>Verdachtsdiagnose:</strong>
   <div style="margin-bottom:16px;">
-    ${patient.diagnosis || '–'}
-    ${!isFinal
-      ? `<button class="meldung-btn" onclick="editField(${patient.id}, 'diagnosis')">✏️</button>`
-      : ''}
+    ${patient.diagnosis || "–"}
+    ${
+      !isFinal
+        ? `<button class="meldung-btn" onclick="editField(${patient.id}, 'diagnosis')">✏️</button>`
+        : ""
+    }
   </div>
 
   <strong style="margin-top:16px; display:block;">Dispositionsvorschlag:</strong>
   <ul style="margin-top:8px; margin-left:16px;">
-    ${(patient.suggestedResources||[])
-        .map(r => `<li>${r}</li>`)
-        .join('')}
+    ${(patient.suggestedResources || []).map((r) => `<li>${r}</li>`).join("")}
   </ul>
 </div>
 
@@ -921,23 +1029,33 @@ patients.forEach(p => {
       <div style="min-width:200px;">
         <strong>Geschlecht:</strong><br>
         <label><input type="checkbox" name="gender-${patient.id}" value="M"
-                      ${patient.gender==='M'?'checked':''}
-                      ${isFinal?'disabled':''}
-                      onclick="selectOnly(this); updatePatientData(${patient.id}, 'gender', this.value)"> M</label>
+                      ${patient.gender === "M" ? "checked" : ""}
+                      ${isFinal ? "disabled" : ""}
+                      onclick="selectOnly(this); updatePatientData(${
+                        patient.id
+                      }, 'gender', this.value)"> M</label>
         <label><input type="checkbox" name="gender-${patient.id}" value="W"
-                      ${patient.gender==='W'?'checked':''}
-                      ${isFinal?'disabled':''}
-                      onclick="selectOnly(this); updatePatientData(${patient.id}, 'gender', this.value)"> W</label>
+                      ${patient.gender === "W" ? "checked" : ""}
+                      ${isFinal ? "disabled" : ""}
+                      onclick="selectOnly(this); updatePatientData(${
+                        patient.id
+                      }, 'gender', this.value)"> W</label>
         <label><input type="checkbox" name="gender-${patient.id}" value="D"
-                      ${patient.gender==='D'?'checked':''}
-                      ${isFinal?'disabled':''}
-                      onclick="selectOnly(this); updatePatientData(${patient.id}, 'gender', this.value)"> D</label><br>
+                      ${patient.gender === "D" ? "checked" : ""}
+                      ${isFinal ? "disabled" : ""}
+                      onclick="selectOnly(this); updatePatientData(${
+                        patient.id
+                      }, 'gender', this.value)"> D</label><br>
 
         <div>
     <strong>Alter:</strong>
     <div>
-      ${patient.age || '–'}
-      ${!isFinal ? `<button class="meldung-btn" onclick="editField(${patient.id}, 'age')">✏️</button>` : ''}
+      ${patient.age || "–"}
+      ${
+        !isFinal
+          ? `<button class="meldung-btn" onclick="editField(${patient.id}, 'age')">✏️</button>`
+          : ""
+      }
     </div>
   </div>
 
@@ -946,34 +1064,60 @@ patients.forEach(p => {
   <div style="margin-top:6px;">
     <strong>Standort:</strong>
     <div>
-      ${patient.location || '–'}
-      ${!isFinal ? `<button class="meldung-btn" onclick="editField(${patient.id}, 'location')">✏️</button>` : ''}
+      ${patient.location || "–"}
+      ${
+        !isFinal
+          ? `<button class="meldung-btn" onclick="editField(${patient.id}, 'location')">✏️</button>`
+          : ""
+      }
     </div>
   </div>
 
   <div style="margin-top:6px;">
     <strong>Bemerkungen:</strong>
     <div>
-      ${patient.remarks || '–'}
-      <button class="meldung-btn" onclick="editField(${patient.id}, 'remarks')">✏️</button>
+      ${patient.remarks || "–"}
+      <button class="meldung-btn" onclick="editField(${
+        patient.id
+      }, 'remarks')">✏️</button>
     </div>
   </div>
 </div>
 
       <div style="min-width:200px;">
         <strong>Trupp:</strong><br>
-        ${(patient.team||[]).map((t,i) =>
-          `<span>${t}${!isFinal?` <button class="reset-btn" onclick="removeTrupp(${patient.id},${i})">X</button>`:``}</span>`
-        ).join('<br>')||'–'}<br>
+        ${
+          (patient.team || [])
+            .map(
+              (t, i) =>
+                `<span>${t}${
+                  !isFinal
+                    ? ` <button class="reset-btn" onclick="removeTrupp(${patient.id},${i})">X</button>`
+                    : ``
+                }</span>`
+            )
+            .join("<br>") || "–"
+        }<br>
         ${truppSelect}
       </div>
 
       <div style="min-width:200px;">
         <strong>RTM:</strong><br>
-        ${(patient.rtm||[]).map((r,i) =>
-          `<span>${r}${!isFinal?` <button class="reset-btn" onclick="removeRtm(${patient.id},${i})">X</button>`:``}</span>`
-        ).join('<br>')||'–'}<br>
-        <button class="meldung-btn" onclick="assignResource(${patient.id}, 'rtm')" ${isFinal?'disabled':''}>
+        ${
+          (patient.rtm || [])
+            .map(
+              (r, i) =>
+                `<span>${r}${
+                  !isFinal
+                    ? ` <button class="reset-btn" onclick="removeRtm(${patient.id},${i})">X</button>`
+                    : ``
+                }</span>`
+            )
+            .join("<br>") || "–"
+        }<br>
+        <button class="meldung-btn" onclick="assignResource(${
+          patient.id
+        }, 'rtm')" ${isFinal ? "disabled" : ""}>
           RTM disponieren
         </button>
       </div>
@@ -992,291 +1136,303 @@ patients.forEach(p => {
 
     `;
 
-    const container =
-      ["gemeldet","disponiert","in Behandlung"].includes(patient.status)
-        ? 'activePatients'
-        : ["verlegt in UHS","Behandlung in UHS"].includes(patient.status)
-        ? 'inUhsPatients'
-        : 'dismissedPatients';
-    document.getElementById(container).appendChild(card);
+          const container = [
+            "gemeldet",
+            "disponiert",
+            "in Behandlung",
+          ].includes(patient.status)
+            ? "activePatients"
+            : ["verlegt in UHS", "Behandlung in UHS"].includes(patient.status)
+            ? "inUhsPatients"
+            : "dismissedPatients";
+          document.getElementById(container).appendChild(card);
 
-    if (patient.id === highlightId) {
-      card.classList.add('slide-in');
-      card.addEventListener('animationend', () => card.classList.remove('slide-in'), { once: true });
-    }
-  });
-}
+          if (patient.id === highlightId) {
+            card.classList.add("slide-in");
+            card.addEventListener(
+              "animationend",
+              () => card.classList.remove("slide-in"),
+              { once: true }
+            );
+          }
+        });
+      }
 
+      function promptAddEntry(id) {
+        const text = prompt("Bitte Eintrag eingeben:");
+        if (text && text.trim()) {
+          addCustomHistory(id, text.trim());
+        }
+      }
 
+      function assignResource(id, type) {
+        const label = type === "team" ? "Trupp" : "RTM";
+        const value = prompt(`${label} disponieren:`);
+        if (value !== null && value.trim() !== "") {
+          const patients = JSON.parse(localStorage.getItem("patients")) || [];
+          const patient = patients.find((p) => p.id === id);
+          if (type === "team") {
+            if (!Array.isArray(patient.team)) patient.team = [];
+            patient.team.push(value);
+          } else {
+            if (!Array.isArray(patient.rtm)) patient.rtm = [];
+            patient.rtm.push(value);
+          }
+          // Nur wenn vorher noch kein Trupp und kein RTM zugewiesen war:
+          if (
+            patient.status !== "in Behandlung" &&
+            (!Array.isArray(patient.team) || patient.team.length === 0) &&
+            (!Array.isArray(patient.rtm) || patient.rtm.length === 0)
+          ) {
+            patient.status = "disponiert";
+            patient.history = patient.history || [];
+            patient.history.push(`${getCurrentTime()} Status: disponiert`);
+          }
+          // Und immer Eintrag, dass RTM disponiert wurde:
+          patient.history = patient.history || [];
+          patient.history.push(
+            `${getCurrentTime()} ${label} ${value} disponiert`
+          );
 
+          localStorage.setItem("patients", JSON.stringify(patients));
+          loadPatients();
+        }
+      }
 
-function promptAddEntry(id) {
-  const text = prompt('Bitte Eintrag eingeben:');
-  if (text && text.trim()) {
-    addCustomHistory(id, text.trim());
-  }
-}
+      function assignSelectedTrupp(patientId) {
+        // Patienten laden und Objekt finden
+        const patients = JSON.parse(localStorage.getItem("patients")) || [];
+        const p = patients.find((x) => x.id === patientId);
+        if (!p) return;
 
+        // Sicherstellen, dass p.team ein Array ist
+        if (!Array.isArray(p.team)) p.team = [];
 
+        // ①: Status-Logik & Timestamp setzen, bevor irgendwas anderes passiert
+        recordStatusChange(p, "disponiert");
 
-function assignResource(id, type) {
-  const label = type === 'team' ? 'Trupp' : 'RTM';
-  const value = prompt(`${label} disponieren:`);
-  if (value !== null && value.trim() !== '') {
-    const patients = JSON.parse(localStorage.getItem('patients')) || [];
-    const patient = patients.find(p => p.id === id);
-    if (type === 'team') {
-    if (!Array.isArray(patient.team)) patient.team = [];
-    patient.team.push(value);
-  } else {
-    if (!Array.isArray(patient.rtm)) patient.rtm = [];
-    patient.rtm.push(value);
-  }
-      // Nur wenn vorher noch kein Trupp und kein RTM zugewiesen war:
-  if (patient.status !== 'in Behandlung'
-      && (!Array.isArray(patient.team) || patient.team.length === 0)
-      && (!Array.isArray(patient.rtm)  || patient.rtm.length === 0)
-  ) {
-    patient.status = 'disponiert';
-    patient.history = patient.history || [];
-    patient.history.push(`${getCurrentTime()} Status: disponiert`);
-  }
-  // Und immer Eintrag, dass RTM disponiert wurde:
-  patient.history = patient.history || [];
-  patient.history.push(`${getCurrentTime()} ${label} ${value} disponiert`);
+        // ②: Wenn noch kein Trupp/RTM und Status nicht 'in Behandlung', auf 'disponiert' setzen
+        if (
+          p.status !== "in Behandlung" &&
+          p.team.length === 0 &&
+          (!Array.isArray(p.rtm) || p.rtm.length === 0)
+        ) {
+          p.status = "disponiert";
+          p.history = p.history || [];
+          p.history.push(`${getCurrentTime()} Status: disponiert`);
+        }
 
-    localStorage.setItem('patients', JSON.stringify(patients));
-    loadPatients();
-  }
-}
+        // ③: Tatsächlichen Trupp-Namen aus dem Select ziehen
+        const sel = document.getElementById(`teamSelect-${patientId}`);
+        const truppName = sel ? sel.value : null;
+        if (!truppName) {
+          // Nichts ausgewählt → abbrechen
+          localStorage.setItem("patients", JSON.stringify(patients));
+          return;
+        }
 
-function assignSelectedTrupp(patientId) {
-  // Patienten laden und Objekt finden
-  const patients = JSON.parse(localStorage.getItem('patients')) || [];
-  const p = patients.find(x => x.id === patientId);
-  if (!p) return;
+        // ④: Trupp zu p.team hinzufügen und Historie eintragen
+        p.team.push(truppName);
+        p.history.push(`${getCurrentTime()} Trupp ${truppName} disponiert`);
 
-  // Sicherstellen, dass p.team ein Array ist
-  if (!Array.isArray(p.team)) p.team = [];
+        // ⑤: Speichern und neu rendern
+        localStorage.setItem("patients", JSON.stringify(patients));
+        loadPatients(patientId);
 
-  // ①: Status-Logik & Timestamp setzen, bevor irgendwas anderes passiert
-  recordStatusChange(p, 'disponiert');
+        // ⑥: Trupp-Tracker aktualisieren (Einsatzzeit starten)
+        const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+        const t = trupps.find((t) => t.name === truppName);
+        if (t) {
+          const now = Date.now();
 
-  // ②: Wenn noch kein Trupp/RTM und Status nicht 'in Behandlung', auf 'disponiert' setzen
-  if (
-    p.status !== 'in Behandlung' &&
-    p.team.length === 0 &&
-    (!Array.isArray(p.rtm) || p.rtm.length === 0)
-  ) {
-    p.status = 'disponiert';
-    p.history = p.history || [];
-    p.history.push(`${getCurrentTime()} Status: disponiert`);
-  }
+          // a) eventuell laufenden Einsatz beenden
+          if (t.currentOrt && t.einsatzStartOrt) {
+            t.einsatzHistorie = t.einsatzHistorie || [];
+            t.einsatzHistorie.push({
+              ort: t.currentOrt,
+              von: t.einsatzStartOrt,
+              bis: now,
+            });
+          }
 
-  // ③: Tatsächlichen Trupp-Namen aus dem Select ziehen
-  const sel = document.getElementById(`teamSelect-${patientId}`);
-  const truppName = sel ? sel.value : null;
-  if (!truppName) {
-    // Nichts ausgewählt → abbrechen
-    localStorage.setItem('patients', JSON.stringify(patients));
-    return;
-  }
+          // b) Status auf Patient setzen
+          t.status = "Patient";
+          t.patientInput = patientId;
+          // c) Einsatz-Timer starten
+          t.patientStart = now;
+          t.currentEinsatzStart = now;
+          // d) Pause-Timer zurücksetzen
+          t.currentPauseStart = null;
 
-  // ④: Trupp zu p.team hinzufügen und Historie eintragen
-  p.team.push(truppName);
-  p.history.push(`${getCurrentTime()} Trupp ${truppName} disponiert`);
+          // e) Speichern & Storage-Event feuern
+          localStorage.setItem("trupps", JSON.stringify(trupps));
+          window.dispatchEvent(
+            new StorageEvent("storage", {
+              key: "trupps",
+              newValue: JSON.stringify(trupps),
+            })
+          );
+        }
+      }
 
-  // ⑤: Speichern und neu rendern
-  localStorage.setItem('patients', JSON.stringify(patients));
-  loadPatients(patientId);
+      function removeTrupp(id, index) {
+        if (!confirm("Soll dieser Trupp wirklich entfernt werden?")) return;
 
-  // ⑥: Trupp-Tracker aktualisieren (Einsatzzeit starten)
-  const trupps = JSON.parse(localStorage.getItem('trupps')) || [];
-  const t = trupps.find(t => t.name === truppName);
-  if (t) {
-    const now = Date.now();
+        // 1) Patienten-Seite updaten
+        const patients = JSON.parse(localStorage.getItem("patients")) || [];
+        const patient = patients.find((p) => p.id === id);
+        const removed = Array.isArray(patient.team)
+          ? patient.team.splice(index, 1)
+          : [];
+        patient.history = patient.history || [];
+        patient.history.push(
+          `${getCurrentTime()} Trupp ${removed[0]} entfernt`
+        );
+        localStorage.setItem("patients", JSON.stringify(patients));
+        loadPatients();
 
-    // a) eventuell laufenden Einsatz beenden
-    if (t.currentOrt && t.einsatzStartOrt) {
-      t.einsatzHistorie = t.einsatzHistorie || [];
-      t.einsatzHistorie.push({
-        ort: t.currentOrt,
-        von:  t.einsatzStartOrt,
-        bis:  now
+        // 2) Trupp-Tracker updaten
+        const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+        const t = trupps.find((t) => t.name === removed[0]);
+        if (t) {
+          const now = Date.now();
+
+          // 📝 Falls gerade ein Patient zugewiesen, Patienteneinsatz abschließen
+          if (t.patientInput && t.patientStart) {
+            t.patientHistorie = t.patientHistorie || [];
+            t.patientHistorie.push({
+              nummer: t.patientInput,
+              von: t.patientStart,
+              bis: now,
+            });
+            // Reset der Patientendaten
+            t.patientInput = "";
+            t.patientStart = null;
+          }
+
+          // Statuswechsel, aber Einsatzzeit weiterlaufen lassen
+          t.status = "Einsatz beendet";
+
+          // Eigene Trupp-Historie ergänzen
+          t.history = t.history || [];
+          t.history.push({
+            when: now,
+            event: "Einsatz beendet",
+          });
+
+          // Speichern und Renderer anstoßen
+          localStorage.setItem("trupps", JSON.stringify(trupps));
+          window.dispatchEvent(
+            new StorageEvent("storage", {
+              key: "trupps",
+              newValue: JSON.stringify(trupps),
+            })
+          );
+        }
+      }
+
+      function removeRtm(id, index) {
+        if (!confirm("Soll dieses RTM wirklich entfernt werden?")) return;
+        const patients = JSON.parse(localStorage.getItem("patients")) || [];
+        const patient = patients.find((p) => p.id === id);
+        if (Array.isArray(patient.rtm)) {
+          const removed = patient.rtm.splice(index, 1);
+          if (!patient.history) patient.history = [];
+          patient.history.push(
+            `${getCurrentTime()} RTM ${removed[0]} entfernt`
+          );
+          localStorage.setItem("patients", JSON.stringify(patients));
+          loadPatients();
+        }
+      }
+
+      function editField(id, field) {
+        if (field === "diagnosis") {
+          // Modal für Stichwörter öffnen
+          openKeywordModal(id);
+          return;
+        }
+        // für alle anderen Felder weiter wie gehabt:
+        const patients = JSON.parse(localStorage.getItem("patients")) || [];
+        const patient = patients.find((p) => p.id === id);
+        const current = patient[field] || "";
+        const labelMap = {
+          age: "Alter",
+          diagnosis: "Verdachtsdiagnose",
+          location: "Standort",
+          remarks: "Bemerkungen",
+        };
+        const value = prompt(
+          `Neuen Wert für ${labelMap[field] || field} eingeben:`,
+          current
+        );
+        if (value !== null) {
+          updatePatientData(id, field, value);
+        }
+      }
+
+      function addCustomHistory(id, message) {
+        if (!message.trim()) return;
+        const patients = JSON.parse(localStorage.getItem("patients")) || [];
+        const patient = patients.find((p) => p.id === id);
+        if (!patient.history) patient.history = [];
+        patient.history.push(`${getCurrentTime()} ${message}`);
+        localStorage.setItem("patients", JSON.stringify(patients));
+        loadPatients();
+      }
+
+      // Globale Variable, die immer aktuell ist
+      window.nextPatientNumber =
+        parseInt(localStorage.getItem("nextPatientNumber"), 10) || 1;
+
+      // 1) Polling
+      function syncNextPatientNumber() {
+        window.nextPatientNumber =
+          parseInt(localStorage.getItem("nextPatientNumber"), 10) || 1;
+      }
+      setInterval(syncNextPatientNumber, 2000);
+
+      // 2) storage-Event
+      window.addEventListener("storage", (e) => {
+        if (e.key === "nextPatientNumber") syncNextPatientNumber();
       });
-    }
 
-    // b) Status auf Patient setzen
-    t.status              = 'Patient';
-    t.patientInput        = patientId;
-    // c) Einsatz-Timer starten
-    t.patientStart        = now;
-    t.currentEinsatzStart = now;
-    // d) Pause-Timer zurücksetzen
-    t.currentPauseStart   = null;
-
-    // e) Speichern & Storage-Event feuern
-    localStorage.setItem('trupps', JSON.stringify(trupps));
-    window.dispatchEvent(new StorageEvent('storage', {
-      key:      'trupps',
-      newValue: JSON.stringify(trupps)
-    }));
-  }
-}
-
-
-
-function removeTrupp(id, index) {
-  if (!confirm('Soll dieser Trupp wirklich entfernt werden?')) return;
-
-  // 1) Patienten-Seite updaten
-  const patients = JSON.parse(localStorage.getItem('patients')) || [];
-  const patient  = patients.find(p => p.id === id);
-  const removed  = Array.isArray(patient.team)
-    ? patient.team.splice(index, 1)
-    : [];
-  patient.history = patient.history || [];
-  patient.history.push(`${getCurrentTime()} Trupp ${removed[0]} entfernt`);
-  localStorage.setItem('patients', JSON.stringify(patients));
-  loadPatients();
-
-  // 2) Trupp-Tracker updaten
-  const trupps = JSON.parse(localStorage.getItem('trupps')) || [];
-  const t      = trupps.find(t => t.name === removed[0]);
-  if (t) {
-    const now = Date.now();
-
-    // 📝 Falls gerade ein Patient zugewiesen, Patienteneinsatz abschließen
-    if (t.patientInput && t.patientStart) {
-      t.patientHistorie = t.patientHistorie || [];
-      t.patientHistorie.push({
-        nummer: t.patientInput,
-        von:    t.patientStart,
-        bis:    now
+      window.addEventListener("storage", (e) => {
+        if (e.key === "patients") {
+          loadPatients();
+        }
       });
-      // Reset der Patientendaten
-      t.patientInput = '';
-      t.patientStart = null;
-    }
 
-    // Statuswechsel, aber Einsatzzeit weiterlaufen lassen
-    t.status = 'Einsatz beendet';
+      /**
+       * Sammelt alle relevanten Felddaten des Patienten, formatiert sie
+       * und kopiert den resultierenden Text in die Zwischenablage.
+       */
+      function copyPatientData(id) {
+        // Patientendaten laden
+        const patients = JSON.parse(localStorage.getItem("patients")) || [];
+        const patient = patients.find((p) => p.id === id);
+        if (!patient) return;
 
-    // Eigene Trupp-Historie ergänzen
-    t.history = t.history || [];
-    t.history.push({
-      when:  now,
-      event: 'Einsatz beendet'
-    });
+        // Felder extrahieren
+        const trupp = Array.isArray(patient.team)
+          ? patient.team.join(", ")
+          : "–";
+        const rtm = Array.isArray(patient.rtm) ? patient.rtm.join(", ") : "–";
+        const nachf =
+          (patient.history || [])
+            .filter((e) => /nachgefordert/.test(e))
+            .join("\n") || "–";
+        const remarks = patient.remarks || "–";
+        const historyText = (patient.history || []).join("\n") || "–";
 
-    // Speichern und Renderer anstoßen
-    localStorage.setItem('trupps', JSON.stringify(trupps));
-    window.dispatchEvent(new StorageEvent('storage', {
-      key:      'trupps',
-      newValue: JSON.stringify(trupps)
-    }));
-  }
-}
-
-
-
-
-function removeRtm(id, index) {
-  if (!confirm('Soll dieses RTM wirklich entfernt werden?')) return;
-  const patients = JSON.parse(localStorage.getItem('patients')) || [];
-  const patient = patients.find(p => p.id === id);
-  if (Array.isArray(patient.rtm)) {
-    const removed = patient.rtm.splice(index, 1);
-    if (!patient.history) patient.history = [];
-    patient.history.push(`${getCurrentTime()} RTM ${removed[0]} entfernt`);
-    localStorage.setItem('patients', JSON.stringify(patients));
-    loadPatients();
-  }
-}
-
-function editField(id, field) {
-  if (field === 'diagnosis') {
-    // Modal für Stichwörter öffnen
-    openKeywordModal(id);
-    return;
-  }
-  // für alle anderen Felder weiter wie gehabt:
-  const patients = JSON.parse(localStorage.getItem('patients')) || [];
-  const patient  = patients.find(p => p.id === id);
-  const current  = patient[field] || '';
-  const labelMap = {
-    age: 'Alter',
-    diagnosis: 'Verdachtsdiagnose',
-    location: 'Standort',
-    remarks: 'Bemerkungen'
-  };
-  const value = prompt(`Neuen Wert für ${labelMap[field] || field} eingeben:`, current);
-  if (value !== null) {
-    updatePatientData(id, field, value);
-  }
-}
-
-
-
-function addCustomHistory(id, message) {
-  if (!message.trim()) return;
-  const patients = JSON.parse(localStorage.getItem('patients')) || [];
-  const patient = patients.find(p => p.id === id);
-  if (!patient.history) patient.history = [];
-  patient.history.push(`${getCurrentTime()} ${message}`);
-  localStorage.setItem('patients', JSON.stringify(patients));
-  loadPatients();
-}
-
-// Globale Variable, die immer aktuell ist
-  window.nextPatientNumber = parseInt(localStorage.getItem('nextPatientNumber'),10) || 1;
-
-  // 1) Polling
-  function syncNextPatientNumber() {
-    window.nextPatientNumber = parseInt(localStorage.getItem('nextPatientNumber'),10) || 1;
-  }
-  setInterval(syncNextPatientNumber, 2000);
-
-  // 2) storage-Event
-  window.addEventListener('storage', e => {
-    if (e.key === 'nextPatientNumber') syncNextPatientNumber();
-  });
-
-  window.addEventListener('storage', e => {
-  if (e.key === 'patients') {
-    loadPatients();
-  }
-});
-
-
-/**
- * Sammelt alle relevanten Felddaten des Patienten, formatiert sie
- * und kopiert den resultierenden Text in die Zwischenablage.
- */
-function copyPatientData(id) {
-  // Patientendaten laden
-  const patients = JSON.parse(localStorage.getItem('patients')) || [];
-  const patient  = patients.find(p => p.id === id);
-  if (!patient) return;
-
-  // Felder extrahieren
-  const trupp       = Array.isArray(patient.team) ? patient.team.join(', ') : '–';
-  const rtm         = Array.isArray(patient.rtm)  ? patient.rtm.join(', ')  : '–';
-  const nachf       = (patient.history || [])
-                      .filter(e => /nachgefordert/.test(e))
-                      .join('\n') || '–';
-  const remarks     = patient.remarks  || '–';
-  const historyText = (patient.history || []).join('\n') || '–';
-
-  // Textblock zusammenbauen
-  const text =
-`Patient Nr.: ${patient.id}
+        // Textblock zusammenbauen
+        const text = `Patient Nr.: ${patient.id}
 Trupp: ${trupp}
 RTM: ${rtm}
-Standort: ${patient.location || '–'}
-Alter: ${patient.age      || '–'}
-Geschlecht: ${patient.gender || '–'}
-Verdachtsdiagnose: ${patient.diagnosis || '–'}
+Standort: ${patient.location || "–"}
+Alter: ${patient.age || "–"}
+Geschlecht: ${patient.gender || "–"}
+Verdachtsdiagnose: ${patient.diagnosis || "–"}
 Nachforderungen:
 ${nachf}
 Bemerkung: ${remarks}
@@ -1284,332 +1440,347 @@ Bemerkung: ${remarks}
 Patienten-Historie:
 ${historyText}`;
 
-  copyToClipboard(text);
-}
-
-
-/**
- * Kopiert reinen Text in die Zwischenablage, mit Fallback.
- */
-function copyToClipboard(text) {
-  if (navigator.clipboard && window.isSecureContext) {
-    navigator.clipboard.writeText(text)
-      .catch(err => {
-        console.error('Clipboard write failed, fallback:', err);
-        fallbackCopyTextToClipboard(text);
-      });
-  } else {
-    fallbackCopyTextToClipboard(text);
-  }
-}
-
-function fallbackCopyTextToClipboard(text) {
-  const ta = document.createElement('textarea');
-  ta.value = text;
-  ta.style.position = 'fixed';  // verhindert Scroll-Jump
-  ta.style.opacity = '0';
-  document.body.appendChild(ta);
-  ta.focus();
-  ta.select();
-  try {
-    document.execCommand('copy');
-    alert('Patientendaten kopiert 🎉');
-  } catch (err) {
-    console.error('Fallback: Copy failed', err);
-  }
-  document.body.removeChild(ta);
-}
-
-function deletePatient(id) {
-  if (!confirm('Soll Patient ' + id + ' wirklich gelöscht werden?')) return;
-  // aus localStorage holen
-  const patients = JSON.parse(localStorage.getItem('patients')) || [];
-  // Patient finden und entfernen
-  const idx = patients.findIndex(p => p.id === id);
-  if (idx > -1) {
-    patients.splice(idx, 1);
-    localStorage.setItem('patients', JSON.stringify(patients));
-    // neu rendern
-    loadPatients();
-  }
-}
-
-window.addEventListener('storage', e => {
-  if (e.key !== 'trupps') return;
-  const newTrupps = JSON.parse(e.newValue || '[]');
-  const patients  = JSON.parse(localStorage.getItem('patients')) || [];
-  let dirty = false;
-
-  // 1) Nur bei aktiven Patient:innen: Trupp/RTM rausfiltern
-  patients.forEach(patient => {
-    // Skip bei finalen Status
-    if (patient.status === 'Entlassen' || patient.status === 'Transport in KH') {
-      return;
-    }
-    if (!Array.isArray(patient.team)) return;
-
-    const before = [...patient.team];
-    patient.team = patient.team.filter(name => {
-      const t = newTrupps.find(t => t.name === name);
-      return t && t.status === 'Patient';
-    });
-
-    before.forEach(name => {
-      if (!patient.team.includes(name)) {
-        patient.history = patient.history || [];
-        patient.history.push(
-          `${getCurrentTime()} Trupp ${name} entfernt (via Trupp-Tracker)`
-        );
-        dirty = true;
+        copyToClipboard(text);
       }
-    });
 
-    // (Optional) exakt dasselbe für RTM, falls Ihr das nutzt:
-    // if (Array.isArray(patient.rtm)) {
-    //   const beforeR = [...patient.rtm];
-    //   patient.rtm = patient.rtm.filter(name => {
-    //     const t = newTrupps.find(t => t.name === name);
-    //     return t && t.status === 'Patient';
-    //   });
-    //   // … Historie-Einträge analog …
-    // }
-  });
-
-  // 2) Nur bei aktiven Patient:innen: Wenn kein Trupp UND kein RTM → gemeldet
-  patients.forEach(patient => {
-    // Wieder Skip bei finalen Status
-    if (patient.status === 'Entlassen' || patient.status === 'Transport in KH') {
-      return;
-    }
-    const noTrupp = !Array.isArray(patient.team) || patient.team.length === 0;
-    const noRtm   = !Array.isArray(patient.rtm)  || patient.rtm.length === 0;
-    if (noTrupp && noRtm && patient.status !== 'gemeldet') {
-      patient.status = 'gemeldet';
-      patient.history = patient.history || [];
-      patient.history.push(`${getCurrentTime()} Status: gemeldet`);
-      dirty = true;
-    }
-  });
-
-  if (dirty) {
-    localStorage.setItem('patients', JSON.stringify(patients));
-    loadPatients();
-  }
-});
-
-
-// ENTER-Taste in Modal abfangen und bestätigen
-document.addEventListener('keydown', function(e) {
-  const modal = document.getElementById('keywordModal');
-  if (modal && modal.style.display === 'flex' && e.key === 'Enter') {
-    e.preventDefault();
-    confirmKeyword();
-  }
-});
-
-// 1) Live-Timer updaten
-function updateLiveTimers() {
-  const patients = JSON.parse(localStorage.getItem('patients')) || [];
-  const now      = Date.now();
-
-  patients.forEach(p => {
-    const d  = p.durations || {};
-    const t  = p.statusTimestamps || {};
-    const id = p.id;
-    const isFinal = p.status === 'Entlassen' || p.status === 'Transport in KH';
-
-    // 1) Einsatzdauer
-    if (!isFinal && d.einsatzdauer === '') {
-      const el = document.querySelector(`.timer.einsatzdauer[data-id='${id}']`);
-      if (el) el.textContent = formatMS(now - p.createdAt);
-    }
-
-    // 2) Dispositionsdauer
-    if (t.disponiert && t.gemeldet && d.dispositionsdauer === '') {
-      const el = document.querySelector(`.timer.dispositionsdauer[data-id='${id}']`);
-      if (el) el.textContent = formatMS(now - t.gemeldet);
-    }
-
-    // 3) Ausrückdauer
-    if (t.disponiert && d.ausrueckdauer === '') {
-      const el = document.querySelector(`.timer.ausrueckdauer[data-id='${id}']`);
-      if (el) el.textContent = formatMS(now - t.disponiert);
-    }
-
-    // 4) Verlegedauer in UHS
-    if (t['verlegt in UHS'] && d.verlegedauerUHS === '') {
-      const el = document.querySelector(`.timer.verlegedauerUHS[data-id='${id}']`);
-      if (el) el.textContent = formatMS(now - t['verlegt in UHS']);
-    }
-
-    // 5) Behandlungsdauer
-    //    startet, sobald Status auf "in Behandlung" ODER "Behandlung in UHS" gesetzt wurde
-    const behandlungsStart = t['in Behandlung'] ?? t['Behandlung in UHS'];
-    if (behandlungsStart && d.behandlungsdauer === '') {
-      const el = document.querySelector(`.timer.behandlungsdauer[data-id='${id}']`);
-      if (el) {
-        el.textContent = formatMS(now - behandlungsStart);
-      }
-    }
-  });
-}
-
-
-//Export PDF
-async function exportPDF() {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'portrait' });
-  const margin   = 20;
-  const pageH    = doc.internal.pageSize.getHeight();
-  const pageW    = doc.internal.pageSize.getWidth() - margin * 2;
-  const lineH    = 14;
-  const padY     = 10;
-
-  let y = margin;
-
-  doc.setFontSize(16);
-  doc.text("Patientenübersicht", margin, y);
-  y += lineH * 2;
-  doc.setFontSize(12);
-
-  const patients = JSON.parse(localStorage.getItem('patients')) || [];
-
-  // index-basierte Schleife statt for-of
-  for (let idx = 0; idx < patients.length; idx++) {
-    const p = patients[idx];
-    let sessionStartY = y;
-
-    function maybeNewPage() {
-      if (y > pageH - margin - padY) {
-        const sessionH = y - sessionStartY;
-        doc.setDrawColor(150);
-        doc.rect(margin, sessionStartY - padY, pageW, sessionH + padY);
-        doc.addPage();
-        y = margin;
-        sessionStartY = y;
-      }
-    }
-
-    function line(text, indent = 0, wrap = false) {
-      if (wrap) {
-        const maxW = pageW - indent - 10;
-        const lines = doc.splitTextToSize(text, maxW);
-        for (const l of lines) {
-          maybeNewPage();
-          doc.text(l, margin + 5 + indent, y);
-          y += lineH;
+      /**
+       * Kopiert reinen Text in die Zwischenablage, mit Fallback.
+       */
+      function copyToClipboard(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(text).catch((err) => {
+            console.error("Clipboard write failed, fallback:", err);
+            fallbackCopyTextToClipboard(text);
+          });
+        } else {
+          fallbackCopyTextToClipboard(text);
         }
-      } else {
-        maybeNewPage();
-        doc.text(text, margin + 5 + indent, y);
-        y += lineH;
       }
-    }
 
-    // — deine line()-Aufrufe wie gehabt —
-    doc.setFont(undefined, 'bold');
-line(`Patient Nr.:    ${p.id}`);
-doc.setFont(undefined, 'normal');
-    line(`Status:         ${p.status}`);
-    line(`Standort:       ${p.location||'–'}`);
-    line(`Alter:          ${p.age||'–'}`);
-    line(`Geschlecht:     ${p.gender}`);
-    line(`Diagnose:       ${p.diagnosis||'–'}`);
+      function fallbackCopyTextToClipboard(text) {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed"; // verhindert Scroll-Jump
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try {
+          document.execCommand("copy");
+          alert("Patientendaten kopiert 🎉");
+        } catch (err) {
+          console.error("Fallback: Copy failed", err);
+        }
+        document.body.removeChild(ta);
+      }
 
-    const team = Array.isArray(p.team) ? p.team.join(', ') : '–';
-    const rtm  = Array.isArray(p.rtm)  ? p.rtm.join(', ')  : '–';
-    line(`Trupp:           ${team}`);
-    line(`RTM:            ${rtm}`);
+      function deletePatient(id) {
+        if (!confirm("Soll Patient " + id + " wirklich gelöscht werden?"))
+          return;
+        // aus localStorage holen
+        const patients = JSON.parse(localStorage.getItem("patients")) || [];
+        // Patient finden und entfernen
+        const idx = patients.findIndex((p) => p.id === id);
+        if (idx > -1) {
+          patients.splice(idx, 1);
+          localStorage.setItem("patients", JSON.stringify(patients));
+          // neu rendern
+          loadPatients();
+        }
+      }
 
-    line(`Bemerkungen:    ${p.remarks||'–'}`, 0, true);
+      window.addEventListener("storage", (e) => {
+        if (e.key !== "trupps") return;
+        const newTrupps = JSON.parse(e.newValue || "[]");
+        const patients = JSON.parse(localStorage.getItem("patients")) || [];
+        let dirty = false;
 
-    line("Historie:");
-    for (const entry of (p.history||[])) {
-      line(`• ${entry}`, 5, true);
-    }
+        // 1) Nur bei aktiven Patient:innen: Trupp/RTM rausfiltern
+        patients.forEach((patient) => {
+          // Skip bei finalen Status
+          if (
+            patient.status === "Entlassen" ||
+            patient.status === "Transport in KH"
+          ) {
+            return;
+          }
+          if (!Array.isArray(patient.team)) return;
 
-    line("", 0);
+          const before = [...patient.team];
+          patient.team = patient.team.filter((name) => {
+            const t = newTrupps.find((t) => t.name === name);
+            return t && t.status === "Patient";
+          });
 
-    line("Einsatzzeiten (mm:ss):");
-    const d = p.durations || {};
-    [
-      ["Einsatzdauer",      d.einsatzdauer || '–'],
-      ["Dispositionsdauer", d.dispositionsdauer || '–'],
-      ["Ausrückdauer",      d.ausrueckdauer || '–'],
-      ["Behandlungsdauer",  d.behandlungsdauer || '–'],
-      ["Verlegedauer UHS",  d.verlegedauerUHS || '–']
-    ].forEach(([label,val]) => {
-      line(`${label}: ${val}`, 5);
-    });
+          before.forEach((name) => {
+            if (!patient.team.includes(name)) {
+              patient.history = patient.history || [];
+              patient.history.push(
+                `${getCurrentTime()} Trupp ${name} entfernt (via Trupp-Tracker)`
+              );
+              dirty = true;
+            }
+          });
 
-    // Rahmen
-    const sessionH = y - sessionStartY;
-    doc.setDrawColor(150);
-    doc.rect(margin, sessionStartY - padY, pageW, sessionH + padY);
+          // (Optional) exakt dasselbe für RTM, falls Ihr das nutzt:
+          // if (Array.isArray(patient.rtm)) {
+          //   const beforeR = [...patient.rtm];
+          //   patient.rtm = patient.rtm.filter(name => {
+          //     const t = newTrupps.find(t => t.name === name);
+          //     return t && t.status === 'Patient';
+          //   });
+          //   // … Historie-Einträge analog …
+          // }
+        });
 
-    // **Seitenumbruch nach jedem Patienten (außer nach letztem)**
-    if (idx < patients.length - 1) {
-      doc.addPage();
-      y = margin;
-      doc.setFontSize(16);
-      doc.text("Patientenübersicht", margin, y);
-      y += lineH * 2;
-      doc.setFontSize(12);
-    }
-  }
+        // 2) Nur bei aktiven Patient:innen: Wenn kein Trupp UND kein RTM → gemeldet
+        patients.forEach((patient) => {
+          // Wieder Skip bei finalen Status
+          if (
+            patient.status === "Entlassen" ||
+            patient.status === "Transport in KH"
+          ) {
+            return;
+          }
+          const noTrupp =
+            !Array.isArray(patient.team) || patient.team.length === 0;
+          const noRtm = !Array.isArray(patient.rtm) || patient.rtm.length === 0;
+          if (noTrupp && noRtm && patient.status !== "gemeldet") {
+            patient.status = "gemeldet";
+            patient.history = patient.history || [];
+            patient.history.push(`${getCurrentTime()} Status: gemeldet`);
+            dirty = true;
+          }
+        });
 
-  doc.save("patienten_uebersicht.pdf");
-}
+        if (dirty) {
+          localStorage.setItem("patients", JSON.stringify(patients));
+          loadPatients();
+        }
+      });
 
+      // ENTER-Taste in Modal abfangen und bestätigen
+      document.addEventListener("keydown", function (e) {
+        const modal = document.getElementById("keywordModal");
+        if (modal && modal.style.display === "flex" && e.key === "Enter") {
+          e.preventDefault();
+          confirmKeyword();
+        }
+      });
 
+      // 1) Live-Timer updaten
+      function updateLiveTimers() {
+        const patients = JSON.parse(localStorage.getItem("patients")) || [];
+        const now = Date.now();
 
+        patients.forEach((p) => {
+          const d = p.durations || {};
+          const t = p.statusTimestamps || {};
+          const id = p.id;
+          const isFinal =
+            p.status === "Entlassen" || p.status === "Transport in KH";
 
+          // 1) Einsatzdauer
+          if (!isFinal && d.einsatzdauer === "") {
+            const el = document.querySelector(
+              `.timer.einsatzdauer[data-id='${id}']`
+            );
+            if (el) el.textContent = formatMS(now - p.createdAt);
+          }
 
+          // 2) Dispositionsdauer
+          if (t.disponiert && t.gemeldet && d.dispositionsdauer === "") {
+            const el = document.querySelector(
+              `.timer.dispositionsdauer[data-id='${id}']`
+            );
+            if (el) el.textContent = formatMS(now - t.gemeldet);
+          }
 
-setInterval(updateLiveTimers, 1000);
-</script>
-<!-- Stichwort-Modal -->
-<div id="keywordModal" class="modal" style="display:none;">
-  <div class="modal-content">
-    <span class="close" onclick="closeKeywordModal()">&times;</span>
-    <h2>Stichwort auswählen</h2>
+          // 3) Ausrückdauer
+          if (t.disponiert && d.ausrueckdauer === "") {
+            const el = document.querySelector(
+              `.timer.ausrueckdauer[data-id='${id}']`
+            );
+            if (el) el.textContent = formatMS(now - t.disponiert);
+          }
 
-    <!-- ① Suchfeld -->
-    <input
-      type="text"
-      id="searchInput"
-      placeholder="Stichwort suchen…"
-      style="width:100%; padding:6px; margin-bottom:10px; box-sizing:border-box;"
-      oninput="onSearchInput()"
-    />
+          // 4) Verlegedauer in UHS
+          if (t["verlegt in UHS"] && d.verlegedauerUHS === "") {
+            const el = document.querySelector(
+              `.timer.verlegedauerUHS[data-id='${id}']`
+            );
+            if (el) el.textContent = formatMS(now - t["verlegt in UHS"]);
+          }
 
-    <div style="display:flex; gap:10px; height:400px;">
-      <!-- ② Kategorien-Liste -->
-      <div id="categoryList" class="list"></div>
-      <!-- ③ Stichwort-Liste -->
-      <div id="keywordList" class="list"></div>
-      <!-- ④ Such-Ergebnis-Liste (initial versteckt) -->
-      <div id="searchResults" class="list" style="display:none;"></div>
+          // 5) Behandlungsdauer
+          //    startet, sobald Status auf "in Behandlung" ODER "Behandlung in UHS" gesetzt wurde
+          const behandlungsStart = t["in Behandlung"] ?? t["Behandlung in UHS"];
+          if (behandlungsStart && d.behandlungsdauer === "") {
+            const el = document.querySelector(
+              `.timer.behandlungsdauer[data-id='${id}']`
+            );
+            if (el) {
+              el.textContent = formatMS(now - behandlungsStart);
+            }
+          }
+        });
+      }
+
+      //Export PDF
+      async function exportPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+          unit: "pt",
+          format: "a4",
+          orientation: "portrait",
+        });
+        const margin = 20;
+        const pageH = doc.internal.pageSize.getHeight();
+        const pageW = doc.internal.pageSize.getWidth() - margin * 2;
+        const lineH = 14;
+        const padY = 10;
+
+        let y = margin;
+
+        doc.setFontSize(16);
+        doc.text("Patientenübersicht", margin, y);
+        y += lineH * 2;
+        doc.setFontSize(12);
+
+        const patients = JSON.parse(localStorage.getItem("patients")) || [];
+
+        // index-basierte Schleife statt for-of
+        for (let idx = 0; idx < patients.length; idx++) {
+          const p = patients[idx];
+          let sessionStartY = y;
+
+          function maybeNewPage() {
+            if (y > pageH - margin - padY) {
+              const sessionH = y - sessionStartY;
+              doc.setDrawColor(150);
+              doc.rect(margin, sessionStartY - padY, pageW, sessionH + padY);
+              doc.addPage();
+              y = margin;
+              sessionStartY = y;
+            }
+          }
+
+          function line(text, indent = 0, wrap = false) {
+            if (wrap) {
+              const maxW = pageW - indent - 10;
+              const lines = doc.splitTextToSize(text, maxW);
+              for (const l of lines) {
+                maybeNewPage();
+                doc.text(l, margin + 5 + indent, y);
+                y += lineH;
+              }
+            } else {
+              maybeNewPage();
+              doc.text(text, margin + 5 + indent, y);
+              y += lineH;
+            }
+          }
+
+          // — deine line()-Aufrufe wie gehabt —
+          doc.setFont(undefined, "bold");
+          line(`Patient Nr.:    ${p.id}`);
+          doc.setFont(undefined, "normal");
+          line(`Status:         ${p.status}`);
+          line(`Standort:       ${p.location || "–"}`);
+          line(`Alter:          ${p.age || "–"}`);
+          line(`Geschlecht:     ${p.gender}`);
+          line(`Diagnose:       ${p.diagnosis || "–"}`);
+
+          const team = Array.isArray(p.team) ? p.team.join(", ") : "–";
+          const rtm = Array.isArray(p.rtm) ? p.rtm.join(", ") : "–";
+          line(`Trupp:           ${team}`);
+          line(`RTM:            ${rtm}`);
+
+          line(`Bemerkungen:    ${p.remarks || "–"}`, 0, true);
+
+          line("Historie:");
+          for (const entry of p.history || []) {
+            line(`• ${entry}`, 5, true);
+          }
+
+          line("", 0);
+
+          line("Einsatzzeiten (mm:ss):");
+          const d = p.durations || {};
+          [
+            ["Einsatzdauer", d.einsatzdauer || "–"],
+            ["Dispositionsdauer", d.dispositionsdauer || "–"],
+            ["Ausrückdauer", d.ausrueckdauer || "–"],
+            ["Behandlungsdauer", d.behandlungsdauer || "–"],
+            ["Verlegedauer UHS", d.verlegedauerUHS || "–"],
+          ].forEach(([label, val]) => {
+            line(`${label}: ${val}`, 5);
+          });
+
+          // Rahmen
+          const sessionH = y - sessionStartY;
+          doc.setDrawColor(150);
+          doc.rect(margin, sessionStartY - padY, pageW, sessionH + padY);
+
+          // **Seitenumbruch nach jedem Patienten (außer nach letztem)**
+          if (idx < patients.length - 1) {
+            doc.addPage();
+            y = margin;
+            doc.setFontSize(16);
+            doc.text("Patientenübersicht", margin, y);
+            y += lineH * 2;
+            doc.setFontSize(12);
+          }
+        }
+
+        doc.save("patienten_uebersicht.pdf");
+      }
+
+      setInterval(updateLiveTimers, 1000);
+    </script>
+    <!-- Stichwort-Modal -->
+    <div id="keywordModal" class="modal" style="display: none">
+      <div class="modal-content">
+        <span class="close" onclick="closeKeywordModal()">&times;</span>
+        <h2>Stichwort auswählen</h2>
+
+        <!-- ① Suchfeld -->
+        <input
+          type="text"
+          id="searchInput"
+          placeholder="Stichwort suchen…"
+          style="
+            width: 100%;
+            padding: 6px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+          "
+          oninput="onSearchInput()"
+        />
+
+        <div style="display: flex; gap: 10px; height: 400px">
+          <!-- ② Kategorien-Liste -->
+          <div id="categoryList" class="list"></div>
+          <!-- ③ Stichwort-Liste -->
+          <div id="keywordList" class="list"></div>
+          <!-- ④ Such-Ergebnis-Liste (initial versteckt) -->
+          <div id="searchResults" class="list" style="display: none"></div>
+        </div>
+
+        <!-- Zusatzfeld für „sonstiger … Notfall“ -->
+        <div id="otherDetail" style="margin-top: 10px; display: none">
+          <label for="otherInput"
+            ><strong>Bitte genauer beschreiben:</strong></label
+          ><br />
+          <input
+            type="text"
+            id="otherInput"
+            style="width: 100%; padding: 6px; box-sizing: border-box"
+          />
+        </div>
+
+        <button onclick="confirmKeyword()">Bestätigen</button>
+      </div>
     </div>
-
-    <!-- Zusatzfeld für „sonstiger … Notfall“ -->
-    <div id="otherDetail" style="margin-top:10px; display:none;">
-      <label for="otherInput"><strong>Bitte genauer beschreiben:</strong></label><br>
-      <input
-        type="text"
-        id="otherInput"
-        style="width:100%; padding:6px; box-sizing:border-box;"
-      >
-    </div>
-
-    <button onclick="confirmKeyword()">Bestätigen</button>
-  </div>
-</div>
-
-
-
-
-
-
-</body>
+  </body>
 </html>
