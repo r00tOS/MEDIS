@@ -283,11 +283,11 @@
 
     <input type="text" id="newTruppName" placeholder="Neuer Truppname" />
     <button onclick="addTrupp()">Trupp hinzufügen</button>
-    <button onclick="addSKTrupps()">Stadion 10-60 hinzufügen</button>
-    <button onclick="addKLTrupps()">Kiellinie 1-10 hinzufügen</button>
-    <button onclick="addOKTrupps()">Ostseekai 1-10 hinzufügen</button>
-    <button onclick="addISTrupps()">Innenstadt 1-10 hinzufügen</button>
-    <button onclick="addBHTrupps()">Bahnhof 1-10 hinzufügen</button>
+    <button onclick="addTrupps('Stadion', 10, 60, 5)">Stadion 10-60 hinzufügen</button>
+    <button onclick="addTrupps('Kiellinie', 1, 10)">Kiellinie 1-10 hinzufügen</button>
+    <button onclick="addTrupps('Ostseekai', 1, 10)">Ostseekai 1-10 hinzufügen</button>
+    <button onclick="addTrupps('Innenstadt', 1, 10)">Innenstadt 1-10 hinzufügen</button>
+    <button onclick="addTrupps('Bahnhof', 1, 10)">Bahnhof 1-10 hinzufügen</button>
 
     <div class="section">
       <h2>Im Einsatz</h2>
@@ -750,24 +750,11 @@ Bemerkung:`;
         renderTrupps();
       }
 
-      function addSKTrupps() {
-        for (let i = 10; i <= 60; i += 5) addTrupp(`Stadion ${i}`);
-      }
-
-      function addKLTrupps() {
-        for (let i = 1; i <= 10; i += 1) addTrupp(`Kiellinie ${i}`);
-      }
-
-      function addOKTrupps() {
-        for (let i = 1; i <= 10; i += 1) addTrupp(`Ostseekai ${i}`);
-      }
-
-      function addISTrupps() {
-        for (let i = 1; i <= 10; i += 1) addTrupp(`Innenstadt ${i}`);
-      }
-
-      function addBHTrupps() {
-        for (let i = 1; i <= 10; i += 1) addTrupp(`Bahnhof ${i}`);
+      function addTrupps(prefix, start, end, step = 1) {
+        if (!confirm(`Willst du wirklich ${Math.ceil((end - start + 1) / step)} neue Trupps hinzufügen?`)) return;
+        for (let i = start; i <= end; i += step) {
+          addTrupp(`${prefix} ${i}`);
+        }
       }
 
       function deleteTrupp(index) {
