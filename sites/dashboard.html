@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Einsatz-Dashboard</title>
+    <style>
+      html {
+        font-size: 18px;
+      }
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background: #ffffff;
+        color: #333;
+      }
+      h1 {
+        margin-bottom: 20px;
+        font-size: 2.4rem;
+        text-align: center;
+      }
+      .grid-trupp {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 20px;
+        margin-bottom: 40px;
+      }
+      .grid-patient {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 20px;
+        margin-bottom: 40px;
+      }
+      .card {
+        background: #fff;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        width: 260px;
+        text-align: center;
+      }
+      .card h2 {
+        margin: 0 0 12px;
+        font-size: 1.4rem;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 8px;
+      }
+      .card .value {
+        font-size: 3rem;
+        font-weight: bold;
+        margin-top: 12px;
+      }
+      section {
+        margin-top: 40px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 12px;
+        font-size: 1.2rem;
+      }
+      th,
+      td {
+        padding: 10px 12px;
+        border: 1px solid #ddd;
+        text-align: left;
+      }
+      th {
+        background: #fafafa;
+      }
+
+      /* ----- Status-Farbgebung ----- */
+      tr[data-status="gemeldet"] {
+        background: #ffe5e5;
+      } /* helles Rot */
+      tr[data-status="disponiert"] {
+        background: #ffffe0;
+      } /* helles Gelb */
+      tr[data-status="in Behandlung"] {
+        background: #e2f7e2;
+      } /* helles Grün */
+      tr[data-status="verlegt in UHS"] {
+        background: #e0f0ff;
+      } /* helles Hellblau */
+      tr[data-status="Behandlung in UHS"] {
+        background: #d0e6ff;
+      } /* sehr blasses Blau */
+    </style>
+  </head>
+  <body>
+    <!-- erste Reihe: nur die Trupp-Zähler -->
+    <div class="grid-trupp">
+      <div class="card">
+        <h2>Trupps im Einsatz / auf Streife</h2>
+        <div id="count-einsatz" class="value">–</div>
+      </div>
+      <div class="card">
+        <h2>Trupps in Pause</h2>
+        <div id="count-pause" class="value">–</div>
+      </div>
+      <div class="card">
+        <h2>Trupps nicht einsatzbereit</h2>
+        <div id="count-nicht" class="value">–</div>
+      </div>
+    </div>
+
+    <!-- zweite Reihe: Patienten-Zähler -->
+    <div class="grid-patient">
+      <div class="card">
+        <h2>Aktive Patienten</h2>
+        <div id="count-patients" class="value">–</div>
+      </div>
+      <div class="card">
+        <h2>Patienten in UHS</h2>
+        <div id="count-inUHS" class="value">–</div>
+      </div>
+      <div class="card">
+        <h2>Ambulant versorgte Patienten</h2>
+        <div id="count-discharged" class="value">–</div>
+      </div>
+      <div class="card">
+        <h2>Transportierte Patienten</h2>
+        <div id="count-transport" class="value">–</div>
+      </div>
+    </div>
+
+    <section>
+      <h2>Aktuelle Patienten</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Patient Nr.</th>
+            <th>Status</th>
+            <th>Alter</th>
+            <th>Geschlecht</th>
+            <th>Verdachtsdiagnose</th>
+            <th>Standort</th>
+          </tr>
+        </thead>
+        <tbody id="patient-list">
+          <tr>
+            <td colspan="6">Keine Daten</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <script>
+      function renderDashboard() {
+        // Trupp-Zähler
+        const trupps = JSON.parse(localStorage.getItem("trupps") || "[]");
+        const einsatz = trupps.filter((t) =>
+          ["Streife", "Patient", "Spielfeldrand", "Einsatz beendet"].includes(
+            t.status
+          )
+        ).length;
+        const pause = trupps.filter((t) =>
+          [
+            "Einsatzbereit in UHS",
+            "Einsatzbereit unterwegs",
+            "Einsatzbereit in Rückhaltung",
+          ].includes(t.status)
+        ).length;
+        const nicht = trupps.length - einsatz - pause;
+        document.getElementById("count-einsatz").textContent = einsatz;
+        document.getElementById("count-pause").textContent = pause;
+        document.getElementById("count-nicht").textContent = nicht;
+
+        // Patienten-Zähler
+        const all = JSON.parse(localStorage.getItem("patients") || "[]");
+        const active = all.filter(
+          (p) => p.status !== "Entlassen" && p.status !== "Transport in KH"
+        );
+        document.getElementById("count-patients").textContent = active.length;
+        document.getElementById("count-inUHS").textContent = all.filter(
+          (p) => p.status === "Behandlung in UHS"
+        ).length;
+        document.getElementById("count-discharged").textContent = all.filter(
+          (p) => p.status === "Entlassen"
+        ).length;
+        document.getElementById("count-transport").textContent = all.filter(
+          (p) => p.status === "Transport in KH"
+        ).length;
+
+        // Patienten-Tabelle
+        const tbody = document.getElementById("patient-list");
+        if (!active.length) {
+          tbody.innerHTML = `<tr><td colspan="6">Keine Daten</td></tr>`;
+        } else {
+          tbody.innerHTML = active
+            .sort((a, b) => a.id - b.id)
+            .map((p) => {
+              const showLoc = [
+                "gemeldet",
+                "disponiert",
+                "in Behandlung",
+              ].includes(p.status);
+              // escape status für data-attribute
+              const statusAttr = p.status.replace(/"/g, "&quot;");
+              return `
+              <tr data-status="${statusAttr}">
+                <td>${p.id}</td>
+                <td>${p.status}</td>
+                <td>${p.age || "–"}</td>
+                <td>${p.gender || "–"}</td>
+                <td>${p.diagnosis || "–"}</td>
+                <td>${showLoc ? p.location || "–" : ""}</td>
+              </tr>`;
+            })
+            .join("");
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", renderDashboard);
+      window.addEventListener("storage", renderDashboard);
+      setInterval(renderDashboard, 30000);
+    </script>
+  </body>
+</html>

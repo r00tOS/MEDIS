@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MEDIS</title>
+    <link rel="icon" href="icons/medis_app.ico" type="image/x-icon" />
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden; /* verhindert Gesamtseiten-Scroll */
+        font-family: Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+      }
+
+      h1,
+      p {
+        margin: 10px 20px 0;
+      }
+
+      .btnHeader {
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        font-size: 2.5rem;
+        line-height: 1;
+        padding: 4px;
+        margin-right: 12px;
+      }
+
+      .tabs {
+        display: flex;
+        margin: 10px 20px;
+      }
+
+      .tab {
+        padding: 10px 16px;
+        cursor: pointer;
+        border: 1px solid #ddd;
+        border-radius: 5px 5px 0 0;
+        margin-right: 5px;
+        background: #f9f9f9;
+        transition: background 0.2s;
+      }
+      .tab.active {
+        background: #007bff;
+        color: #fff;
+      }
+
+      .tab-icon {
+        height: 60px;
+        width: auto;
+      }
+
+      .container {
+        flex: 1; /* füllt Resthöhe aus */
+        display: flex;
+        flex-direction: column;
+        margin: 0 20px 20px;
+        overflow: hidden; /* kein Scroll auf Container */
+      }
+
+      .tab-content {
+        flex: 1; /* füllt den Bereich innerhalb .container */
+        display: none;
+        overflow: hidden; /* Scroll nur hier */
+      }
+      .tab-content.active {
+        display: block;
+      }
+
+      iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+      }
+
+      /* CSS */
+      .next-patient-number {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 16px 0;
+        padding: 8px 12px;
+        background: #f5f7fa;
+        border: 1px solid #d1d9e6;
+        border-radius: 6px;
+        max-width: 300px;
+      }
+
+      .next-patient-number label {
+        font-weight: 600;
+        color: #333;
+        white-space: nowrap;
+      }
+
+      .next-patient-number input {
+        flex-shrink: 0;
+        width: 80px;
+        padding: 6px 10px;
+        font-size: 1rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+
+      .next-patient-number input:focus {
+        border-color: #007bff;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+      }
+
+      /* Input zur Patientennummer */
+      #nextPatientNumber {
+        width: 60px;
+        margin-left: 0.5em;
+      }
+    </style>
+  </head>
+  <body>
+    <header
+      style="
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 20px;
+      "
+    >
+      <h1 style="display: flex; align-items: center; gap: 8px; margin: 0">
+        <img src="icons/medis_long.png" alt="MEDIS" style="height: 15vh" />
+      </h1>
+      <div>
+        <!-- „Alles löschen“-Button -->
+        <button
+          id="btnClearAll"
+          class="btnHeader"
+          title="Alle Trupps & Patienten löschen"
+        >
+          🗑️
+        </button>
+
+        <!-- **Neuer PDF-Export-Button** -->
+        <button id="btnExportPDF" class="btnHeader" title="PDF Export">
+          📄
+        </button>
+
+        <!-- Einstellungen -->
+        <button id="btnSettings" class="btnHeader" title="Einstellungen">
+          ⚙️
+        </button>
+      </div>
+    </header>
+
+    <!-- HTML -->
+    <div class="tabs">
+      <div class="tab active" data-tab="tab1">
+        <img src="icons/teams.png" alt="Trupps" class="tab-icon" />
+      </div>
+      <div class="tab" data-tab="tab2">
+        <img src="icons/patients.png" alt="Patienten" class="tab-icon" />
+      </div>
+      <div class="tab" data-tab="tab3">
+        <img src="icons/dashboard.png" alt="Dashboard" class="tab-icon" />
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="tab-content active" id="tab1">
+        <iframe src="sites/trupp_status_tracker.html"></iframe>
+      </div>
+      <div class="tab-content" id="tab2">
+        <iframe src="sites/patienten_tracker.html"></iframe>
+      </div>
+      <div class="tab-content" id="tab3">
+        <iframe src="sites/dashboard.html"></iframe>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const btnSettings = document.getElementById("btnSettings");
+        const settingsModal = document.getElementById("settingsModal");
+        const closeSettings = document.getElementById("closeSettings");
+        const saveSettings = document.getElementById("saveSettings");
+        const inputNextPatient = document.getElementById("settingsNextPatient");
+        const inputMaxTime = document.getElementById("settingsMaxTime");
+
+        document.getElementById("btnClearAll").addEventListener("click", () => {
+          if (
+            !confirm(
+              "Soll wirklich **ALLES** gelöscht werden? (Trupps + Patienten)"
+            )
+          )
+            return;
+
+          // Trupp- und Patienten-Daten im localStorage entfernen
+          localStorage.removeItem("patients");
+          localStorage.removeItem("trupps");
+          localStorage.removeItem("nextPatientNumber");
+
+          // Storage-Events feuern, damit beide Tracker sofort neu rendern
+          window.dispatchEvent(
+            new StorageEvent("storage", { key: "trupps", newValue: null })
+          );
+          window.dispatchEvent(
+            new StorageEvent("storage", { key: "patients", newValue: null })
+          );
+          window.dispatchEvent(
+            new StorageEvent("storage", {
+              key: "nextPatientNumber",
+              newValue: null,
+            })
+          );
+
+          // Beide iframes neu laden, ohne contentWindow zu verwenden
+          const truppIframe = document.querySelector(
+            'iframe[src="sites/trupp_status_tracker.html"]'
+          );
+          const patientIframe = document.querySelector(
+            'iframe[src="sites/patienten_tracker.html"]'
+          );
+          if (truppIframe) truppIframe.src = truppIframe.src;
+          if (patientIframe) patientIframe.src = patientIframe.src;
+        });
+
+        const trupps = JSON.parse(localStorage.getItem("trupps") || "[]");
+        function formatTime(ms) {
+          const d = new Date(ms);
+          return d.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+        }
+
+        async function exportTruppPDF() {
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF();
+          let y = 10;
+
+          doc.setFontSize(14);
+          doc.text("Truppübersicht", 10, y);
+          y += 10;
+
+          trupps.forEach((trupp) => {
+            // Gesamte Pausenzeit direkt aus totalPauseTime (in ms) in Minuten umrechnen
+            const totalPause = Math.floor((trupp.totalPauseTime || 0) / 60000);
+
+            if (y > 240) {
+              doc.addPage();
+              y = 10;
+            }
+
+            doc.setFontSize(12);
+            doc.text(`Trupp: ${trupp.name}`, 10, y);
+            y += 6;
+            doc.text(`Gesamte Pausenzeit: ${totalPause} Min`, 10, y);
+            y += 6;
+
+            const einsatzHistorie = trupp.einsatzHistorie.length
+              ? trupp.einsatzHistorie.map(
+                  (e) =>
+                    `• ${e.ort} (${formatTime(e.von)} - ${formatTime(e.bis)})`
+                )
+              : ["–"];
+            doc.text("Einsatzorte:", 10, y);
+            y += 6;
+            einsatzHistorie.forEach((line) => {
+              doc.text(line, 15, y);
+              y += 6;
+            });
+
+            const patientHistorie = trupp.patientHistorie.length
+              ? trupp.patientHistorie.map(
+                  (p) =>
+                    `• ${p.nummer} (${formatTime(p.von)} - ${formatTime(
+                      p.bis
+                    )})`
+                )
+              : ["–"];
+            doc.text("Patientennummern:", 10, y);
+            y += 6;
+            patientHistorie.forEach((line) => {
+              doc.text(line, 15, y);
+              y += 6;
+            });
+
+            y += 8;
+            if (y > 270) {
+              doc.addPage();
+              y = 10;
+            }
+          });
+
+          const now = new Date();
+          const pad = (n) => String(n).padStart(2, "0");
+          const ts = `${pad(now.getDate())}_${pad(
+            now.getMonth() + 1
+          )}_${now.getFullYear()}_${pad(now.getHours())}_${pad(
+            now.getMinutes()
+          )}`;
+          const filename = `trupp_uebersicht_${ts}.pdf`;
+
+          doc.save(filename);
+        }
+
+        async function exportPatientPDF() {
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF({
+            unit: "pt",
+            format: "a4",
+            orientation: "portrait",
+          });
+          const margin = 20;
+          const pageH = doc.internal.pageSize.getHeight();
+          const pageW = doc.internal.pageSize.getWidth() - margin * 2;
+          const lineH = 14;
+          const padY = 10;
+
+          let y = margin;
+
+          doc.setFontSize(16);
+          doc.text("Patientenübersicht", margin, y);
+          y += lineH * 2;
+          doc.setFontSize(12);
+
+          const patients = JSON.parse(localStorage.getItem("patients")) || [];
+
+          // index-basierte Schleife statt for-of
+          for (let idx = 0; idx < patients.length; idx++) {
+            const p = patients[idx];
+            let sessionStartY = y;
+
+            function maybeNewPage() {
+              if (y > pageH - margin - padY) {
+                const sessionH = y - sessionStartY;
+                doc.setDrawColor(150);
+                doc.rect(margin, sessionStartY - padY, pageW, sessionH + padY);
+                doc.addPage();
+                y = margin;
+                sessionStartY = y;
+              }
+            }
+
+            function line(text, indent = 0, wrap = false) {
+              if (wrap) {
+                const maxW = pageW - indent - 10;
+                const lines = doc.splitTextToSize(text, maxW);
+                for (const l of lines) {
+                  maybeNewPage();
+                  doc.text(l, margin + 5 + indent, y);
+                  y += lineH;
+                }
+              } else {
+                maybeNewPage();
+                doc.text(text, margin + 5 + indent, y);
+                y += lineH;
+              }
+            }
+
+            // — deine line()-Aufrufe wie gehabt —
+            doc.setFont(undefined, "bold");
+            line(`Patient Nr.:    ${p.id}`);
+            doc.setFont(undefined, "normal");
+            line(`Status:         ${p.status}`);
+            line(`Standort:       ${p.location || "–"}`);
+            line(`Alter:          ${p.age || "–"}`);
+            line(`Geschlecht:     ${p.gender}`);
+            line(`Diagnose:       ${p.diagnosis || "–"}`);
+
+            const team = Array.isArray(p.team) ? p.team.join(", ") : "–";
+            const rtm = Array.isArray(p.rtm) ? p.rtm.join(", ") : "–";
+            line(`Trupp:           ${team}`);
+            line(`RTM:            ${rtm}`);
+
+            line(`Bemerkungen:    ${p.remarks || "–"}`, 0, true);
+
+            line("Historie:");
+            for (const entry of p.history || []) {
+              line(`• ${entry}`, 5, true);
+            }
+
+            line("", 0);
+
+            line("Einsatzzeiten (mm:ss):");
+            const d = p.durations || {};
+            [
+              ["Einsatzdauer", d.einsatzdauer || "–"],
+              ["Dispositionsdauer", d.dispositionsdauer || "–"],
+              ["Ausrückdauer", d.ausrueckdauer || "–"],
+              ["Behandlungsdauer", d.behandlungsdauer || "–"],
+              ["Verlegedauer UHS", d.verlegedauerUHS || "–"],
+            ].forEach(([label, val]) => {
+              line(`${label}: ${val}`, 5);
+            });
+
+            // Rahmen
+            const sessionH = y - sessionStartY;
+            doc.setDrawColor(150);
+            doc.rect(margin, sessionStartY - padY, pageW, sessionH + padY);
+
+            // **Seitenumbruch nach jedem Patienten (außer nach letztem)**
+            if (idx < patients.length - 1) {
+              doc.addPage();
+              y = margin;
+              doc.setFontSize(16);
+              doc.text("Patientenübersicht", margin, y);
+              y += lineH * 2;
+              doc.setFontSize(12);
+            }
+          }
+
+          const now = new Date();
+          const pad = (n) => String(n).padStart(2, "0");
+          const ts = `${pad(now.getDate())}_${pad(
+            now.getMonth() + 1
+          )}_${now.getFullYear()}_${pad(now.getHours())}_${pad(
+            now.getMinutes()
+          )}`;
+          const filename = `patienten_uebersicht_${ts}.pdf`;
+
+          doc.save(filename);
+        }
+
+        // Nachdem die beiden Funktionen definiert sind:
+        document
+          .getElementById("btnExportPDF")
+          .addEventListener("click", async () => {
+            // Optional: warte, bis der erste fertig ist, bevor du den zweiten startest
+            await exportTruppPDF();
+            await exportPatientPDF();
+          });
+
+        // Modal öffnen
+        btnSettings.addEventListener("click", () => {
+          inputNextPatient.value =
+            parseInt(localStorage.getItem("nextPatientNumber"), 10) || 1;
+          inputMaxTime.value =
+            parseInt(localStorage.getItem("nextMaxEinsatzTime"), 10) || 45;
+          settingsModal.style.display = "flex";
+        });
+
+        // Modal schließen
+        closeSettings.addEventListener("click", () => {
+          settingsModal.style.display = "none";
+        });
+
+        // Speichern
+        saveSettings.addEventListener("click", () => {
+          const np = parseInt(inputNextPatient.value, 10);
+          const mt = parseInt(inputMaxTime.value, 10);
+          if (!isNaN(np) && np > 0) {
+            localStorage.setItem("nextPatientNumber", np);
+            window.dispatchEvent(
+              new StorageEvent("storage", {
+                key: "nextPatientNumber",
+                newValue: String(np),
+              })
+            );
+          }
+          if (!isNaN(mt) && mt > 0) {
+            localStorage.setItem("nextMaxEinsatzTime", mt);
+            window.dispatchEvent(
+              new StorageEvent("storage", {
+                key: "nextMaxEinsatzTime",
+                newValue: String(mt),
+              })
+            );
+          }
+          settingsModal.style.display = "none";
+        });
+
+        // Klick außerhalb schließt
+        settingsModal.addEventListener("click", (e) => {
+          if (e.target === settingsModal) settingsModal.style.display = "none";
+        });
+      });
+
+      // Tab-Umschalter
+      document.querySelectorAll(".tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          document
+            .querySelectorAll(".tab")
+            .forEach((t) => t.classList.remove("active"));
+          document
+            .querySelectorAll(".tab-content")
+            .forEach((c) => c.classList.remove("active"));
+          tab.classList.add("active");
+          document.getElementById(tab.dataset.tab).classList.add("active");
+        });
+      });
+
+      // nextPatientNumber synchronisieren
+      function syncNext() {
+        const inp = document.getElementById("nextPatientNumber");
+        if (!inp) return; // <-- hier: wenn es das Feld gar nicht gibt, einfach abbrechen
+
+        // nur aktualisieren, wenn das Feld NICHT gerade den Fokus hat
+        if (document.activeElement !== inp) {
+          const v =
+            parseInt(localStorage.getItem("nextPatientNumber"), 10) || 1;
+          if (inp.value !== String(v)) {
+            inp.value = v;
+          }
+        }
+      }
+      document.addEventListener("DOMContentLoaded", syncNext);
+      window.addEventListener("storage", (e) => {
+        if (e.key === "nextPatientNumber") syncNext();
+      });
+      setInterval(syncNext, 2000);
+    </script>
+
+    <!-- Settings-Modal -->
+    <div
+      id="settingsModal"
+      style="
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+      "
+    >
+      <div
+        style="
+          background: #fff;
+          border-radius: 8px;
+          padding: 20px;
+          width: 300px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+          position: relative;
+        "
+      >
+        <button
+          id="closeSettings"
+          style="
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            border: none;
+            background: transparent;
+            font-size: 1.2rem;
+            cursor: pointer;
+          "
+        >
+          ×
+        </button>
+        <h2>Einstellungen</h2>
+        <div style="margin-bottom: 12px">
+          <label
+            for="settingsNextPatient"
+            style="display: block; font-weight: 600"
+            >Nächste Patientennr.</label
+          >
+          <input
+            type="number"
+            id="settingsNextPatient"
+            style="
+              width: 100%;
+              padding: 6px;
+              border: 1px solid #ccc;
+              border-radius: 4px;
+            "
+          />
+        </div>
+        <div style="margin-bottom: 12px">
+          <label for="settingsMaxTime" style="display: block; font-weight: 600"
+            >Max. Einsatzzeit (Min.)</label
+          >
+          <input
+            type="number"
+            id="settingsMaxTime"
+            style="
+              width: 100%;
+              padding: 6px;
+              border: 1px solid #ccc;
+              border-radius: 4px;
+            "
+          />
+        </div>
+        <button
+          id="saveSettings"
+          style="
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+          "
+        >
+          Speichern
+        </button>
+      </div>
+    </div>
+
+    <!-- Browser-Kompatibilitäts-Check -->
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const ua = navigator.userAgent;
+        const isChrome =
+          ua.includes("Chrome") && !ua.includes("Edge") && !ua.includes("OPR");
+        const isEdge = ua.includes("Edg/");
+        if (!isChrome && !isEdge) {
+          // Banner erstellen
+          const warning = document.createElement("div");
+          warning.style.cssText = `
+          position: fixed;
+          top: 0; left: 0; right: 0;
+          background: #ffc107;
+          color: #333;
+          padding: 12px;
+          text-align: center;
+          font-weight: bold;
+          z-index: 9999;
+        `;
+          warning.textContent =
+            "⚠️ Dein Browser wird leider nicht offiziell unterstützt. Für volle Funktionalität bitte Chrome oder Edge verwenden.";
+          document.body.prepend(warning);
+        }
+      });
+    </script>
+  </body>
+</html>
