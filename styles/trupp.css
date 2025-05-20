@@ -1,0 +1,164 @@
+/* === css/trupp.css === */
+
+/* 1. Max-Einsatzzeit-Widget ausblenden (nur patienten-Widget bleibt) */
+.max-einsatz-time {
+  display: none !important;
+}
+
+/* 2. Sektionen im Trupp-Tracker */
+.section {
+  margin-top: 40px;
+}
+.section h2 {
+  border-bottom: 2px solid #ccc;
+  padding-bottom: 5px;
+  color: #444;
+}
+.section div {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px,1fr));
+  gap: 16px;
+}
+
+/* 3. Trupp-Cards */
+.trupp {
+  border: 2px solid #ccc;
+  padding: 10px;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  background: #fff;
+  transition: transform 0.4s ease, opacity 0.4s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.trupp.move-out {
+  transform: scale(0.9) translateX(100px);
+  opacity: 0;
+}
+.trupp.move-in,
+.trupp.move-in-active {
+  transform: none !important;
+  opacity: 1 !important;
+  transition: none !important;
+}
+.trupp.einsatz-beendet {
+  border-left: 5px solid rebeccapurple;
+  background: #fff;
+}
+
+/* 4. Statusfarben */
+.einsatz            { border-left:5px solid #28a745; background:#d4edda; }
+.pause              { border-left:5px solid #007bff; background:#d6eaff; }
+.nicht-einsatzbereit{ border-left:5px solid #6c757d; background:#e2e3e5; }
+.ueberzogen         { border:2px solid red; }
+.rueckhaltung       { border:2px solid gold; background:#fff9e6; opacity:0.6; }
+.patient            { border:2px solid red; background:#ff9999; }
+.spielfeldrand      { border:2px solid orange; background:#ffe8cc; }
+
+/* 5. Trupp-Header */
+.trupp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 10px;
+  border-bottom: 2px solid #ccc;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #333;
+  background: #fff;
+  border-radius: 8px 8px 0 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* 6. Texteingaben */
+.trupp input[type="text"] {
+  margin-top: 5px;
+  width: 100%;
+}
+
+/* 7. Meldung-Buttons */
+.meldung-btn {
+  background: #e6f0ff;
+  border: 1px solid #3399ff;
+  color: #003366;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  border-radius: 5px;
+}
+
+/* 8. Status-Control Buttons */
+.status-buttons {
+  display: none;
+  margin-top: 5px;
+  flex-direction: column;
+  gap: 4px;
+}
+.trupp.show-status-buttons .status-buttons {
+  display: flex;
+}
+.status-display {
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 5px;
+  font-weight: bold;
+  font-size: 1.1rem;
+  background: #fff;
+  border: 1px solid #ccc;
+}
+.trupp.show-status-buttons .status-display {
+  background: #007bff;
+  color: #fff;
+  border-color: #0056b3;
+}
+
+/* 9. Action-Buttons */
+.btn-nicht-einsatzbereit { background:#6c757d; color:#fff; }
+.btn-pause               { background:#007bff; color:#fff; }
+.btn-einsatz             { background:#28a745; color:#fff; }
+.btn-patient             { background:#ffc107; color:#000; }
+.btn-spielfeldrand       { background:#fd7e14; color:#fff; }
+
+/* 10. Delete-Knopf */
+.delete-btn {
+  background: #dc3545;
+  color: #fff;
+  border: none;
+  padding: 2px 4px;
+  font-size: 0.7rem;
+  border-radius: 3px;
+  cursor: pointer;
+  align-self: flex-end;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+/* ✂️ Zeilenumbruch nach „Trupp hinzufügen“ */
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+/* 1) nach dem 2. Kind (Trupp hinzufügen) eine volle Zeilenbreite „hinten anhängen“ → Zeilenumbruch */
+.button-row > *:nth-child(2)::after {
+  content: '';
+  flex-basis: 100%;
+  height: 0;
+}
+
+/* 2) Input nur fest 140px breit und 2em hoch */
+.button-row input {
+  flex: 0 0 140px;
+  height: 2em;
+}
+
+/* 3) Buttons so schmal wie ihr Inhalt */
+.button-row button {
+  flex: 0 1 auto;
+}

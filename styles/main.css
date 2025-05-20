@@ -1,0 +1,133 @@
+/* === css/main.css === */
+
+/* 1. Reset & Basis */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+html, body {
+  font-family: sans-serif;
+  line-height: 1.4;
+  background: #fff;
+  color: #333;
+}
+
+/* 2. Buttons überall gleich */
+button {
+  padding: 8px 14px;
+  cursor: pointer;
+  border: none;
+  border-radius: 5px;
+  font-weight: bold;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: background-color 0.2s ease;
+}
+button:hover {
+  background-color: #005f73;
+}
+
+/* 3. Helfer-Klassen */
+.flex { display: flex; }
+.grid { display: grid; }
+.p-1  { padding: 1rem; }
+.m-1  { margin: 1rem; }
+
+/* 4. MEDIS-Wrapper (nur wirkt in medis.html) */
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+body > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+}
+/* Tab-Navigation */
+.tabs {
+  display: flex;
+  margin: 10px 20px;
+}
+.tab {
+  padding: 10px 16px;
+  cursor: pointer;
+  border: 1px solid #ddd;
+  border-radius: 5px 5px 0 0;
+  margin-right: 5px;
+  background: #f9f9f9;
+  transition: background 0.2s;
+}
+.tab.active {
+  background: #007bff;
+  color: #fff;
+}
+.tab-icon {
+  height: 60px;
+  width: auto;
+}
+/* Container für die Iframes */
+.container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin: 0 20px 20px;
+  overflow: hidden;
+}
+.tab-content {
+  flex: 1;
+  display: none;
+  overflow: hidden;
+}
+.tab-content.active {
+  display: block;
+}
+/* Iframes */
+iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* 5. Next-Patienten-Nummer Widget (patienten_tracker.html) */
+.next-patient-number {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0;
+  padding: 8px 12px;
+  background: #f5f7fa;
+  border: 1px solid #d1d9e6;
+  border-radius: 6px;
+  max-width: 300px;
+}
+.next-patient-number label {
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+}
+.next-patient-number input {
+  flex-shrink: 0;
+  width: 80px;
+  padding: 6px 10px;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.next-patient-number input:focus {
+  border-color: #007bff;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0,123,255,0.25);
+}
+#nextPatientNumber {
+  width: 60px;
+  margin-left: 0.5em;
+}
+
+/* 6. Darkmode */
+body.darkmode {
+  background: #121212;
+  color: #eee;
+}

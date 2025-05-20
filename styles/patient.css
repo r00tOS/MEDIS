@@ -1,0 +1,166 @@
+/* === css/patient.css === */
+
+/* 1. Listen & Modal */
+.list {
+  flex: 1;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  overflow-y: auto;
+  padding: 8px;
+}
+.list .item {
+  padding: 6px 8px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+}
+.list .item:hover {
+  background: #f0f0f0;
+}
+.list .item.selected {
+  background: #d0e6ff;
+}
+
+.modal {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-content {
+  position: relative;
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  width: 600px;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.close {
+  position: absolute;
+  top: 8px; right: 12px;
+  font-size: 1.2em;
+  cursor: pointer;
+}
+
+/* 2. Patient-Cards */
+.patient-card {
+  border: 1px solid #ccc;
+  padding: 10px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+}
+.patient-card.gemeldet        { background: #ffe5e5; }
+.patient-card.disponiert      { background: #ffffe0; }
+.patient-card.in-Behandlung   { background: #e2f7e2; }
+.patient-card.verlegt-in-UHS  { background: #e0f0ff; }
+.patient-card.Behandlung-in-UHS { background: #d0e6ff; }
+.patient-card.Transport-in-KH,
+.patient-card.Entlassen       { background: #f0f0f0; }
+
+.patient-card > div {
+  min-width: 220px;
+  max-width: 220px;
+  margin-right: 10px;
+  border-right: 1px solid #ddd;
+  padding-right: 10px;
+}
+.patient-card > div:last-child {
+  border-right: none;
+}
+.patient-card .buttons {
+  display: flex;
+  gap: 5px;
+  margin-left: auto;
+}
+
+/* 3. Status-Buttons in Cards */
+button.status-gemeldet       { background: #f28b82; color: #fff; }
+button.status-disponiert     { background: #fff475; color: #000; }
+button.status-in-Behandlung  { background: #81c995; color: #fff; }
+button.status-verlegt-in-UHS,
+button.status-Behandlung-in-UHS { background: #a7c7e7; color: #000; }
+button.status-Transport-in-KH,
+button.status-Entlassen      { background: #d3d3d3; color: #000; }
+
+/* 4. Abschnittsüberschriften */
+section {
+  margin-top: 20px;
+}
+h2 {
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 5px;
+}
+
+/* 5. Slide-In/Out Animation */
+@keyframes slide-out-right {
+  from { opacity:1; transform:translateX(0); }
+  to   { opacity:0; transform:translateX(20px); }
+}
+@keyframes slide-in-left {
+  from { opacity:0; transform:translateX(-20px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+.patient-card.slide-out { animation: slide-out-right 0.3s ease forwards; }
+.patient-card.slide-in  { animation: slide-in-left  0.3s ease forwards; }
+
+/* 6. Zeitdaten-Tabelle */
+.zeitdaten table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+}
+.zeitdaten th,
+.zeitdaten td {
+  border: 1px solid #ddd;
+  padding: 6px 8px;
+  text-align: left;
+}
+.zeitdaten th {
+  background: #f5f5f5;
+  font-weight: bold;
+}
+.zeitdaten tr:nth-child(even) td {
+  background: #fafafa;
+}
+
+/* 7. Button-Gruppen */
+.button-group {
+  display: inline-flex;
+  gap: 8px;
+}
+
+/* 8. Druck-Styles */
+@media print {
+  body * { visibility: hidden; }
+  #exportArea, #exportArea * { visibility: visible; }
+  #exportArea button,
+  #exportArea .buttons,
+  #exportArea .status-gemeldet,
+  #exportArea .status-disponiert,
+  #exportArea .status-in-Behandlung,
+  #exportArea .status-verlegt-in-UHS,
+  #exportArea .status-Behandlung-in-UHS,
+  #exportArea .status-Transport-in-KH,
+  #exportArea .status-Entlassen {
+    display: none !important;
+  }
+  #exportArea {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+  }
+  .patient-card {
+    width: 100% !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    border: 1px solid #333 !important;
+    margin-bottom: 16px !important;
+  }
+}

@@ -5,271 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Truppüberwachung</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <style>
-      /* —— Patienten-Tracker Button Styles —— */
-      button {
-        padding: 8px 14px;
-        cursor: pointer;
-        border: none;
-        border-radius: 5px;
-        font-weight: bold;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        transition: background-color 0.2s ease-in-out;
-      }
-      button:hover {
-        background-color: #005f73;
-      }
-
-      /* Spezifische Status-Buttons (falls Du sie nutzt) */
-      button.status-gemeldet {
-        background-color: #f28b82;
-        color: white;
-      }
-      button.status-disponiert {
-        background-color: #fff475;
-        color: black;
-      }
-      button.status-in-Behandlung {
-        background-color: #81c995;
-        color: white;
-      }
-      button.status-verlegt-in-UHS,
-      button.status-Behandlung-in-UHS {
-        background-color: #a7c7e7;
-        color: black;
-      }
-      button.status-Transport-in-KH,
-      button.status-Entlassen {
-        background-color: #d3d3d3;
-        color: black;
-      }
-
-      /* —— Ende Patienten-Tracker Button Styles —— */
-      .max-einsatz-time {
-        display: none !important;
-      }
-      .trupp.einsatz-beendet {
-        border-left: 5px solid rebeccapurple;
-        background-color: #ffffff;
-      }
-
-      body {
-        font-family: sans-serif;
-        padding: 20px;
-        background: #ffffff;
-      }
-      input[type="text"] {
-        margin: 3px 5px 3px 0;
-        padding: 6px;
-        font-size: 0.9rem;
-        width: 100%;
-        border-radius: 5px;
-        border: 1px solid #ccc;
-        box-sizing: border-box;
-      }
-      button {
-        padding: 6px 10px;
-        font-size: 0.8rem;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        margin: 2px;
-        flex-shrink: 0;
-      }
-      .reset-btn {
-        background-color: #dc3545;
-        color: white;
-      }
-      .export-btn {
-        background-color: #007bff;
-        color: white;
-      }
-      .section {
-        margin-top: 40px;
-      }
-      .section h2 {
-        border-bottom: 2px solid #ccc;
-        padding-bottom: 5px;
-        color: #444;
-      }
-      .section div {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 16px;
-      }
-      .trupp {
-        border: 2px solid #ccc;
-        padding: 10px;
-        border-radius: 10px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-        background: #fff;
-        transition: transform 0.4s ease, opacity 0.4s ease;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-      }
-      .trupp.move-out {
-        transform: scale(0.9) translateX(100px);
-        opacity: 0;
-      }
-      .trupp.move-in,
-      .trupp.move-in-active {
-        transform: none !important;
-        opacity: 1 !important;
-        transition: none !important;
-      }
-      .einsatz {
-        border-left: 5px solid #28a745;
-        background: #d4edda;
-      }
-      .pause {
-        border-left: 5px solid #007bff;
-        background: #d6eaff;
-      }
-      .nicht-einsatzbereit {
-        border-left: 5px solid #6c757d;
-        background: #e2e3e5;
-      }
-      .ueberzogen {
-        border: 2px solid red;
-      }
-      .rueckhaltung {
-        border: 2px solid gold;
-        background-color: #fff9e6;
-        opacity: 0.6;
-      }
-      .patient {
-        border: 2px solid red;
-        background-color: #ff9999;
-      }
-      .spielfeldrand {
-        border: 2px solid orange;
-        background-color: #ffe8cc;
-      }
-      .trupp-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 5px 10px;
-        border-bottom: 2px solid #ccc;
-        font-size: 1.2rem;
-        font-weight: bold;
-        color: #333;
-        background-color: #ffffff;
-        border-radius: 8px 8px 0 0;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-      }
-      .trupp input[type="text"] {
-        margin-top: 5px;
-        width: 100%;
-      }
-      .meldung-btn {
-        background-color: #e6f0ff;
-        border: 1px solid #3399ff;
-        color: #003366;
-        padding: 4px 10px;
-        font-size: 0.8rem;
-        border-radius: 5px;
-        cursor: pointer;
-      }
-      .btn-nicht-einsatzbereit {
-        background-color: #6c757d;
-        color: white;
-      }
-      .btn-pause {
-        background-color: #007bff;
-        color: white;
-      }
-      .btn-einsatz {
-        background-color: #28a745;
-        color: white;
-      }
-      .btn-patient {
-        background-color: #ffc107;
-        color: black;
-      }
-      .btn-spielfeldrand {
-        background-color: #fd7e14;
-        color: white;
-      }
-      body.darkmode {
-        background-color: #121212;
-        color: #000;
-      }
-
-      .delete-btn {
-        background-color: #dc3545;
-        color: white;
-        border: none;
-        padding: 2px 4px;
-        font-size: 0.7rem;
-        border-radius: 3px;
-        cursor: pointer;
-        align-self: flex-end;
-        width: 20px;
-        height: 20px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-      }
-      .status-buttons {
-        display: none;
-        margin-top: 5px;
-        flex-direction: column;
-        gap: 4px;
-      }
-      .trupp.show-status-buttons .status-buttons {
-        display: flex;
-      }
-      .status-display {
-        cursor: pointer;
-        padding: 6px;
-        border-radius: 5px;
-        font-weight: bold;
-        font-size: 1.1rem;
-        background-color: #ffffff;
-        border: 1px solid #ccc;
-      }
-      .trupp.show-status-buttons .status-display {
-        background: #007bff;
-        color: white;
-        border-color: #0056b3;
-      }
-      .max-einsatz-time {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin: 16px 0;
-        padding: 8px 12px;
-        background: #f5f7fa;
-        border: 1px solid #d1d9e6;
-        border-radius: 6px;
-        max-width: 300px;
-      }
-
-      .max-einsatz-time label {
-        font-weight: 600;
-        color: #333;
-        white-space: nowrap;
-      }
-
-      .max-einsatz-time input {
-        flex-shrink: 0;
-        width: 60px;
-        padding: 6px 10px;
-        font-size: 1rem;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        transition: border-color 0.2s, box-shadow 0.2s;
-      }
-
-      .max-einsatz-time input:focus {
-        border-color: #007bff;
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
-      }
-    </style>
+    <link rel="stylesheet" href="../styles/main.css">
+  <link rel="stylesheet" href="../styles/trupp.css">
   </head>
   <body>
     <div class="max-einsatz-time">
@@ -281,6 +18,7 @@
       />
     </div>
 
+    <div class="button-row">
     <input type="text" id="newTruppName" placeholder="Neuer Truppname" />
     <button onclick="addTrupp()">Trupp hinzufügen</button>
     <button onclick="addTrupps('Stadion', 10, 60, 5)">Stadion 10-60 hinzufügen</button>
@@ -288,6 +26,8 @@
     <button onclick="addTrupps('Ostseekai', 1, 10)">Ostseekai 1-10 hinzufügen</button>
     <button onclick="addTrupps('Innenstadt', 1, 10)">Innenstadt 1-10 hinzufügen</button>
     <button onclick="addTrupps('Bahnhof', 1, 10)">Bahnhof 1-10 hinzufügen</button>
+  </div>
+
 
     <div class="section">
       <h2>Im Einsatz</h2>
@@ -301,6 +41,8 @@
       <h2>Nicht Einsatzbereit</h2>
       <div id="nichtContainer"></div>
     </div>
+
+<script src="main.js"></script>
 
     <script>
       // === 1) nextPatientNumber purely in JS, kein Input ===
@@ -418,70 +160,18 @@
 
         // 8) Wechsel auf Patient → neuen Patienten anlegen
         if (oldStatus !== "Patient" && status === "Patient") {
-          trupp.patientInput = nextPatientNumber;
-
-          const createdMs = Date.now();
-          const timeStr = new Date(createdMs).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          });
-
-          const patients = JSON.parse(localStorage.getItem("patients")) || [];
-          const neueId = trupp.patientInput;
-          const letzteOrt =
-            trupp.currentOrt ||
-            (trupp.einsatzHistorie.length
-              ? trupp.einsatzHistorie.at(-1).ort
-              : "");
-
-          const newPatient = {
-            id: neueId,
-            createdAt: createdMs,
-            status: "disponiert",
-            age: "",
-            gender: "",
-            diagnosis: "",
-            location: letzteOrt,
+          const letzteOrt = trupp.currentOrt ||
+                            (trupp.einsatzHistorie.at(-1)?.ort || "");
+          // neue zentrale Funktion erzeugt Patient und erhöht ID
+          const pid = newPatient({
             team: [trupp.name],
-            rtm: "",
-            discharge: "",
-            additionalRequest: "",
-            history: [
-              `${timeStr} Status: gemeldet`,
-              `${timeStr} Status: disponiert`,
-              `${timeStr} Trupp ${trupp.name} disponiert`,
-            ],
-            statusTimestamps: {
-              gemeldet: createdMs,
-              disponiert: createdMs,
-            },
-            durations: {
-              einsatzdauer: "", // bleibt noch live
-              dispositionsdauer: "00:00", // sofort fixiert
-              ausrueckdauer: "",
-              behandlungsdauer: "", // <<< jetzt auch initialisiert
-              verlegedauerUHS: "",
-            },
-          };
-
-          // 1) Patient anlegen
-          patients.push(newPatient);
-          localStorage.setItem("patients", JSON.stringify(patients));
-          // 2) storage-Event feuern
-          window.dispatchEvent(
-            new StorageEvent("storage", {
-              key: "patients",
-              newValue: JSON.stringify(patients),
-            })
-          );
-
-          // 3) Next-ID schieben
-          nextPatientNumber++;
-          localStorage.setItem("nextPatientNumber", String(nextPatientNumber));
-
-          // 4) Trupp-Start zurücksetzen
+            location: letzteOrt,
+            initialStatus: "disponiert"
+          });
+          trupp.patientInput = pid;
           trupp.patientStart = Date.now();
         }
+
 
         // 9) Bei Streife → neuen Ort abfragen
         if (status === "Streife") {
@@ -499,8 +189,8 @@
 
         // 11) Trupp aus Patientendaten entfernen, wenn Weg von Patient
         if (oldStatus === "Patient" && status !== "Patient") {
-          const patients = JSON.parse(localStorage.getItem("patients")) || [];
-          patients.forEach((p) => {
+          const stored = JSON.parse(localStorage.getItem("patients")) || [];
+          stored.forEach((p) => {
             if (Array.isArray(p.team)) {
               const idx = p.team.indexOf(trupp.name);
               if (idx >= 0) {
@@ -510,13 +200,6 @@
               }
             }
           });
-          localStorage.setItem("patients", JSON.stringify(patients));
-          window.dispatchEvent(
-            new StorageEvent("storage", {
-              key: "patients",
-              newValue: JSON.stringify(patients),
-            })
-          );
         }
 
         // 12) Speichern & neu rendern
@@ -524,6 +207,7 @@
         renderTrupps();
         window.scrollTo(0, scrollY);
       }
+
 
       const jsPDF = window.jspdf.jsPDF;
       function updateMaxEinsatzTime() {
@@ -697,9 +381,7 @@ Bemerkung:`;
       }, 5000);
 
       function saveTrupps() {
-        localStorage.setItem("nextPatientNumber", nextPatientNumber);
         localStorage.setItem("nextMaxEinsatzTime", nextMaxEinsatzTime);
-        localStorage.setItem("nextPatientNumber", nextPatientNumber);
         localStorage.setItem("trupps", JSON.stringify(trupps));
       }
 
@@ -751,7 +433,7 @@ Bemerkung:`;
       }
 
       function addTrupps(prefix, start, end, step = 1) {
-        if (!confirm(`Willst du wirklich ${Math.ceil((end - start + 1) / step)} neue Trupps hinzufügen?`)) return;
+        if (!confirm(`Willst du wirklich neue Trupps hinzufügen?`)) return;
         for (let i = start; i <= end; i += step) {
           addTrupp(`${prefix} ${i}`);
         }
@@ -1048,44 +730,46 @@ Bemerkung:`;
       setInterval(renderTrupps, 30000);
 
       setInterval(() => {
-        const now = Date.now();
+  const now = Date.now();
 
-        trupps.forEach((trupp) => {
-          // wenn wir in einer Pause sind
-          if (
-            [
-              "Einsatzbereit in UHS",
-              "Einsatzbereit unterwegs",
-              "Einsatzbereit in Rückhaltung",
-            ].includes(trupp.status)
-          ) {
-            if (trupp.currentPauseStart) {
-              // Differenz vom letzten Start holen
-              const diff = now - trupp.currentPauseStart;
-              trupp.pausenzeit = (trupp.pausenzeit || 0) + diff;
-              trupp.totalPauseTime += diff;
-              // neuen Startzeitpunkt setzen
-              trupp.currentPauseStart = now;
-            }
-          }
-          // wenn wir im Einsatz sind (incl. "Einsatz beendet", falls du das weiterlaufen lassen möchtest)
-          else if (
-            ["Streife", "Patient", "Spielfeldrand", "Einsatz beendet"].includes(
-              trupp.status
-            )
-          ) {
-            if (trupp.currentEinsatzStart) {
-              const diff = now - trupp.currentEinsatzStart;
-              trupp.einsatzzeit = (trupp.einsatzzeit || 0) + diff;
-              // neuen Startzeitpunkt setzen
-              trupp.currentEinsatzStart = now;
-            }
-          }
-        });
+  // 1) explizit die beiden Status-Gruppen definieren
+  const pauseStatuses = [
+    "Einsatzbereit in UHS",
+    "Einsatzbereit unterwegs",
+    "Einsatzbereit in Rückhaltung",
+  ];
+  const einsatzStatuses = [
+    "Streife",
+    "Patient",
+    "Spielfeldrand",
+    "Einsatz beendet"
+  ];
 
-        saveTrupps();
-        renderTrupps();
-      }, 15000);
+  trupps.forEach((trupp) => {
+    // 2) Erst Pause
+    if (pauseStatuses.includes(trupp.status)) {
+      if (trupp.currentPauseStart) {
+        const diff = now - trupp.currentPauseStart;
+        trupp.pausenzeit = (trupp.pausenzeit || 0) + diff;
+        trupp.totalPauseTime = (trupp.totalPauseTime || 0) + diff;
+        trupp.currentPauseStart = now;
+      }
+    }
+    // 3) Dann Einsatz (inkl. “Einsatz beendet”)
+    else if (einsatzStatuses.includes(trupp.status)) {
+      if (trupp.currentEinsatzStart) {
+        const diff = now - trupp.currentEinsatzStart;
+        trupp.einsatzzeit = (trupp.einsatzzeit || 0) + diff;
+        trupp.currentEinsatzStart = now;
+      }
+    }
+    // 4) alle anderen Status bleiben außen vor
+  });
+
+  saveTrupps();
+  renderTrupps();
+}, 15000);
+
 
       async function exportPDF() {
         const { jsPDF } = window.jspdf;
