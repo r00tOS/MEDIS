@@ -135,6 +135,34 @@ h2 {
   display: inline-flex;
   gap: 8px;
 }
+.patient-details-table,
+.patient-info-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+
+.patient-details-table th,
+.patient-details-table td,
+.patient-info-table th,
+.patient-info-table td {
+  border: 1px solid #ccc;
+  padding: 8px;
+  vertical-align: top;
+}
+
+.patient-details-table th,
+.patient-info-table th {
+  background: #f0f0f0;
+  text-align: left;
+  width: 30%;       /* Label-Spalte etwas breiter */
+}
+
+.patient-details-table td,
+.patient-info-table td {
+  width: 70%;       /* Wert-Spalte entsprechend */
+}
+
 
 /* 8. Druck-Styles */
 @media print {
@@ -163,4 +191,123 @@ h2 {
     border: 1px solid #333 !important;
     margin-bottom: 16px !important;
   }
+}
+/* 1) Patient Card ins Flex-Layout verwandeln */
+.patient-card {
+  display: flex;
+  gap: 1rem;               /* Abstand zwischen den Spalten */
+  align-items: flex-start; /* Oben ausrichten */
+}
+
+/* 2) Block mit den beiden Tabellen */
+.patient-info-block {
+  flex: 0 0 400px;         /* fixe Breite von 400px (anpassen nach Geschmack) */
+}
+
+/* 3) Tabellen auf 100% der Block-Breite strecken */
+.patient-info-block table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 0.5rem;
+}
+
+/* 4) Zellen ein bisschen styling */
+.patient-info-block th,
+.patient-info-block td {
+  border: 1px solid #ccc;
+  padding: 4px 8px;
+  text-align: left;
+  vertical-align: top;
+  font-size: 0.9em;
+}
+
+/* 5) Überschriftenzeile hervorheben */
+.patient-info-block thead th {
+  background: #f0f0f0;
+}
+
+/* 6) Button unter den Tabellen */
+.patient-info-block .edit-info-btn {
+  display: block;
+  margin-top: 0.5rem;
+  width: 100%;
+  text-align: center;
+}
+
+/* 7) Spalte mit Trupp-Dropdown nimmt den Rest */
+.patient-card > .patient-trupp-column {
+  flex: 1;                      /* füllt verbleibenden Platz */
+  min-width: 200px;
+}
+/* Scroll-Container für Historie */
+.history-container {
+  max-height: 200px;       /* Höhe nach Bedarf anpassen */
+  overflow-y: auto;        /* vertikales Scrollen erlauben */
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-x: hidden;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fafafa;
+}
+
+/* Optional: ul-Styles innerhalb des Containers */
+.history-container ul {
+  margin: 0;
+  padding-left: 1.2em;
+  padding: 0;
+margin: 0;
+}
+.history-container li {
+  margin-bottom: 4px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin: 0;
+padding: 0;
+list-style-position: inside; /* Listenpunkte bleiben sichtbar */
+}
+
+.history-container {
+  /* nur links/rechts Padding lassen, oben/unten auf 0 */
+  padding: 0 8px;
+  margin: 0;               /* falls doch noch ein Außenabstand drin ist */
+}
+
+.history-container ul {
+  margin: 0;               /* außen komplett raus */
+  padding: 0;              /* außen komplett raus */
+}
+
+.history-container li {
+  margin: 0;               /* kein Abstand zwischen Listenelement und Rand */
+  padding: 0;              /* kein internes Padding */
+  list-style-position: inside;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+/* ############# History-Container jetzt ohne obere/untere Abstände ############# */
+.history-container {
+  max-height: 200px;        /* bleibt unverändert */
+  overflow-y: auto;         /* vertikales Scrollen erlauben */
+  overflow-x: hidden;       /* horizontales Scrollen verhindern */
+  padding: 0 8px;           /* nur links/rechts 8px, oben/unten 0 */
+  margin: 0;                /* kein Außenabstand */
+  white-space: normal;      /* normal umbrechen, kein pre-wrap mehr */
+  line-height: 1.4;         /* optional: etwas engerer Zeilenabstand */
+  box-sizing: border-box;   /* damit padding wirklich nur innen wirkt */
+}
+
+/* Entferne sämtliche eigenen Abstände der Liste */
+.history-container ul {
+  list-style-position: inside;
+  margin: 0;    /* kein Außenabstand */
+  padding: 0;   /* kein Innenabstand */
+}
+
+/* Und auch bei den einzelnen Einträgen */
+.history-container li {
+  margin: 0;    /* kein Außenabstand */
+  padding: 2px 0; /* kleiner vertikaler Abstand zwischen Einträgen */
+  word-wrap: break-word;
 }

@@ -131,3 +131,33 @@ body.darkmode {
   background: #121212;
   color: #eee;
 }
+
+/* ------------------------------------- */
+/* Datum & Uhrzeit absolut zentrieren */
+header {
+  position: relative; /* schon im Inline-Style, hier zur Sicherheit */
+}
+
+/* Container für Datum & Uhrzeit */
+.datetime {
+  position: absolute;
+  top: 50%;                /* vertikal mittig im Header */
+  left: 50%;               /* horizontal in der Seitenmitte */
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;    /* klick-durchlässig, Buttons bleiben erreichbar */
+}
+
+/* Datum */
+#currentDate {
+  font-size: 1.8rem;       /* ausreichend groß */
+  font-weight: bold;
+}
+
+/* Uhrzeit */
+#currentTime {
+  font-size: 2.4rem;
+  margin-top: 0.2em;
+  font-variant-numeric: tabular-nums; /* gleichmäßiger Abstand */
+}
+/* ------------------------------------- */

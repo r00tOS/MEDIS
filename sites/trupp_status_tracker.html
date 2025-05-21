@@ -7,6 +7,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <link rel="stylesheet" href="../styles/main.css">
   <link rel="stylesheet" href="../styles/trupp.css">
+    <link rel="stylesheet" href="../styles/patient.css">
   </head>
   <body>
     <div class="max-einsatz-time">
@@ -42,7 +43,8 @@
       <div id="nichtContainer"></div>
     </div>
 
-<script src="main.js"></script>
+    <script src="categories.js"></script>
+    <script src="main.js"></script>
 
     <script>
       // === 1) nextPatientNumber purely in JS, kein Input ===
@@ -170,6 +172,7 @@
           });
           trupp.patientInput = pid;
           trupp.patientStart = Date.now();
+          openEditModal(pid);
         }
 
 
@@ -598,7 +601,7 @@ Bemerkung:`;
             trupp.status === "Patient"
               ? `<p><strong>Patient ${
                   trupp.patientInput || "keine Nummer"
-                }</strong> <button onclick="editPatient(${i})">✎</button></p>`
+                }</strong>`
               : ""
           }
 

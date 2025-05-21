@@ -35,259 +35,6 @@
 <script src="main.js"></script>
 
     <script>
-      const alarmConfig = window.alarmConfig.categories;
-      function recordStatusChange(patient, newStatus) {
-        const now = Date.now();
-        patient.statusTimestamps = patient.statusTimestamps || {};
-        patient.durations = patient.durations || {};
-
-        // 1) Timestamp für den neuen Status nur einmal setzen
-        if (!patient.statusTimestamps[newStatus]) {
-          patient.statusTimestamps[newStatus] = now;
-        }
-
-        // 2) Einsatzdauer → erst beim finalen Status
-        if (
-          (newStatus === "Entlassen" || newStatus === "Transport in KH") &&
-          !patient.durations.einsatzdauer
-        ) {
-          patient.durations.einsatzdauer = formatMS(now - patient.createdAt);
-        }
-
-        // 3) Dispositionsdauer: gemeldet → disponiert
-        if (
-          newStatus === "disponiert" &&
-          patient.statusTimestamps.gemeldet &&
-          !patient.durations.dispositionsdauer
-        ) {
-          patient.durations.dispositionsdauer = formatMS(
-            now - patient.statusTimestamps.gemeldet
-          );
-        }
-
-        // 4) Ausrückdauer: disponiert → in Behandlung/UHS
-        if (
-          ["in Behandlung", "verlegt in UHS", "Behandlung in UHS"].includes(
-            newStatus
-          ) &&
-          patient.statusTimestamps.disponiert &&
-          !patient.durations.ausrueckdauer
-        ) {
-          patient.durations.ausrueckdauer = formatMS(
-            now - patient.statusTimestamps.disponiert
-          );
-        }
-
-        // 5) Verlegedauer UHS: verlegt in UHS → Behandlung in UHS
-        if (
-          newStatus === "Behandlung in UHS" &&
-          patient.statusTimestamps["verlegt in UHS"] &&
-          !patient.durations.verlegedauerUHS
-        ) {
-          patient.durations.verlegedauerUHS = formatMS(
-            now - patient.statusTimestamps["verlegt in UHS"]
-          );
-        }
-
-        // 6) **Behandlungsdauer**: wenn wir ins Finale wechseln
-        if (
-          (newStatus === "Entlassen" || newStatus === "Transport in KH") &&
-          !patient.durations.behandlungsdauer
-        ) {
-          // 6a) nimm den Start-Timestamp „in Behandlung“ oder „Behandlung in UHS“
-          const start =
-            patient.statusTimestamps["in Behandlung"] ||
-            patient.statusTimestamps["Behandlung in UHS"];
-          if (start) {
-            patient.durations.behandlungsdauer = formatMS(now - start);
-          } else {
-            // falls nie richtig in Behandlung
-            patient.durations.behandlungsdauer = "00:00";
-          }
-        }
-        // 7) alle übrigen Dauern beim finalen Status nachtragen
-      if ((newStatus === "Entlassen" || newStatus === "Transport in KH")) {
-        // Dispositionsdauer, falls nie auf disponiert gewechselt
-        if (
-          patient.statusTimestamps.gemeldet &&
-          !patient.durations.dispositionsdauer
-        ) {
-          patient.durations.dispositionsdauer = formatMS(
-            now - patient.statusTimestamps.gemeldet
-          );
-        }
-        // Ausrückdauer, falls nie auf disponiert→in Behandlung gewechselt
-        if (
-          patient.statusTimestamps.disponiert &&
-          !patient.durations.ausrueckdauer
-        ) {
-          patient.durations.ausrueckdauer = formatMS(
-            now - patient.statusTimestamps.disponiert
-          );
-        }
-        // Verlegedauer UHS, falls nie auf verlegt→UHS gewechselt
-        if (
-          patient.statusTimestamps["verlegt in UHS"] &&
-          !patient.durations.verlegedauerUHS
-        ) {
-          patient.durations.verlegedauerUHS = formatMS(
-            now - patient.statusTimestamps["verlegt in UHS"]
-          );
-        }
-      }
-    }
-
-
-
-      // öffnet das Modal mit Keyword-Liste
-
-      let currentPatientId = null;
-      let selectedCategory = null;
-      let selectedKeyword = null;
-
-      // Wird bei jeder Eingabe im Suchfeld aufgerufen
-      function onSearchInput() {
-        const term = document
-          .getElementById("searchInput")
-          .value.trim()
-          .toLowerCase();
-        const resultsDiv = document.getElementById("searchResults");
-
-        if (term === "") {
-          // Leeres Suchfeld → zurück zu normalem Modus
-          resultsDiv.style.display = "none";
-          document.getElementById("categoryList").style.display = "block";
-          document.getElementById("keywordList").style.display = "block";
-          return;
-        }
-
-        // Suche in allen Kategorien→Keywords
-        const hits = [];
-        alarmConfig.forEach((cat, ci) => {
-          cat.keywords.forEach((kw, ki) => {
-            if (kw.word.toLowerCase().includes(term)) {
-              hits.push({ ci, ki, word: kw.word });
-            }
-          });
-        });
-
-        // Ergebnis-Liste aufbauen
-        resultsDiv.innerHTML = "";
-        hits.forEach((hit) => {
-          const div = document.createElement("div");
-          div.className = "item";
-          div.textContent = `${alarmConfig[hit.ci].name} ➔ ${hit.word}`;
-          div.onclick = () => {
-            // Treffer auswählen und Modal zurücksetzen
-            selectedCategory = hit.ci;
-            selectedKeyword = hit.ki;
-            document.getElementById("searchInput").value = hit.word;
-            document.getElementById("otherDetail").style.display =
-              /^sonstiger/i.test(hit.word) ? "block" : "none";
-          };
-          resultsDiv.appendChild(div);
-        });
-
-        // UI-Umschaltung
-        resultsDiv.style.display = "block";
-        document.getElementById("categoryList").style.display = "none";
-        document.getElementById("keywordList").style.display = "none";
-      }
-
-      function openKeywordModal(patientId) {
-        currentPatientId = patientId;
-        selectedCategory = null;
-        selectedKeyword = null;
-        document.getElementById("searchInput").value = "";
-        document.getElementById("searchResults").style.display = "none";
-        document.getElementById("categoryList").style.display = "block";
-        document.getElementById("keywordList").style.display = "block";
-        renderCategoryList();
-        document.getElementById("keywordList").innerHTML = "";
-        document.getElementById("keywordModal").style.display = "flex";
-      }
-
-      function renderCategoryList() {
-        const catDiv = document.getElementById("categoryList");
-        catDiv.innerHTML = "";
-        alarmConfig.forEach((c, i) => {
-          const d = document.createElement("div");
-          d.textContent = c.name;
-          d.className = "item" + (selectedCategory === i ? " selected" : "");
-          d.onclick = () => {
-            selectedCategory = i;
-            selectedKeyword = null;
-            renderCategoryList();
-            renderKeywordList();
-          };
-          catDiv.appendChild(d);
-        });
-      }
-
-      function renderKeywordList() {
-        const kwDiv = document.getElementById("keywordList");
-        kwDiv.innerHTML = "";
-        document.getElementById("otherDetail").style.display = "none"; // immer verstecken
-        if (selectedCategory === null) return;
-
-        alarmConfig[selectedCategory].keywords.forEach((kw, j) => {
-          const d = document.createElement("div");
-          d.textContent = kw.word;
-          d.className = "item" + (selectedKeyword === j ? " selected" : "");
-          d.onclick = () => {
-            selectedKeyword = j;
-            renderKeywordList();
-            // Wenn das Wort mit "sonstiger" (case-insensitive) anfängt → Feld einblenden
-            if (/^sonstiger/i.test(kw.word)) {
-              document.getElementById("otherDetail").style.display = "block";
-              document.getElementById("otherInput").value = "";
-            } else {
-              document.getElementById("otherDetail").style.display = "none";
-            }
-          };
-          kwDiv.appendChild(d);
-        });
-      }
-
-      function confirmKeyword() {
-        if (selectedCategory === null || selectedKeyword === null) {
-          return alert("Bitte Kategorie und Stichwort wählen");
-        }
-        let cfg = alarmConfig[selectedCategory].keywords[selectedKeyword];
-        let finalWord = cfg.word;
-
-        // Wenn Zusatz-Feld sichtbar, hänge den Input an
-        if (document.getElementById("otherDetail").style.display === "block") {
-          const extra = document.getElementById("otherInput").value.trim();
-          if (!extra) {
-            return alert("Bitte die Art des Notfalls genauer beschreiben.");
-          }
-          finalWord += " – " + extra;
-        }
-
-        // 1) Diagnosis-Feld setzen
-        updatePatientData(currentPatientId, "diagnosis", finalWord);
-
-        // 2) vorgeschlagene Ressourcen speichern
-        const patients = JSON.parse(localStorage.getItem("patients")) || [];
-        const p = patients.find((x) => x.id === currentPatientId);
-        p.suggestedResources = cfg.resources;
-        localStorage.setItem("patients", JSON.stringify(patients));
-
-        closeKeywordModal();
-        loadPatients(currentPatientId);
-      }
-
-      function closeKeywordModal() {
-        document.getElementById("keywordModal").style.display = "none";
-      }
-
-      document.addEventListener("DOMContentLoaded", () => {
-        document
-          .getElementById("btnNewPatient")
-          .addEventListener("click", createNewPatient);
-        loadPatients();
-      });
 
       function clearAssignments(patientId, finalStatus) {
         const now = Date.now();
@@ -347,12 +94,6 @@
         return `${mm}:${ss}`;
       }
 
-      function getCurrentTime() {
-        return new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-      }
 
       function getNextPatientId() {
         const patients = JSON.parse(localStorage.getItem("patients")) || [];
@@ -363,113 +104,11 @@
         // 1) neuen Patient anlegen und ID zurückbekommen
         const id = newPatient({
           // optional: team, location, initialStatus
-          // team: [], location: "", initialStatus: "gemeldet"
         });
         // 2) UI aktualisieren, highlight-ID übergeben wenn gewünscht
         loadPatients(id);
-      }
-
-      // 1) Zentrale Update-Funktion
-      function updatePatientData(id, field, value) {
-        const patients = JSON.parse(localStorage.getItem("patients")) || [];
-        const patient = patients.find((p) => p.id === id);
-        if (!patient) return;
-        // History-Array initialisieren, falls nötig
-        if (!patient.history) patient.history = [];
-
-        // Hilfs-Objekte sicherstellen
-        patient.statusTimestamps = patient.statusTimestamps || {};
-        patient.durations = patient.durations || {};
-
-        const now = Date.now();
-
-        // 1) Timestamp & Dauer-Kalkulation zentral in recordStatusChange
-        function doTimeTracking() {
-          recordStatusChange(patient, value);
-        }
-
-        // 2) Update von History, Feld, Triggern von recordStatusChange und Speichern
-        function applyUpdate() {
-          // a) History-Eintrag
-          if (field === "status") {
-            patient.history.push(`${getCurrentTime()} Status: ${value}`);
-          } else if (field === "diagnosis") {
-            patient.history.push(
-              `${getCurrentTime()} Verdachtsdiagnose geändert: ${value}`
-            );
-          } else if (field === "discharge") {
-            patient.history.push(`${getCurrentTime()} Entlassen: ${value}`);
-          } else if (field === "transport") {
-            patient.history.push(`${getCurrentTime()} Transport in KH: ${value}`);
-          } else if (field === "additionalRequest") {
-            patient.history.push(`${getCurrentTime()} ${value}`);
-          } else if (
-            !["age", "gender", "location", "team", "rtm", "remarks"].includes(
-              field
-            )
-          ) {
-            patient.history.push(
-              `${getCurrentTime()} ${field} geändert: ${value}`
-            );
-          }
-
-          // b) Feld setzen
-          patient[field] = value;
-
-          // c) Timestamp & Dauer-Berechnungen
-          doTimeTracking();
-
-          // d) persistieren
-          localStorage.setItem("patients", JSON.stringify(patients));
-        }
-
-        // 3) Sonderfall Status → Animation + Delayed Update
-        if (field === "status") {
-          // a) History-Eintrag & Status setzen
-          patient.history.push(`${getCurrentTime()} Status: ${value}`);
-          patient.status = value;
-
-          // b) Timestamp‐ und Dauer‐Berechnung
-          recordStatusChange(patient, value);
-
-          // c) Persist
-          localStorage.setItem("patients", JSON.stringify(patients));
-
-          // d) Animation & Trupp‐Aufräum‐Logik
-          const oldCard = document.querySelector(`.patient-card[data-id='${id}']`);
-          const finish = () => {
-            if (value === "Entlassen" || value === "Transport in KH") {
-              clearAssignments(id);
-            }
-            loadPatients(id);
-            updateLiveTimers(); // einmal direkt nachladen
-          };
-
-          if (oldCard) {
-            oldCard.classList.add("slide-out");
-            oldCard.addEventListener("animationend", finish, { once: true });
-          } else {
-            finish();
-          }
-          return;
-        }
-
-
-        // 4) Alle anderen Felder → direkt updaten
-        applyUpdate();
-        loadPatients();
-      }
-
-      function disposeRequest(id, request) {
-        const patients = JSON.parse(localStorage.getItem("patients")) || [];
-        const patient = patients.find((p) => p.id === id);
-        patient.additionalRequest = request;
-        if (!patient.history) patient.history = [];
-        patient.history.push(`${getCurrentTime()} ${request}`);
-        if (!patient.disposed) patient.disposed = {};
-        patient.disposed[request] = false;
-        localStorage.setItem("patients", JSON.stringify(patients));
-        loadPatients();
+        // 3) Modal sofort öffnen zum schnellen Bearbeiten
+        openEditModal(id);
       }
 
       function markAsDisposed(id, request) {
@@ -478,6 +117,18 @@
         if (!patient.disposed) patient.disposed = {};
         patient.disposed[request] = true;
         // entfernt: kein Eintrag in Historie bei Disponiert
+        localStorage.setItem("patients", JSON.stringify(patients));
+        loadPatients();
+      }
+      
+      function disposeRequest(id, request) {
+        const patients = JSON.parse(localStorage.getItem("patients")) || [];
+        const patient = patients.find((p) => p.id === id);
+        patient.additionalRequest = request;
+        if (!patient.history) patient.history = [];
+        patient.history.push(`${getCurrentTime()} ${request}`);
+        if (!patient.disposed) patient.disposed = {};
+        patient.disposed[request] = false;
         localStorage.setItem("patients", JSON.stringify(patients));
         loadPatients();
       }
@@ -521,395 +172,6 @@ function transportPatient(id) {
         if (!box.checked) {
           box.checked = true;
         }
-      }
-
-      function loadPatients(highlightId) {
-        const patients = JSON.parse(localStorage.getItem("patients")) || [];
-        const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
-
-        patients.forEach((p) => {
-          // 1) createdAt sicher als Zahl
-          if (typeof p.createdAt !== "number") {
-            p.createdAt = Number(p.createdAt) || Date.now();
-          }
-          // 2) statusTimestamps-Objekt sicherstellen und alle Einträge als Zahl
-          p.statusTimestamps = p.statusTimestamps || {};
-          for (const key in p.statusTimestamps) {
-            p.statusTimestamps[key] =
-              Number(p.statusTimestamps[key]) || p.statusTimestamps[key];
-          }
-          // 3) durations-Objekt sicherstellen
-          p.durations = {
-            einsatzdauer: p.durations?.einsatzdauer ?? "",
-            dispositionsdauer: p.durations?.dispositionsdauer ?? "",
-            ausrueckdauer: p.durations?.ausrueckdauer ?? "",
-            behandlungsdauer: p.durations?.behandlungsdauer ?? "",
-            verlegedauerUHS: p.durations?.verlegedauerUHS ?? "",
-          };
-        });
-
-        document.getElementById("activePatients").innerHTML = "";
-        document.getElementById("inUhsPatients").innerHTML = "";
-        document.getElementById("dismissedPatients").innerHTML = "";
-
-        const order = [
-          "gemeldet",
-          "disponiert",
-          "in Behandlung",
-          "verlegt in UHS",
-          "Behandlung in UHS",
-        ];
-        const sorted = patients
-          .slice()
-          .sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status));
-
-        sorted.forEach((patient) => {
-          const isFinal =
-            patient.status === "Transport in KH" ||
-            patient.status === "Entlassen";
-
-          // --- Trupp-Dropdown ---
-          const excluded = ["Nicht Einsatzbereit", "Patient", "Spielfeldrand"];
-          const options = trupps
-            .filter((t) => !excluded.includes(t.status))
-            .map((t) => `<option value="${t.name}">${t.name}</option>`)
-            .join("");
-          const truppSelect = `
-      <select id="teamSelect-${patient.id}" ${isFinal ? "disabled" : ""}>
-        <option value="">Wählen…</option>
-        ${options}
-      </select>
-      <button class="meldung-btn" onclick="assignSelectedTrupp(${
-        patient.id
-      })" ${isFinal ? "disabled" : ""}>
-        Trupp disponieren
-      </button>`;
-
-          // --- Nachforderungen ---
-          let requestBox = "";
-          if (patient.disposed) {
-            requestBox = Object.entries(patient.disposed)
-              .map(([req, done]) => {
-                const style = done
-                  ? "background:#ccffcc"
-                  : "background:#ffcccc";
-                const btn = done
-                  ? ""
-                  : `<button onclick="markAsDisposed(${patient.id}, '${req}')">Disponiert</button>`;
-                return `<div style="${style};padding:4px;margin-bottom:4px;">${req} ${btn}</div>`;
-              })
-              .join("");
-          }
-          const dispoButtons = isFinal
-            ? ""
-            : `<div class="buttons" style="display:flex; flex-direction:column; gap:5px; margin-top:8px;">
-  <button class="meldung-btn" onclick="disposeRequest(${patient.id}, 'Tragetrupp nachgefordert')">
-    Tragetrupp
-  </button>
-  <button class="meldung-btn" onclick="disposeRequest(${patient.id}, 'Polizei nachgefordert')">
-    Polizei
-  </button>
-  <button class="meldung-btn" onclick="disposeRequest(${patient.id}, 'RTW nachgefordert')">
-    RTW
-  </button>
-  <button class="meldung-btn" onclick="disposeRequest(${patient.id}, 'RTW/NEF nachgefordert')">
-    RTW/NEF
-  </button>
-  <button class="meldung-btn" onclick="disposeRequest(${patient.id}, 'NEF nachgefordert')">
-    NEF
-  </button>
-</div>
-`;
-
-          // --- Historie ---
-          const histItems = (patient.history || [])
-            .map((h) => `<li>${h}</li>`)
-            .join("");
-          const addEntry = `<button class="meldung-btn" style="width:100%;margin-top:6px;"
-                 onclick="promptAddEntry(${patient.id})">Eintrag hinzufügen</button>`;
-          const historyHTML = `
-      <div style="min-width:300px;max-width:300px;">
-        <strong>Historie:</strong>
-        <ul>${histItems}</ul>
-        ${addEntry}
-      </div>`;
-
-          // --- Karte ---
-          const card = document.createElement("div");
-          const statusClass = (patient.status || "undefined").replace(
-            /\s/g,
-            "-"
-          );
-          card.className = "patient-card " + statusClass;
-          card.dataset.id = patient.id;
-          card.innerHTML = `
-      <!-- ① Titel als Überschrift oberhalb aller Spalten -->
-  <h2 style="width:100%; margin:0 0 10px; font-size:1.5em; color:#333;">
-    Patient ${patient.id}
-  </h2>
-
-  <!-- ② Jetzt alle Spalten ohne den alten Titel-Span -->
-  <div style="display:flex; flex-wrap:wrap; gap:10px;">
-        <div class="button-group">
-  <button class="meldung-btn" onclick="copyPatientData(${
-    patient.id
-  })">Meldung</button>
-  <button class="reset-btn"   onclick="deletePatient(${
-    patient.id
-  })">Löschen</button>
-</div>
-
-		<div style="margin-top:8px;">
-  <div class="zeitdaten">
-  <strong>Zeitdaten (mm:ss):</strong>
-  <table>
-    <thead>
-      <tr>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>Einsatzdauer</td>
-        <td>
-          <span class="timer einsatzdauer" data-id="${patient.id}">
-            ${
-              patient.durations.einsatzdauer ||
-              formatMS(Date.now() - patient.createdAt)
-            }
-          </span>
-        </td>
-      </tr>
-      <tr>
-        <td>Dispositionsdauer</td>
-        <td>
-          <span class="timer dispositionsdauer" data-id="${patient.id}">
-            ${patient.durations.dispositionsdauer || "–"}
-          </span>
-        </td>
-      </tr>
-      <tr>
-        <td>Ausrückdauer</td>
-        <td>
-          <span class="timer ausrueckdauer" data-id="${patient.id}">
-            ${patient.durations.ausrueckdauer || "–"}
-          </span>
-        </td>
-      </tr>
-	  <tr>
-  <td>Behandlungsdauer</td>
-  <td>
-    <span class="timer behandlungsdauer" data-id="${patient.id}">
-      ${patient.durations.behandlungsdauer || "–"}
-    </span>
-  </td>
-</tr>
-      <tr>
-        <td>Verlegedauer (in UHS)</td>
-        <td>
-          <span class="timer verlegedauerUHS" data-id="${patient.id}">
-            ${patient.durations.verlegedauerUHS || "–"}
-          </span>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-
-
-</div>
-
-      </div>
-
-      <div style="min-width:200px;">
-  <strong>Status:</strong> ${patient.status}<br>
-  <p><button class="status-gemeldet"
-             onclick="updatePatientData(${patient.id}, 'status', 'gemeldet')">
-       gemeldet
-     </button></p>
-  <p><button class="status-disponiert"
-             onclick="updatePatientData(${patient.id}, 'status', 'disponiert')">
-       disponiert
-     </button></p>
-  <p><button class="status-in-Behandlung"
-             onclick="updatePatientData(${
-               patient.id
-             }, 'status', 'in Behandlung')">
-       in Behandlung
-     </button></p>
-  <p><button class="status-verlegt-in-UHS"
-             onclick="updatePatientData(${
-               patient.id
-             }, 'status', 'verlegt in UHS')">
-       verlegt in UHS
-     </button></p>
-  <p><button class="status-Behandlung-in-UHS"
-             onclick="updatePatientData(${
-               patient.id
-             }, 'status', 'Behandlung in UHS')">
-       Behandlung in UHS
-     </button></p>
-     <button class="status-Transport-in-KH"
-             onclick="transportPatient(${patient.id})">
-       Transport in KH
-     </button>
-  <p><button class="status-Entlassen"
-             onclick="dischargePatient(${patient.id})">
-       Entlassen
-     </button></p>
-</div>
-
-
-      ${historyHTML}
-
-	  <div style="margin-top:6px;">
-  <strong>Verdachtsdiagnose:</strong>
-  <div style="margin-bottom:16px;">
-    ${patient.diagnosis || "–"}
-    ${
-      !isFinal
-        ? `<button class="meldung-btn" onclick="editField(${patient.id}, 'diagnosis')">✏️</button>`
-        : ""
-    }
-  </div>
-
-  <strong style="margin-top:16px; display:block;">Dispositionsvorschlag:</strong>
-  <ul style="margin-top:8px; margin-left:16px;">
-    ${(patient.suggestedResources || []).map((r) => `<li>${r}</li>`).join("")}
-  </ul>
-</div>
-
-
-      <div style="min-width:200px;">
-        <strong>Geschlecht:</strong><br>
-        <label><input type="checkbox" name="gender-${patient.id}" value="M"
-                      ${patient.gender === "M" ? "checked" : ""}
-                      ${isFinal ? "disabled" : ""}
-                      onclick="selectOnly(this); updatePatientData(${
-                        patient.id
-                      }, 'gender', this.value)"> M</label>
-        <label><input type="checkbox" name="gender-${patient.id}" value="W"
-                      ${patient.gender === "W" ? "checked" : ""}
-                      ${isFinal ? "disabled" : ""}
-                      onclick="selectOnly(this); updatePatientData(${
-                        patient.id
-                      }, 'gender', this.value)"> W</label>
-        <label><input type="checkbox" name="gender-${patient.id}" value="D"
-                      ${patient.gender === "D" ? "checked" : ""}
-                      ${isFinal ? "disabled" : ""}
-                      onclick="selectOnly(this); updatePatientData(${
-                        patient.id
-                      }, 'gender', this.value)"> D</label><br>
-
-        <div>
-    <strong>Alter:</strong>
-    <div>
-      ${patient.age || "–"}
-      ${
-        !isFinal
-          ? `<button class="meldung-btn" onclick="editField(${patient.id}, 'age')">✏️</button>`
-          : ""
-      }
-    </div>
-  </div>
-
-
-
-  <div style="margin-top:6px;">
-    <strong>Standort:</strong>
-    <div>
-      ${patient.location || "–"}
-      ${
-        !isFinal
-          ? `<button class="meldung-btn" onclick="editField(${patient.id}, 'location')">✏️</button>`
-          : ""
-      }
-    </div>
-  </div>
-
-  <div style="margin-top:6px;">
-    <strong>Bemerkungen:</strong>
-    <div>
-      ${patient.remarks || "–"}
-      <button class="meldung-btn" onclick="editField(${
-        patient.id
-      }, 'remarks')">✏️</button>
-    </div>
-  </div>
-</div>
-
-      <div style="min-width:200px;">
-        <strong>Trupp:</strong><br>
-        ${
-          (patient.team || [])
-            .map(
-              (t, i) =>
-                `<span>${t}${
-                  !isFinal
-                    ? ` <button class="reset-btn" onclick="removeTrupp(${patient.id},${i})">X</button>`
-                    : ``
-                }</span>`
-            )
-            .join("<br>") || "–"
-        }<br>
-        ${truppSelect}
-      </div>
-
-      <div style="min-width:200px;">
-        <strong>RTM:</strong><br>
-        ${
-          (patient.rtm || [])
-            .map(
-              (r, i) =>
-                `<span>${r}${
-                  !isFinal
-                    ? ` <button class="reset-btn" onclick="removeRtm(${patient.id},${i})">X</button>`
-                    : ``
-                }</span>`
-            )
-            .join("<br>") || "–"
-        }<br>
-        <button class="meldung-btn" onclick="assignResource(${
-          patient.id
-        }, 'rtm')" ${isFinal ? "disabled" : ""}>
-          RTM disponieren
-        </button>
-      </div>
-
-      <div style="min-width:240px;">
-  <strong>Nachforderung:</strong>
-  <div style="display:flex; gap:8px; align-items:flex-start; margin-top:4px;">
-    <div style="flex:1;">
-      ${requestBox}
-    </div>
-    <div>
-      ${dispoButtons}
-    </div>
-  </div>
-</div>
-
-    `;
-
-          const container = [
-            "gemeldet",
-            "disponiert",
-            "in Behandlung",
-          ].includes(patient.status)
-            ? "activePatients"
-            : ["verlegt in UHS", "Behandlung in UHS"].includes(patient.status)
-            ? "inUhsPatients"
-            : "dismissedPatients";
-          document.getElementById(container).appendChild(card);
-
-          if (patient.id === highlightId) {
-            card.classList.add("slide-in");
-            card.addEventListener(
-              "animationend",
-              () => card.classList.remove("slide-in"),
-              { once: true }
-            );
-          }
-        });
       }
 
       function promptAddEntry(id) {
@@ -1244,74 +506,60 @@ ${historyText}`;
       }
 
       window.addEventListener("storage", (e) => {
-        if (e.key !== "trupps") return;
-        const newTrupps = JSON.parse(e.newValue || "[]");
-        const patients = JSON.parse(localStorage.getItem("patients")) || [];
-        let dirty = false;
+        if (e.key === "trupps") {
+          // 1) Trupps aus dem Storage parsen
+          const newTrupps = JSON.parse(e.newValue || "[]");
+          // 2) immer neu rendern, damit frisch angemeldete Trupps im Patientendropdown auftauchen
+          loadPatients();
 
-        // 1) Nur bei aktiven Patient:innen: Trupp/RTM rausfiltern
-        patients.forEach((patient) => {
-          // Skip bei finalen Status
-          if (
-            patient.status === "Entlassen" ||
-            patient.status === "Transport in KH"
-          ) {
-            return;
-          }
-          if (!Array.isArray(patient.team)) return;
+          // 3) jetzt erst die Patienten aus Storage holen
+          const patients = JSON.parse(localStorage.getItem("patients")) || [];
+          let dirty = false;
 
-          const before = [...patient.team];
-          patient.team = patient.team.filter((name) => {
-            const t = newTrupps.find((t) => t.name === name);
-            return t && t.status === "Patient";
+          // 4) Entferne alle Trupp-Namen, die nicht mehr Status "Patient" haben
+          patients.forEach((patient) => {
+            if (patient.status === "Entlassen" || patient.status === "Transport in KH") return;
+            if (!Array.isArray(patient.team)) return;
+
+            const before = [...patient.team];
+            patient.team = patient.team.filter((name) => {
+              const t = newTrupps.find((x) => x.name === name);
+              return t && t.status === "Patient";
+            });
+
+            before.forEach((name) => {
+              if (!patient.team.includes(name)) {
+                patient.history = patient.history || [];
+                patient.history.push(
+                  `${getCurrentTime()} Trupp ${name} entfernt (via Trupp-Tracker)`
+                );
+                dirty = true;
+              }
+            });
           });
 
-          before.forEach((name) => {
-            if (!patient.team.includes(name)) {
+          // 5) Falls jetzt keine Trupps oder RTMs mehr dran hängen → zurück auf "gemeldet"
+          patients.forEach((patient) => {
+            if (patient.status === "Entlassen" || patient.status === "Transport in KH")
+              return;
+            const noTrupp = !Array.isArray(patient.team) || patient.team.length === 0;
+            const noRtm = !Array.isArray(patient.rtm) || patient.rtm.length === 0;
+            if (noTrupp && noRtm && patient.status !== "gemeldet") {
+              patient.status = "gemeldet";
               patient.history = patient.history || [];
-              patient.history.push(
-                `${getCurrentTime()} Trupp ${name} entfernt (via Trupp-Tracker)`
-              );
+              patient.history.push(`${getCurrentTime()} Status: gemeldet`);
               dirty = true;
             }
           });
 
-          // (Optional) exakt dasselbe für RTM, falls Ihr das nutzt:
-          // if (Array.isArray(patient.rtm)) {
-          //   const beforeR = [...patient.rtm];
-          //   patient.rtm = patient.rtm.filter(name => {
-          //     const t = newTrupps.find(t => t.name === name);
-          //     return t && t.status === 'Patient';
-          //   });
-          //   // … Historie-Einträge analog …
-          // }
-        });
-
-        // 2) Nur bei aktiven Patient:innen: Wenn kein Trupp UND kein RTM → gemeldet
-        patients.forEach((patient) => {
-          // Wieder Skip bei finalen Status
-          if (
-            patient.status === "Entlassen" ||
-            patient.status === "Transport in KH"
-          ) {
-            return;
+          // 6) Wenn sich etwas geändert hat, speichern & neu rendern
+          if (dirty) {
+            localStorage.setItem("patients", JSON.stringify(patients));
+            loadPatients();
           }
-          const noTrupp =
-            !Array.isArray(patient.team) || patient.team.length === 0;
-          const noRtm = !Array.isArray(patient.rtm) || patient.rtm.length === 0;
-          if (noTrupp && noRtm && patient.status !== "gemeldet") {
-            patient.status = "gemeldet";
-            patient.history = patient.history || [];
-            patient.history.push(`${getCurrentTime()} Status: gemeldet`);
-            dirty = true;
-          }
-        });
-
-        if (dirty) {
-          localStorage.setItem("patients", JSON.stringify(patients));
-          loadPatients();
         }
       });
+
 
       // ENTER-Taste in Modal abfangen und bestätigen
       document.addEventListener("keydown", function (e) {
