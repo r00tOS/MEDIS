@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Truppüberwachung</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <link rel="stylesheet" href="../styles/main.css">
-  <link rel="stylesheet" href="../styles/trupp.css">
+    <link rel="stylesheet" href="../styles/main.css" />
+    <link rel="stylesheet" href="../styles/trupp.css" />
   </head>
   <body>
     <div class="max-einsatz-time">
@@ -19,15 +19,24 @@
     </div>
 
     <div class="button-row">
-    <input type="text" id="newTruppName" placeholder="Neuer Truppname" />
-    <button onclick="addTrupp()">Trupp hinzufügen</button>
-    <button onclick="addTrupps('Stadion', 10, 60, 5)">Stadion 10-60 hinzufügen</button>
-    <button onclick="addTrupps('Kiellinie', 1, 10)">Kiellinie 1-10 hinzufügen</button>
-    <button onclick="addTrupps('Ostseekai', 1, 10)">Ostseekai 1-10 hinzufügen</button>
-    <button onclick="addTrupps('Innenstadt', 1, 10)">Innenstadt 1-10 hinzufügen</button>
-    <button onclick="addTrupps('Bahnhof', 1, 10)">Bahnhof 1-10 hinzufügen</button>
-  </div>
-
+      <input type="text" id="newTruppName" placeholder="Neuer Truppname" />
+      <button onclick="addTrupp()">Trupp hinzufügen</button>
+      <button onclick="addTrupps('Stadion', 10, 60, 5)">
+        Stadion 10-60 hinzufügen
+      </button>
+      <button onclick="addTrupps('Kiellinie', 1, 10)">
+        Kiellinie 1-10 hinzufügen
+      </button>
+      <button onclick="addTrupps('Ostseekai', 1, 10)">
+        Ostseekai 1-10 hinzufügen
+      </button>
+      <button onclick="addTrupps('Innenstadt', 1, 10)">
+        Innenstadt 1-10 hinzufügen
+      </button>
+      <button onclick="addTrupps('Bahnhof', 1, 10)">
+        Bahnhof 1-10 hinzufügen
+      </button>
+    </div>
 
     <div class="section">
       <h2>Im Einsatz</h2>
@@ -42,7 +51,7 @@
       <div id="nichtContainer"></div>
     </div>
 
-<script src="main.js"></script>
+    <script src="main.js"></script>
 
     <script>
       // === 1) nextPatientNumber purely in JS, kein Input ===
@@ -160,18 +169,17 @@
 
         // 8) Wechsel auf Patient → neuen Patienten anlegen
         if (oldStatus !== "Patient" && status === "Patient") {
-          const letzteOrt = trupp.currentOrt ||
-                            (trupp.einsatzHistorie.at(-1)?.ort || "");
+          const letzteOrt =
+            trupp.currentOrt || trupp.einsatzHistorie.at(-1)?.ort || "";
           // neue zentrale Funktion erzeugt Patient und erhöht ID
           const pid = newPatient({
             team: [trupp.name],
             location: letzteOrt,
-            initialStatus: "disponiert"
+            initialStatus: "disponiert",
           });
           trupp.patientInput = pid;
           trupp.patientStart = Date.now();
         }
-
 
         // 9) Bei Streife → neuen Ort abfragen
         if (status === "Streife") {
@@ -207,7 +215,6 @@
         renderTrupps();
         window.scrollTo(0, scrollY);
       }
-
 
       const jsPDF = window.jspdf.jsPDF;
       function updateMaxEinsatzTime() {
@@ -730,46 +737,45 @@ Bemerkung:`;
       setInterval(renderTrupps, 30000);
 
       setInterval(() => {
-  const now = Date.now();
+        const now = Date.now();
 
-  // 1) explizit die beiden Status-Gruppen definieren
-  const pauseStatuses = [
-    "Einsatzbereit in UHS",
-    "Einsatzbereit unterwegs",
-    "Einsatzbereit in Rückhaltung",
-  ];
-  const einsatzStatuses = [
-    "Streife",
-    "Patient",
-    "Spielfeldrand",
-    "Einsatz beendet"
-  ];
+        // 1) explizit die beiden Status-Gruppen definieren
+        const pauseStatuses = [
+          "Einsatzbereit in UHS",
+          "Einsatzbereit unterwegs",
+          "Einsatzbereit in Rückhaltung",
+        ];
+        const einsatzStatuses = [
+          "Streife",
+          "Patient",
+          "Spielfeldrand",
+          "Einsatz beendet",
+        ];
 
-  trupps.forEach((trupp) => {
-    // 2) Erst Pause
-    if (pauseStatuses.includes(trupp.status)) {
-      if (trupp.currentPauseStart) {
-        const diff = now - trupp.currentPauseStart;
-        trupp.pausenzeit = (trupp.pausenzeit || 0) + diff;
-        trupp.totalPauseTime = (trupp.totalPauseTime || 0) + diff;
-        trupp.currentPauseStart = now;
-      }
-    }
-    // 3) Dann Einsatz (inkl. “Einsatz beendet”)
-    else if (einsatzStatuses.includes(trupp.status)) {
-      if (trupp.currentEinsatzStart) {
-        const diff = now - trupp.currentEinsatzStart;
-        trupp.einsatzzeit = (trupp.einsatzzeit || 0) + diff;
-        trupp.currentEinsatzStart = now;
-      }
-    }
-    // 4) alle anderen Status bleiben außen vor
-  });
+        trupps.forEach((trupp) => {
+          // 2) Erst Pause
+          if (pauseStatuses.includes(trupp.status)) {
+            if (trupp.currentPauseStart) {
+              const diff = now - trupp.currentPauseStart;
+              trupp.pausenzeit = (trupp.pausenzeit || 0) + diff;
+              trupp.totalPauseTime = (trupp.totalPauseTime || 0) + diff;
+              trupp.currentPauseStart = now;
+            }
+          }
+          // 3) Dann Einsatz (inkl. “Einsatz beendet”)
+          else if (einsatzStatuses.includes(trupp.status)) {
+            if (trupp.currentEinsatzStart) {
+              const diff = now - trupp.currentEinsatzStart;
+              trupp.einsatzzeit = (trupp.einsatzzeit || 0) + diff;
+              trupp.currentEinsatzStart = now;
+            }
+          }
+          // 4) alle anderen Status bleiben außen vor
+        });
 
-  saveTrupps();
-  renderTrupps();
-}, 15000);
-
+        saveTrupps();
+        renderTrupps();
+      }, 15000);
 
       async function exportPDF() {
         const { jsPDF } = window.jspdf;

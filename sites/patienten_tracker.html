@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Patienten-Tracking</title>
-    <link rel="stylesheet" href="../styles/main.css">
-  <link rel="stylesheet" href="../styles/patient.css">
+    <link rel="stylesheet" href="../styles/main.css" />
+    <link rel="stylesheet" href="../styles/patient.css" />
   </head>
   <body>
     <header>
@@ -32,7 +32,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- jsPDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="main.js"></script>
+    <script src="main.js"></script>
 
     <script>
       const alarmConfig = window.alarmConfig.categories;
@@ -106,38 +106,36 @@
           }
         }
         // 7) alle übrigen Dauern beim finalen Status nachtragen
-      if ((newStatus === "Entlassen" || newStatus === "Transport in KH")) {
-        // Dispositionsdauer, falls nie auf disponiert gewechselt
-        if (
-          patient.statusTimestamps.gemeldet &&
-          !patient.durations.dispositionsdauer
-        ) {
-          patient.durations.dispositionsdauer = formatMS(
-            now - patient.statusTimestamps.gemeldet
-          );
-        }
-        // Ausrückdauer, falls nie auf disponiert→in Behandlung gewechselt
-        if (
-          patient.statusTimestamps.disponiert &&
-          !patient.durations.ausrueckdauer
-        ) {
-          patient.durations.ausrueckdauer = formatMS(
-            now - patient.statusTimestamps.disponiert
-          );
-        }
-        // Verlegedauer UHS, falls nie auf verlegt→UHS gewechselt
-        if (
-          patient.statusTimestamps["verlegt in UHS"] &&
-          !patient.durations.verlegedauerUHS
-        ) {
-          patient.durations.verlegedauerUHS = formatMS(
-            now - patient.statusTimestamps["verlegt in UHS"]
-          );
+        if (newStatus === "Entlassen" || newStatus === "Transport in KH") {
+          // Dispositionsdauer, falls nie auf disponiert gewechselt
+          if (
+            patient.statusTimestamps.gemeldet &&
+            !patient.durations.dispositionsdauer
+          ) {
+            patient.durations.dispositionsdauer = formatMS(
+              now - patient.statusTimestamps.gemeldet
+            );
+          }
+          // Ausrückdauer, falls nie auf disponiert→in Behandlung gewechselt
+          if (
+            patient.statusTimestamps.disponiert &&
+            !patient.durations.ausrueckdauer
+          ) {
+            patient.durations.ausrueckdauer = formatMS(
+              now - patient.statusTimestamps.disponiert
+            );
+          }
+          // Verlegedauer UHS, falls nie auf verlegt→UHS gewechselt
+          if (
+            patient.statusTimestamps["verlegt in UHS"] &&
+            !patient.durations.verlegedauerUHS
+          ) {
+            patient.durations.verlegedauerUHS = formatMS(
+              now - patient.statusTimestamps["verlegt in UHS"]
+            );
+          }
         }
       }
-    }
-
-
 
       // öffnet das Modal mit Keyword-Liste
 
@@ -291,8 +289,8 @@
 
       function clearAssignments(patientId, finalStatus) {
         const now = Date.now();
-        const patients = JSON.parse(localStorage.getItem('patients')) || [];
-        const patient  = patients.find(p => p.id === patientId);
+        const patients = JSON.parse(localStorage.getItem("patients")) || [];
+        const patient = patients.find((p) => p.id === patientId);
         if (!patient) return;
 
         patient.status = finalStatus;
@@ -400,7 +398,9 @@
           } else if (field === "discharge") {
             patient.history.push(`${getCurrentTime()} Entlassen: ${value}`);
           } else if (field === "transport") {
-            patient.history.push(`${getCurrentTime()} Transport in KH: ${value}`);
+            patient.history.push(
+              `${getCurrentTime()} Transport in KH: ${value}`
+            );
           } else if (field === "additionalRequest") {
             patient.history.push(`${getCurrentTime()} ${value}`);
           } else if (
@@ -436,7 +436,9 @@
           localStorage.setItem("patients", JSON.stringify(patients));
 
           // d) Animation & Trupp‐Aufräum‐Logik
-          const oldCard = document.querySelector(`.patient-card[data-id='${id}']`);
+          const oldCard = document.querySelector(
+            `.patient-card[data-id='${id}']`
+          );
           const finish = () => {
             if (value === "Entlassen" || value === "Transport in KH") {
               clearAssignments(id);
@@ -453,7 +455,6 @@
           }
           return;
         }
-
 
         // 4) Alle anderen Felder → direkt updaten
         applyUpdate();
@@ -496,17 +497,16 @@
       }
 
       // ✈️ Prompt für Transport-Ziel und Statuswechsel
-function transportPatient(id) {
-  const ziel = prompt("Bitte Zielklinik eingeben:");
-  if (!ziel) return;
-  // 1) Ziel speichern und in die Historie schreiben
-  updatePatientData(id, "transport", ziel);
-  // 2) Statuswechsel auslösen
-  updatePatientData(id, "status", "Transport in KH");
-  // 3) Trupp-Zuordnung beenden
-  clearAssignments(id, "Transport in KH");
-}
-
+      function transportPatient(id) {
+        const ziel = prompt("Bitte Zielklinik eingeben:");
+        if (!ziel) return;
+        // 1) Ziel speichern und in die Historie schreiben
+        updatePatientData(id, "transport", ziel);
+        // 2) Statuswechsel auslösen
+        updatePatientData(id, "status", "Transport in KH");
+        // 3) Trupp-Zuordnung beenden
+        clearAssignments(id, "Transport in KH");
+      }
 
       /**
        * Deaktiviert alle Checkboxen mit demselben name außer der gerade geklickten.
@@ -1328,18 +1328,20 @@ ${historyText}`;
         const now = Date.now();
         let dirty = false;
 
-        patients.forEach(p => {
-
-          const isFinal = p.status === "Entlassen" || p.status === "Transport in KH";
+        patients.forEach((p) => {
+          const isFinal =
+            p.status === "Entlassen" || p.status === "Transport in KH";
           if (isFinal) return;
           const t = p.statusTimestamps || {};
-          const d = p.durations ||= {};
+          const d = (p.durations ||= {});
           const id = p.id;
 
           // 1) Einsatzdauer → läuft bis final
           if (!isFinal) {
             const val = formatMS(now - p.createdAt);
-            const el = document.querySelector(`.timer.einsatzdauer[data-id='${id}']`);
+            const el = document.querySelector(
+              `.timer.einsatzdauer[data-id='${id}']`
+            );
             if (el) el.textContent = val;
             if (d.einsatzdauer !== val) {
               d.einsatzdauer = val;
@@ -1350,7 +1352,9 @@ ${historyText}`;
           // 2) Dispositionsdauer → nur bis dispo gesetzt
           if (t.gemeldet && !t.disponiert) {
             const val = formatMS(now - t.gemeldet);
-            const el = document.querySelector(`.timer.dispositionsdauer[data-id='${id}']`);
+            const el = document.querySelector(
+              `.timer.dispositionsdauer[data-id='${id}']`
+            );
             if (el) el.textContent = val;
             if (d.dispositionsdauer !== val) {
               d.dispositionsdauer = val;
@@ -1366,7 +1370,9 @@ ${historyText}`;
             !t["Behandlung in UHS"]
           ) {
             const val = formatMS(now - t.disponiert);
-            const el = document.querySelector(`.timer.ausrueckdauer[data-id='${id}']`);
+            const el = document.querySelector(
+              `.timer.ausrueckdauer[data-id='${id}']`
+            );
             if (el) el.textContent = val;
             if (d.ausrueckdauer !== val) {
               d.ausrueckdauer = val;
@@ -1377,7 +1383,9 @@ ${historyText}`;
           // 4) Verlegedauer UHS → von verlegt → Behandlung in UHS
           if (t["verlegt in UHS"] && !t["Behandlung in UHS"]) {
             const val = formatMS(now - t["verlegt in UHS"]);
-            const el = document.querySelector(`.timer.verlegedauerUHS[data-id='${id}']`);
+            const el = document.querySelector(
+              `.timer.verlegedauerUHS[data-id='${id}']`
+            );
             if (el) el.textContent = val;
             if (d.verlegedauerUHS !== val) {
               d.verlegedauerUHS = val;
@@ -1389,7 +1397,9 @@ ${historyText}`;
           const behandlungsStart = t["in Behandlung"] ?? t["Behandlung in UHS"];
           if (behandlungsStart && !isFinal) {
             const val = formatMS(now - behandlungsStart);
-            const el = document.querySelector(`.timer.behandlungsdauer[data-id='${id}']`);
+            const el = document.querySelector(
+              `.timer.behandlungsdauer[data-id='${id}']`
+            );
             if (el) el.textContent = val;
             if (d.behandlungsdauer !== val) {
               d.behandlungsdauer = val;
@@ -1397,12 +1407,10 @@ ${historyText}`;
             }
           }
         });
-
       }
 
       // weiter wie gehabt
       setInterval(updateLiveTimers, 1000);
-
 
       //Export PDF
       async function exportPDF() {
