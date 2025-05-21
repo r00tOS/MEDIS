@@ -35,11 +35,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- jsPDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    
 
     <script>
       const alarmConfig = window.alarmConfig.categories;
-      
 
       // öffnet das Modal mit Keyword-Liste
 
@@ -48,7 +46,6 @@
       let selectedKeyword = null;
 
       // Wird bei jeder Eingabe im Suchfeld aufgerufen
-      
 
       document.addEventListener("DOMContentLoaded", () => {
         document
@@ -56,7 +53,6 @@
           .addEventListener("click", loadPatients(newPatient()));
         loadPatients();
       });
-
 
       function formatMS(ms) {
         if (!isFinite(ms) || ms < 0) return "–";
@@ -78,7 +74,6 @@
         return patients.length + 1;
       }
 
-
       /**
        * Deaktiviert alle Checkboxen mit demselben name außer der gerade geklickten.
        */
@@ -94,335 +89,10 @@
         }
       }
 
-
       function promptAddEntry(id) {
         const text = prompt("Bitte Eintrag eingeben:");
         if (text && text.trim()) {
           addCustomHistory(id, text.trim());
-        }
-      }
-
-      function assignResource(id, type) {
-        const label = type === "team" ? "Trupp" : "RTM";
-        const value = prompt(`${label} disponieren:`);
-        if (value !== null && value.trim() !== "") {
-          const patients = JSON.parse(localStorage.getItem("patients")) || [];
-          const patient = patients.find((p) => p.id === id);
-          if (type === "team") {
-            if (!Array.isArray(patient.team)) patient.team = [];
-            patient.team.push(value);
-          } else {
-            if (!Array.isArray(patient.rtm)) patient.rtm = [];
-            patient.rtm.push(value);
-          }
-          // Nur wenn vorher noch kein Trupp und kein RTM zugewiesen war:
-          if (
-            patient.status !== "in Behandlung" &&
-            (!Array.isArray(patient.team) || patient.team.length === 0) &&
-            (!Array.isArray(patient.rtm) || patient.rtm.length === 0)
-          ) {
-            patient.status = "disponiert";
-            patient.history = patient.history || [];
-            patient.history.push(`${getCurrentTime()} Status: disponiert`);
-          }
-          // Und immer Eintrag, dass RTM disponiert wurde:
-          patient.history = patient.history || [];
-          patient.history.push(
-            `${getCurrentTime()} ${label} ${value} disponiert`
-          );
-
-          localStorage.setItem("patients", JSON.stringify(patients));
-          loadPatients();
-        }
-      }
-
-      function assignSelectedTrupp(patientId) {
-        // Patienten laden und Objekt finden
-        const patients = JSON.parse(localStorage.getItem("patients")) || [];
-        const p = patients.find((x) => x.id === patientId);
-        if (!p) return;
-
-        // Sicherstellen, dass p.team ein Array ist
-        if (!Array.isArray(p.team)) p.team = [];
-
-        // ①: Status-Logik & Timestamp setzen, bevor irgendwas anderes passiert
-        recordStatusChange(p, "disponiert");
-
-        // ②: Wenn noch kein Trupp/RTM und Status nicht 'in Behandlung', auf 'disponiert' setzen
-        if (
-          p.status !== "in Behandlung" &&
-          p.team.length === 0 &&
-          (!Array.isArray(p.rtm) || p.rtm.length === 0)
-        ) {
-          p.status = "disponiert";
-          p.history = p.history || [];
-          p.history.push(`${getCurrentTime()} Status: disponiert`);
-        }
-
-        // ③: Tatsächlichen Trupp-Namen aus dem Select ziehen
-        const sel = document.getElementById(`teamSelect-${patientId}`);
-        const truppName = sel ? sel.value : null;
-        if (!truppName) {
-          // Nichts ausgewählt → abbrechen
-          localStorage.setItem("patients", JSON.stringify(patients));
-          return;
-        }
-
-        // ④: Trupp zu p.team hinzufügen und Historie eintragen
-        p.team.push(truppName);
-        p.history.push(`${getCurrentTime()} Trupp ${truppName} disponiert`);
-
-        // ⑤: Speichern und neu rendern
-        localStorage.setItem("patients", JSON.stringify(patients));
-        loadPatients(patientId);
-
-        // ⑥: Trupp-Tracker aktualisieren (Einsatzzeit starten)
-        const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
-        const t = trupps.find((t) => t.name === truppName);
-        if (t) {
-          const now = Date.now();
-
-          // a) eventuell laufenden Einsatz beenden
-          if (t.currentOrt && t.einsatzStartOrt) {
-            t.einsatzHistorie = t.einsatzHistorie || [];
-            t.einsatzHistorie.push({
-              ort: t.currentOrt,
-              von: t.einsatzStartOrt,
-              bis: now,
-            });
-          }
-
-          // b) Status auf Patient setzen
-          t.status = "Patient";
-          t.patientInput = patientId;
-          // c) Einsatz-Timer starten
-          t.patientStart = now;
-          t.currentEinsatzStart = now;
-          // d) Pause-Timer zurücksetzen
-          t.currentPauseStart = null;
-
-          // e) Speichern & Storage-Event feuern
-          localStorage.setItem("trupps", JSON.stringify(trupps));
-          window.dispatchEvent(
-            new StorageEvent("storage", {
-              key: "trupps",
-              newValue: JSON.stringify(trupps),
-            })
-          );
-        }
-      }
-
-      function removeTrupp(id, index) {
-        if (!confirm("Soll dieser Trupp wirklich entfernt werden?")) return;
-
-        // 1) Patienten-Seite updaten
-        const patients = JSON.parse(localStorage.getItem("patients")) || [];
-        const patient = patients.find((p) => p.id === id);
-        const removed = Array.isArray(patient.team)
-          ? patient.team.splice(index, 1)
-          : [];
-        patient.history = patient.history || [];
-        patient.history.push(
-          `${getCurrentTime()} Trupp ${removed[0]} entfernt`
-        );
-        localStorage.setItem("patients", JSON.stringify(patients));
-        loadPatients();
-
-        // 2) Trupp-Tracker updaten
-        const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
-        const t = trupps.find((t) => t.name === removed[0]);
-        if (t) {
-          const now = Date.now();
-
-          // 📝 Falls gerade ein Patient zugewiesen, Patienteneinsatz abschließen
-          if (t.patientInput && t.patientStart) {
-            t.patientHistorie = t.patientHistorie || [];
-            t.patientHistorie.push({
-              nummer: t.patientInput,
-              von: t.patientStart,
-              bis: now,
-            });
-            // Reset der Patientendaten
-            t.patientInput = "";
-            t.patientStart = null;
-          }
-
-          // Statuswechsel, aber Einsatzzeit weiterlaufen lassen
-          t.status = "Einsatz beendet";
-
-          // Eigene Trupp-Historie ergänzen
-          t.history = t.history || [];
-          t.history.push({
-            when: now,
-            event: "Einsatz beendet",
-          });
-
-          // Speichern und Renderer anstoßen
-          localStorage.setItem("trupps", JSON.stringify(trupps));
-          window.dispatchEvent(
-            new StorageEvent("storage", {
-              key: "trupps",
-              newValue: JSON.stringify(trupps),
-            })
-          );
-        }
-      }
-
-      function removeRtm(id, index) {
-        if (!confirm("Soll dieses RTM wirklich entfernt werden?")) return;
-        const patients = JSON.parse(localStorage.getItem("patients")) || [];
-        const patient = patients.find((p) => p.id === id);
-        if (Array.isArray(patient.rtm)) {
-          const removed = patient.rtm.splice(index, 1);
-          if (!patient.history) patient.history = [];
-          patient.history.push(
-            `${getCurrentTime()} RTM ${removed[0]} entfernt`
-          );
-          localStorage.setItem("patients", JSON.stringify(patients));
-          loadPatients();
-        }
-      }
-
-      function editField(id, field) {
-        if (field === "diagnosis") {
-          // Modal für Stichwörter öffnen
-          openKeywordModal(id);
-          return;
-        }
-        // für alle anderen Felder weiter wie gehabt:
-        const patients = JSON.parse(localStorage.getItem("patients")) || [];
-        const patient = patients.find((p) => p.id === id);
-        const current = patient[field] || "";
-        const labelMap = {
-          age: "Alter",
-          diagnosis: "Verdachtsdiagnose",
-          location: "Standort",
-          remarks: "Bemerkungen",
-        };
-        const value = prompt(
-          `Neuen Wert für ${labelMap[field] || field} eingeben:`,
-          current
-        );
-        if (value !== null) {
-          updatePatientData(id, field, value);
-        }
-      }
-
-      function addCustomHistory(id, message) {
-        if (!message.trim()) return;
-        const patients = JSON.parse(localStorage.getItem("patients")) || [];
-        const patient = patients.find((p) => p.id === id);
-        if (!patient.history) patient.history = [];
-        patient.history.push(`${getCurrentTime()} ${message}`);
-        localStorage.setItem("patients", JSON.stringify(patients));
-        loadPatients();
-      }
-
-      // Globale Variable, die immer aktuell ist
-      window.nextPatientNumber =
-        parseInt(localStorage.getItem("nextPatientNumber"), 10) || 1;
-
-      // 1) Polling
-      function syncNextPatientNumber() {
-        window.nextPatientNumber =
-          parseInt(localStorage.getItem("nextPatientNumber"), 10) || 1;
-      }
-      setInterval(syncNextPatientNumber, 2000);
-
-      // 2) storage-Event
-      window.addEventListener("storage", (e) => {
-        if (e.key === "nextPatientNumber") syncNextPatientNumber();
-      });
-
-      window.addEventListener("storage", (e) => {
-        if (e.key === "patients") {
-          loadPatients();
-        }
-      });
-
-      /**
-       * Sammelt alle relevanten Felddaten des Patienten, formatiert sie
-       * und kopiert den resultierenden Text in die Zwischenablage.
-       */
-      function copyPatientData(id) {
-        // Patientendaten laden
-        const patients = JSON.parse(localStorage.getItem("patients")) || [];
-        const patient = patients.find((p) => p.id === id);
-        if (!patient) return;
-
-        // Felder extrahieren
-        const trupp = Array.isArray(patient.team)
-          ? patient.team.join(", ")
-          : "–";
-        const rtm = Array.isArray(patient.rtm) ? patient.rtm.join(", ") : "–";
-        const nachf =
-          (patient.history || [])
-            .filter((e) => /nachgefordert/.test(e))
-            .join("\n") || "–";
-        const remarks = patient.remarks || "–";
-        const historyText = (patient.history || []).join("\n") || "–";
-
-        // Textblock zusammenbauen
-        const text = `Patient Nr.: ${patient.id}
-Trupp: ${trupp}
-RTM: ${rtm}
-Standort: ${patient.location || "–"}
-Alter: ${patient.age || "–"}
-Geschlecht: ${patient.gender || "–"}
-Verdachtsdiagnose: ${patient.diagnosis || "–"}
-Nachforderungen:
-${nachf}
-Bemerkung: ${remarks}
-
-Patienten-Historie:
-${historyText}`;
-
-        copyToClipboard(text);
-      }
-
-      /**
-       * Kopiert reinen Text in die Zwischenablage, mit Fallback.
-       */
-      function copyToClipboard(text) {
-        if (navigator.clipboard && window.isSecureContext) {
-          navigator.clipboard.writeText(text).catch((err) => {
-            console.error("Clipboard write failed, fallback:", err);
-            fallbackCopyTextToClipboard(text);
-          });
-        } else {
-          fallbackCopyTextToClipboard(text);
-        }
-      }
-
-      function fallbackCopyTextToClipboard(text) {
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        ta.style.position = "fixed"; // verhindert Scroll-Jump
-        ta.style.opacity = "0";
-        document.body.appendChild(ta);
-        ta.focus();
-        ta.select();
-        try {
-          document.execCommand("copy");
-          alert("Patientendaten kopiert 🎉");
-        } catch (err) {
-          console.error("Fallback: Copy failed", err);
-        }
-        document.body.removeChild(ta);
-      }
-
-      function deletePatient(id) {
-        if (!confirm("Soll Patient " + id + " wirklich gelöscht werden?"))
-          return;
-        // aus localStorage holen
-        const patients = JSON.parse(localStorage.getItem("patients")) || [];
-        // Patient finden und entfernen
-        const idx = patients.findIndex((p) => p.id === id);
-        if (idx > -1) {
-          patients.splice(idx, 1);
-          localStorage.setItem("patients", JSON.stringify(patients));
-          // neu rendern
-          loadPatients();
         }
       }
 

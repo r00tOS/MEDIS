@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de" style="overflow: auto;">
+<html lang="de" style="overflow: auto">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -7,10 +7,10 @@
     <link rel="icon" href="icons/medis_app.ico" type="image/x-icon" />
 
     <!-- Zentrales CSS -->
-    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/main.css" />
     <script src="scripts/pdf_export.js"></script>
   </head>
-  <body style="overflow: auto;">
+  <body style="overflow: auto">
     <header
       style="
         display: flex;
@@ -23,37 +23,36 @@
         <img src="icons/medis_long.png" alt="MEDIS" style="height: 15vh" />
       </h1>
       <div>
-  <!-- „Alles löschen“-Button -->
-  <button
-    id="btnClearAll"
-    class="btnHeader"
-    title="Alle Trupps & Patienten löschen"
-    style="font-size: 3.5rem; padding: 8px 12px;"
-  >
-    🗑️
-  </button>
+        <!-- „Alles löschen“-Button -->
+        <button
+          id="btnClearAll"
+          class="btnHeader"
+          title="Alle Trupps & Patienten löschen"
+          style="font-size: 3.5rem; padding: 8px 12px"
+        >
+          🗑️
+        </button>
 
-  <!-- Neuer PDF-Export-Button -->
-  <button
-    id="btnExportPDF"
-    class="btnHeader"
-    title="PDF Export"
-    style="font-size: 3.5rem; padding: 8px 12px;"
-  >
-    📄
-  </button>
+        <!-- Neuer PDF-Export-Button -->
+        <button
+          id="btnExportPDF"
+          class="btnHeader"
+          title="PDF Export"
+          style="font-size: 3.5rem; padding: 8px 12px"
+        >
+          📄
+        </button>
 
-  <!-- Einstellungen -->
-  <button
-    id="btnSettings"
-    class="btnHeader"
-    title="Einstellungen"
-    style="font-size: 3.5rem; padding: 8px 12px;"
-  >
-    ⚙️
-  </button>
-</div>
-
+        <!-- Einstellungen -->
+        <button
+          id="btnSettings"
+          class="btnHeader"
+          title="Einstellungen"
+          style="font-size: 3.5rem; padding: 8px 12px"
+        >
+          ⚙️
+        </button>
+      </div>
     </header>
 
     <!-- HTML -->
@@ -69,7 +68,7 @@
       </div>
     </div>
 
-    <div class="container" style="overflow: auto;">
+    <div class="container" style="overflow: auto">
       <div class="tab-content active" id="tab1">
         <iframe src="sites/trupp_status_tracker.html"></iframe>
       </div>
@@ -125,12 +124,12 @@
           const patientIframe = document.querySelector(
             'iframe[src="sites/patienten_tracker.html"]'
           );
-          if (truppIframe  && truppIframe.contentWindow) truppIframe.contentWindow.location.reload();
-          if (patientIframe && patientIframe.contentWindow) patientIframe.contentWindow.location.reload();
+          if (truppIframe && truppIframe.contentWindow)
+            truppIframe.contentWindow.location.reload();
+          if (patientIframe && patientIframe.contentWindow)
+            patientIframe.contentWindow.location.reload();
           location.reload();
-
         });
-
 
         // Nachdem die beiden Funktionen definiert sind:
         document
