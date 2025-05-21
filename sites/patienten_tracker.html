@@ -47,7 +47,10 @@
       document.addEventListener("DOMContentLoaded", () => {
         document
           .getElementById("btnNewPatient")
-          .addEventListener("click", loadPatients(newPatient()));
+          .addEventListener("click", () => {
+            const id = newPatient({});
+            loadPatients(id);
+          });
         loadPatients();
       });
 
