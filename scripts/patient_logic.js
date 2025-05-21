@@ -571,3 +571,105 @@ function loadPatients(highlightId) {
           }
         });
       }
+
+
+      function recordStatusChange(patient, newStatus) {
+        const now = Date.now();
+        patient.statusTimestamps = patient.statusTimestamps || {};
+        patient.durations = patient.durations || {};
+
+        // 1) Timestamp für den neuen Status nur einmal setzen
+        if (!patient.statusTimestamps[newStatus]) {
+          patient.statusTimestamps[newStatus] = now;
+        }
+
+        // 2) Einsatzdauer → erst beim finalen Status
+        if (
+          (newStatus === "Entlassen" || newStatus === "Transport in KH") &&
+          !patient.durations.einsatzdauer
+        ) {
+          patient.durations.einsatzdauer = formatMS(now - patient.createdAt);
+        }
+
+        // 3) Dispositionsdauer: gemeldet → disponiert
+        if (
+          newStatus === "disponiert" &&
+          patient.statusTimestamps.gemeldet &&
+          !patient.durations.dispositionsdauer
+        ) {
+          patient.durations.dispositionsdauer = formatMS(
+            now - patient.statusTimestamps.gemeldet
+          );
+        }
+
+        // 4) Ausrückdauer: disponiert → in Behandlung/UHS
+        if (
+          ["in Behandlung", "verlegt in UHS", "Behandlung in UHS"].includes(
+            newStatus
+          ) &&
+          patient.statusTimestamps.disponiert &&
+          !patient.durations.ausrueckdauer
+        ) {
+          patient.durations.ausrueckdauer = formatMS(
+            now - patient.statusTimestamps.disponiert
+          );
+        }
+
+        // 5) Verlegedauer UHS: verlegt in UHS → Behandlung in UHS
+        if (
+          newStatus === "Behandlung in UHS" &&
+          patient.statusTimestamps["verlegt in UHS"] &&
+          !patient.durations.verlegedauerUHS
+        ) {
+          patient.durations.verlegedauerUHS = formatMS(
+            now - patient.statusTimestamps["verlegt in UHS"]
+          );
+        }
+
+        // 6) **Behandlungsdauer**: wenn wir ins Finale wechseln
+        if (
+          (newStatus === "Entlassen" || newStatus === "Transport in KH") &&
+          !patient.durations.behandlungsdauer
+        ) {
+          // 6a) nimm den Start-Timestamp „in Behandlung“ oder „Behandlung in UHS“
+          const start =
+            patient.statusTimestamps["in Behandlung"] ||
+            patient.statusTimestamps["Behandlung in UHS"];
+          if (start) {
+            patient.durations.behandlungsdauer = formatMS(now - start);
+          } else {
+            // falls nie richtig in Behandlung
+            patient.durations.behandlungsdauer = "00:00";
+          }
+        }
+        // 7) alle übrigen Dauern beim finalen Status nachtragen
+        if (newStatus === "Entlassen" || newStatus === "Transport in KH") {
+          // Dispositionsdauer, falls nie auf disponiert gewechselt
+          if (
+            patient.statusTimestamps.gemeldet &&
+            !patient.durations.dispositionsdauer
+          ) {
+            patient.durations.dispositionsdauer = formatMS(
+              now - patient.statusTimestamps.gemeldet
+            );
+          }
+          // Ausrückdauer, falls nie auf disponiert→in Behandlung gewechselt
+          if (
+            patient.statusTimestamps.disponiert &&
+            !patient.durations.ausrueckdauer
+          ) {
+            patient.durations.ausrueckdauer = formatMS(
+              now - patient.statusTimestamps.disponiert
+            );
+          }
+          // Verlegedauer UHS, falls nie auf verlegt→UHS gewechselt
+          if (
+            patient.statusTimestamps["verlegt in UHS"] &&
+            !patient.durations.verlegedauerUHS
+          ) {
+            patient.durations.verlegedauerUHS = formatMS(
+              now - patient.statusTimestamps["verlegt in UHS"]
+            );
+          }
+        }
+      }
