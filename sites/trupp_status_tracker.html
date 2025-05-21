@@ -776,66 +776,6 @@ Bemerkung:`;
         renderTrupps();
       }, 15000);
 
-      async function exportPDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        let y = 10;
-
-        doc.setFontSize(14);
-        doc.text("Truppübersicht", 10, y);
-        y += 10;
-
-        trupps.forEach((trupp) => {
-          // Gesamte Pausenzeit direkt aus totalPauseTime (in ms) in Minuten umrechnen
-          const totalPause = Math.floor((trupp.totalPauseTime || 0) / 60000);
-
-          if (y > 240) {
-            doc.addPage();
-            y = 10;
-          }
-
-          doc.setFontSize(12);
-          doc.text(`Trupp: ${trupp.name}`, 10, y);
-          y += 6;
-          doc.text(`Gesamte Pausenzeit: ${totalPause} Min`, 10, y);
-          y += 6;
-
-          const einsatzHistorie = trupp.einsatzHistorie.length
-            ? trupp.einsatzHistorie.map(
-                (e) =>
-                  `• ${e.ort} (${formatTime(e.von)} - ${formatTime(e.bis)})`
-              )
-            : ["–"];
-          doc.text("Einsatzorte:", 10, y);
-          y += 6;
-          einsatzHistorie.forEach((line) => {
-            doc.text(line, 15, y);
-            y += 6;
-          });
-
-          const patientHistorie = trupp.patientHistorie.length
-            ? trupp.patientHistorie.map(
-                (p) =>
-                  `• ${p.nummer} (${formatTime(p.von)} - ${formatTime(p.bis)})`
-              )
-            : ["–"];
-          doc.text("Patientennummern:", 10, y);
-          y += 6;
-          patientHistorie.forEach((line) => {
-            doc.text(line, 15, y);
-            y += 6;
-          });
-
-          y += 8;
-          if (y > 270) {
-            doc.addPage();
-            y = 10;
-          }
-        });
-
-        doc.save("trupp_status_report.pdf");
-      }
-
       function editOrt(index) {
         const trupp = trupps[index];
         const newOrt = prompt(
