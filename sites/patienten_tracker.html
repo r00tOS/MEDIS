@@ -53,7 +53,7 @@
       document.addEventListener("DOMContentLoaded", () => {
         document
           .getElementById("btnNewPatient")
-          .addEventListener("click", createNewPatient);
+          .addEventListener("click", loadPatients(newPatient()));
         loadPatients();
       });
 
@@ -78,19 +78,6 @@
         return patients.length + 1;
       }
 
-      function createNewPatient() {
-        // TODO: Warum nicht direkt loadPatients(newPatient())
-        // 1) neuen Patient anlegen und ID zurückbekommen
-        const id = newPatient({
-          // optional: team, location, initialStatus
-          // team: [], location: "", initialStatus: "gemeldet"
-        });
-        // 2) UI aktualisieren, highlight-ID übergeben wenn gewünscht
-        loadPatients(id);
-      }
-        
-
-      
 
       /**
        * Deaktiviert alle Checkboxen mit demselben name außer der gerade geklickten.
