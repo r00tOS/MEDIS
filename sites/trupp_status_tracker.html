@@ -100,23 +100,6 @@
         });
       }
 
-      function toggleDarkmode() {
-        document.body.classList.toggle("darkmode");
-        document
-          .querySelectorAll(".trupp")
-          .forEach((el) => el.classList.toggle("darkmode"));
-        document
-          .querySelectorAll("button")
-          .forEach((el) => el.classList.toggle("darkmode"));
-        document
-          .querySelectorAll("input")
-          .forEach((el) => el.classList.toggle("darkmode"));
-        localStorage.setItem(
-          "darkmode",
-          document.body.classList.contains("darkmode")
-        );
-      }
-
       let trupps = JSON.parse(localStorage.getItem("trupps") || "[]");
 
       window.addEventListener("storage", (e) => {
