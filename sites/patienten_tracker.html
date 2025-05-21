@@ -69,11 +69,6 @@
         });
       }
 
-      function getNextPatientId() {
-        const patients = JSON.parse(localStorage.getItem("patients")) || [];
-        return patients.length + 1;
-      }
-
       /**
        * Deaktiviert alle Checkboxen mit demselben name außer der gerade geklickten.
        */
