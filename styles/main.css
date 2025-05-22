@@ -6,7 +6,8 @@
   margin: 0;
   padding: 0;
 }
-html, body {
+html,
+body {
   font-family: sans-serif;
   line-height: 1.4;
   background: #fff;
@@ -20,7 +21,7 @@ button {
   border: none;
   border-radius: 5px;
   font-weight: bold;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: background-color 0.2s ease;
 }
 button:hover {
@@ -28,10 +29,18 @@ button:hover {
 }
 
 /* 3. Helfer-Klassen */
-.flex { display: flex; }
-.grid { display: grid; }
-.p-1  { padding: 1rem; }
-.m-1  { margin: 1rem; }
+.flex {
+  display: flex;
+}
+.grid {
+  display: grid;
+}
+.p-1 {
+  padding: 1rem;
+}
+.m-1 {
+  margin: 1rem;
+}
 
 /* 4. MEDIS-Wrapper (nur wirkt in medis.html) */
 body {
@@ -119,7 +128,7 @@ iframe {
 .next-patient-number input:focus {
   border-color: #007bff;
   outline: none;
-  box-shadow: 0 0 0 3px rgba(0,123,255,0.25);
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
 }
 #nextPatientNumber {
   width: 60px;
@@ -141,16 +150,16 @@ header {
 /* Container für Datum & Uhrzeit */
 .datetime {
   position: absolute;
-  top: 50%;                /* vertikal mittig im Header */
-  left: 50%;               /* horizontal in der Seitenmitte */
+  top: 50%; /* vertikal mittig im Header */
+  left: 50%; /* horizontal in der Seitenmitte */
   transform: translate(-50%, -50%);
   text-align: center;
-  pointer-events: none;    /* klick-durchlässig, Buttons bleiben erreichbar */
+  pointer-events: none; /* klick-durchlässig, Buttons bleiben erreichbar */
 }
 
 /* Datum */
 #currentDate {
-  font-size: 1.8rem;       /* ausreichend groß */
+  font-size: 1.8rem; /* ausreichend groß */
   font-weight: bold;
 }
 

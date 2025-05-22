@@ -209,6 +209,8 @@ function copyToClipboard(truppName) {
   if (!trupp) return;
 
   let meldung = "";
+  let standort;
+  let alle;
 
   switch (trupp.status) {
     case "Einsatzbereit in UHS":
@@ -223,7 +225,7 @@ function copyToClipboard(truppName) {
       }`;
       break;
     case "Patient":
-      const standort =
+      standort =
         trupp.currentOrt ||
         (trupp.einsatzHistorie.length
           ? trupp.einsatzHistorie[trupp.einsatzHistorie.length - 1].ort
@@ -238,7 +240,7 @@ Nachforderung:
 Bemerkung:`;
       break;
     case "Spielfeldrand":
-      const alle = trupps
+      alle = trupps
         .filter((t) => t.status === "Spielfeldrand")
         .map((t) => t.name)
         .join(", ");
