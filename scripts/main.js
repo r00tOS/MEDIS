@@ -1,4 +1,5 @@
 // sites/main.js
+
 (function (global) {
   // 0) globalen Zähler initialisieren und bei storage-Events synchronisieren
   global.nextPatientNumber =
@@ -60,3 +61,10 @@
     return next;
   };
 })(window);
+
+function getCurrentTime() {
+  return new Date().toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}

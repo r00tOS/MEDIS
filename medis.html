@@ -22,6 +22,7 @@
       <h1 style="display: flex; align-items: center; gap: 8px; margin: 0">
         <img src="icons/medis_long.png" alt="MEDIS" style="height: 15vh" />
       </h1>
+
       <div>
         <!-- „Alles löschen“-Button -->
         <button
@@ -52,6 +53,11 @@
         >
           ⚙️
         </button>
+      </div>
+
+      <div id="datetime" class="datetime">
+        <div id="currentDate"></div>
+        <div id="currentTime"></div>
       </div>
     </header>
 
@@ -334,6 +340,39 @@
             "⚠️ Dein Browser wird leider nicht offiziell unterstützt. Für volle Funktionalität bitte Chrome oder Edge verwenden.";
           document.body.prepend(warning);
         }
+      });
+
+      function updateDateTime() {
+        const now = new Date();
+        // Datum als TT.MM.JJJJ, Wochentag
+        const days = [
+          "Sonntag",
+          "Montag",
+          "Dienstag",
+          "Mittwoch",
+          "Donnerstag",
+          "Freitag",
+          "Samstag",
+        ];
+        const d = String(now.getDate()).padStart(2, "0");
+        const m = String(now.getMonth() + 1).padStart(2, "0");
+        const y = now.getFullYear();
+        document.getElementById("currentDate").textContent = `${d}.${m}.${y}, ${
+          days[now.getDay()]
+        }`;
+
+        // Uhrzeit HH:MM:SS
+        const hh = String(now.getHours()).padStart(2, "0");
+        const mm = String(now.getMinutes()).padStart(2, "0");
+        const ss = String(now.getSeconds()).padStart(2, "0");
+        document.getElementById(
+          "currentTime"
+        ).textContent = `${hh}:${mm}:${ss}`;
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
       });
     </script>
   </body>

@@ -6,6 +6,9 @@
     <title>Patienten-Tracking</title>
     <link rel="stylesheet" href="../styles/main.css" />
     <link rel="stylesheet" href="../styles/patient.css" />
+    <script src="../scripts/categories.js"></script>
+    <script src="../scripts/logic_patient.js"></script>
+    <script src="../scripts/render_patients.js"></script>
   </head>
   <body>
     <header>
@@ -27,32 +30,10 @@
         <div id="dismissedPatients"></div>
       </section>
     </main>
-    <script src="categories.js"></script>
-    <script src="../scripts/patient_logic.js"></script>
-    <script src="../scripts/main.js"></script>
     <script src="../scripts/keyword_modal.js"></script>
-    <script src="../scripts/render_patient.js"></script>
-
+    <script src="../scripts/main.js"></script>
     <script>
-      const alarmConfig = window.alarmConfig.categories;
-
-      // öffnet das Modal mit Keyword-Liste
-
-      let currentPatientId = null;
-      let selectedCategory = null;
-      let selectedKeyword = null;
-
       // Wird bei jeder Eingabe im Suchfeld aufgerufen
-
-      document.addEventListener("DOMContentLoaded", () => {
-        document
-          .getElementById("btnNewPatient")
-          .addEventListener("click", () => {
-            const id = newPatient({});
-            loadPatients(id);
-          });
-        loadPatients();
-      });
 
       function formatMS(ms) {
         if (!isFinite(ms) || ms < 0) return "–";
@@ -60,13 +41,6 @@
         const mm = String(Math.floor(totalSec / 60)).padStart(2, "0");
         const ss = String(totalSec % 60).padStart(2, "0");
         return `${mm}:${ss}`;
-      }
-
-      function getCurrentTime() {
-        return new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
       }
 
       /**
@@ -92,72 +66,66 @@
       }
 
       window.addEventListener("storage", (e) => {
-        if (e.key !== "trupps") return;
-        const newTrupps = JSON.parse(e.newValue || "[]");
-        const patients = JSON.parse(localStorage.getItem("patients")) || [];
-        let dirty = false;
+        if (e.key === "trupps") {
+          // 1) Trupps aus dem Storage parsen
+          const newTrupps = JSON.parse(e.newValue || "[]");
+          // 2) immer neu rendern, damit frisch angemeldete Trupps im Patientendropdown auftauchen
+          loadPatients();
 
-        // 1) Nur bei aktiven Patient:innen: Trupp/RTM rausfiltern
-        patients.forEach((patient) => {
-          // Skip bei finalen Status
-          if (
-            patient.status === "Entlassen" ||
-            patient.status === "Transport in KH"
-          ) {
-            return;
-          }
-          if (!Array.isArray(patient.team)) return;
+          // 3) jetzt erst die Patienten aus Storage holen
+          const patients = JSON.parse(localStorage.getItem("patients")) || [];
+          let dirty = false;
 
-          const before = [...patient.team];
-          patient.team = patient.team.filter((name) => {
-            const t = newTrupps.find((t) => t.name === name);
-            return t && t.status === "Patient";
+          // 4) Entferne alle Trupp-Namen, die nicht mehr Status "Patient" haben
+          patients.forEach((patient) => {
+            if (
+              patient.status === "Entlassen" ||
+              patient.status === "Transport in KH"
+            )
+              return;
+            if (!Array.isArray(patient.team)) return;
+
+            const before = [...patient.team];
+            patient.team = patient.team.filter((name) => {
+              const t = newTrupps.find((x) => x.name === name);
+              return t && t.status === "Patient";
+            });
+
+            before.forEach((name) => {
+              if (!patient.team.includes(name)) {
+                patient.history = patient.history || [];
+                patient.history.push(
+                  `${getCurrentTime()} Trupp ${name} entfernt (via Trupp-Tracker)`
+                );
+                dirty = true;
+              }
+            });
           });
 
-          before.forEach((name) => {
-            if (!patient.team.includes(name)) {
+          // 5) Falls jetzt keine Trupps oder RTMs mehr dran hängen → zurück auf "gemeldet"
+          patients.forEach((patient) => {
+            if (
+              patient.status === "Entlassen" ||
+              patient.status === "Transport in KH"
+            )
+              return;
+            const noTrupp =
+              !Array.isArray(patient.team) || patient.team.length === 0;
+            const noRtm =
+              !Array.isArray(patient.rtm) || patient.rtm.length === 0;
+            if (noTrupp && noRtm && patient.status !== "gemeldet") {
+              patient.status = "gemeldet";
               patient.history = patient.history || [];
-              patient.history.push(
-                `${getCurrentTime()} Trupp ${name} entfernt (via Trupp-Tracker)`
-              );
+              patient.history.push(`${getCurrentTime()} Status: gemeldet`);
               dirty = true;
             }
           });
 
-          // (Optional) exakt dasselbe für RTM, falls Ihr das nutzt:
-          // if (Array.isArray(patient.rtm)) {
-          //   const beforeR = [...patient.rtm];
-          //   patient.rtm = patient.rtm.filter(name => {
-          //     const t = newTrupps.find(t => t.name === name);
-          //     return t && t.status === 'Patient';
-          //   });
-          //   // … Historie-Einträge analog …
-          // }
-        });
-
-        // 2) Nur bei aktiven Patient:innen: Wenn kein Trupp UND kein RTM → gemeldet
-        patients.forEach((patient) => {
-          // Wieder Skip bei finalen Status
-          if (
-            patient.status === "Entlassen" ||
-            patient.status === "Transport in KH"
-          ) {
-            return;
+          // 6) Wenn sich etwas geändert hat, speichern & neu rendern
+          if (dirty) {
+            localStorage.setItem("patients", JSON.stringify(patients));
+            loadPatients();
           }
-          const noTrupp =
-            !Array.isArray(patient.team) || patient.team.length === 0;
-          const noRtm = !Array.isArray(patient.rtm) || patient.rtm.length === 0;
-          if (noTrupp && noRtm && patient.status !== "gemeldet") {
-            patient.status = "gemeldet";
-            patient.history = patient.history || [];
-            patient.history.push(`${getCurrentTime()} Status: gemeldet`);
-            dirty = true;
-          }
-        });
-
-        if (dirty) {
-          localStorage.setItem("patients", JSON.stringify(patients));
-          loadPatients();
         }
       });
 

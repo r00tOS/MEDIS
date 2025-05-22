@@ -1,0 +1,144 @@
+/* ============================================
+   Keyword‐Modal Grund‐Styles
+   ============================================ */
+#keywordModal.modal {
+  display: none;               /* wird per JS ein‐/ausgeblendet */
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+#keywordModal .modal-content {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  width: 400px;
+  max-width: 90%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Close‐Button */
+#keywordModal .close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+/* ============================================
+   Batch‐Edit Fields (Geschlecht, Alter, …)
+   ============================================ */
+.batch-edit-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.batch-edit-fields label {
+  display: flex;
+  flex-direction: column;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.batch-edit-fields input,
+.batch-edit-fields select {
+  margin-top: 0.25rem;
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ============================================
+   Such‐ und Listenbereich
+   ============================================ */
+#keywordModal .modal-content .list {
+  border: 1px solid #ddd;
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+/* Suchfeld oben */
+#searchInput {
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 0.5rem;
+}
+
+/* Bestätigen‐Button */
+#keywordModal button.confirm-btn {
+  align-self: flex-end;
+  padding: 8px 16px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  margin-top: 0.5rem;
+}
+
+#keywordModal button.confirm-btn:hover {
+  background: #0056b3;
+}
+
+/* modal.css */
+.modal .modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+}
+
+.batch-edit-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.batch-edit-fields label {
+  display: flex;
+  flex-direction: column;
+  font-weight: bold;
+}
+
+.batch-edit-fields input[type="number"],
+.batch-edit-fields input[type="text"] {
+  margin-top: 0.25rem;
+  padding: 0.4rem;
+  font-size: 1rem;
+}
+
+.gender-options {
+  display: flex;
+  gap: 1rem;
+  margin-left: 0.5rem;
+}
+
+.picker-lists {
+  display: flex;
+  gap: 1rem;
+  height: 400px;
+  margin-top: 0.5rem;
+}
+
+.picker-lists .list {
+  flex: 1;
+  overflow: auto;
+}
