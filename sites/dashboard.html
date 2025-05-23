@@ -71,6 +71,18 @@
       th {
         background: #fafafa;
       }
+      th.patient-id,
+      td.patient-id {
+        width: 20px;
+      }
+      th.gender,
+      td.gender {
+        width: 10px;
+      }
+      th.age,
+      td.age {
+        width: 10px;
+      }
 
       /* ----- Status-Farbgebung ----- */
       tr[data-status="gemeldet"] {
@@ -132,10 +144,12 @@
       <table>
         <thead>
           <tr>
-            <th>Patient Nr.</th>
+            <th class="patient-id">Patient Nr.</th>
             <th>Status</th>
-            <th>Alter</th>
-            <th>Geschlecht</th>
+            <th>Trupps</th>
+            <th>RTM</th>
+            <th class="age">Alter</th>
+            <th class="gender">Geschlecht</th>
             <th>Verdachtsdiagnose</th>
             <th>Standort</th>
           </tr>
@@ -188,7 +202,7 @@
         // Patienten-Tabelle
         const tbody = document.getElementById("patient-list");
         if (!active.length) {
-          tbody.innerHTML = `<tr><td colspan="6">Keine Daten</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="8">Keine Daten</td></tr>`;
         } else {
           tbody.innerHTML = active
             .sort((a, b) => a.id - b.id)
@@ -198,17 +212,45 @@
                 "disponiert",
                 "in Behandlung",
               ].includes(p.status);
-              // escape status für data-attribute
+
+              // Escape status für data-attribute
               const statusAttr = p.status.replace(/"/g, "&quot;");
+
+              // Zuordnung der Trupps (Mehrere Trupps untereinander anzeigen)
+              const trupp =
+                trupps
+                  .filter((t) => t.patientInput === p.id)
+                  .map((t) => t.name)
+                  .join("<br>") || "–";
+
+              // RTM: Fehlerbehandlung und Typüberprüfung
+              let rtm = "–"; // Standardwert
+
+              // Wenn p.rtm ein String ist, teilen wir es bei Kommas und fügen <br> ein
+              if (typeof p.rtm === "string" && p.rtm.trim() !== "") {
+                rtm = p.rtm.split(",").join("<br>");
+              }
+              // Wenn p.rtm ein Array ist, kombinieren wir es mit <br>
+              else if (Array.isArray(p.rtm)) {
+                rtm = p.rtm.join("<br>");
+              }
+              // Falls p.rtm ein Objekt oder anderer nicht-String-Typ ist, lassen wir es als "-"
+              else if (p.rtm && typeof p.rtm !== "string") {
+                rtm = "–";
+              }
+
               return `
               <tr data-status="${statusAttr}">
                 <td>${p.id}</td>
                 <td>${p.status}</td>
+                <td>${trupp}</td>  <!-- Trupps untereinander -->
+                <td>${rtm}</td>    <!-- RTM untereinander -->
                 <td>${p.age || "–"}</td>
                 <td>${p.gender || "–"}</td>
                 <td>${p.diagnosis || "–"}</td>
                 <td>${showLoc ? p.location || "–" : ""}</td>
-              </tr>`;
+              </tr>
+            `;
             })
             .join("");
         }

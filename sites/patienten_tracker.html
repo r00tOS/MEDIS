@@ -33,6 +33,12 @@
     <script src="../scripts/keyword_modal.js"></script>
     <script src="../scripts/main.js"></script>
     <script>
+      //event listener für den Button "Neuen Patienten erstellen"
+      document.getElementById("btnNewPatient").addEventListener("click", () => {
+        const id = newPatient({});
+        loadPatients(id);
+        openEditModal(id);
+      });
       // Wird bei jeder Eingabe im Suchfeld aufgerufen
 
       function formatMS(ms) {

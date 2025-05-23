@@ -102,10 +102,6 @@ Tragetrupp
 </button>
 <button class="meldung-btn" onclick="disposeRequest(${patient.id}, 'RTW nachgefordert')">
 RTW
-</button>
-<button class="meldung-btn" onclick="disposeRequest(${patient.id}, 'RTW/NEF nachgefordert')">
-RTW/NEF
-</button>
 <button class="meldung-btn" onclick="disposeRequest(${patient.id}, 'NEF nachgefordert')">
 NEF
 </button>

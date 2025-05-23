@@ -181,12 +181,6 @@ function transportPatient(id) {
 document.addEventListener("DOMContentLoaded", () => {
   // nur binden, wenn das Element wirklich da ist
 
-  document.getElementById("btnNewPatient").addEventListener("click", () => {
-    const id = newPatient({});
-    loadPatients(id);
-    openEditModal(id);
-  });
-
   // loadPatients nur aufrufen, wenn die Patienten‐Container existieren
 
   if (document.getElementById("activePatients")) {
