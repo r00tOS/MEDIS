@@ -1,8 +1,7 @@
 async function exportTruppPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
-  const teams = JSON.parse(localStorage.getItem("teams")) || [];
-
+  const teams = JSON.parse(localStorage.getItem("trupps")) || [];
   const formatTime = (timestamp) => {
     if (!timestamp) return "–";
     const date = new Date(timestamp);

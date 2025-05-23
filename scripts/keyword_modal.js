@@ -126,8 +126,10 @@ function confirmKeyword() {
   // 2) vorgeschlagene Ressourcen speichern
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
   const p = patients.find((x) => x.id === currentPatientId);
-  p.suggestedResources = cfg.resources;
-  localStorage.setItem("patients", JSON.stringify(patients));
+  if (p) {
+    p.suggestedResources = cfg.resources;
+    localStorage.setItem("patients", JSON.stringify(patients));
+  }
 
   closeKeywordModal();
   loadPatients(currentPatientId);
