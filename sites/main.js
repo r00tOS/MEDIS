@@ -957,20 +957,19 @@ ${patient.age || "–"}
 </td>
 </tr>
 <tr>
-<th>Geschlecht</th>
-<td>
-${["M","W","D"].map(g =>
-  `<label style="margin-right:8px;">
-     <input type="checkbox"
-            name="gender-${patient.id}"
-            value="${g}"
-            ${patient.gender === g ? "checked" : ""}
-            ${isFinal ? "disabled" : ""}
-            onclick="selectOnly(this); updatePatientData(${patient.id}, 'gender', this.value)">
-     ${g}
-   </label>`
-).join("")}
-</td>
+  <th>Geschlecht</th>
+  <td>
+    ${["M", "W", "D"].map(g =>
+      `<label style="margin-right:8px;">
+         <input type="checkbox"
+                name="gender-${patient.id}"
+                value="${g}"
+                ${patient.gender === g ? "checked" : ""}
+                disabled>
+         ${g}
+       </label>`
+    ).join("")}
+  </td>
 </tr>
 <tr>
 <th>Standort</th>
