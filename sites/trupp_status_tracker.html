@@ -4,12 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Truppüberwachung</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <link rel="stylesheet" href="../styles/main.css">
-  <link rel="stylesheet" href="../styles/trupp.css">
-    <link rel="stylesheet" href="../styles/patient.css">
+    <link rel="stylesheet" href="../styles/main.css" />
+    <link rel="stylesheet" href="../styles/trupp.css" />
+    <link rel="stylesheet" href="../styles/patient.css" />
+    <script src="../scripts/categories.js"></script>
+    <script src="../scripts/logic_patient.js"></script>
+    <script src="../scripts/logic_trupp.js"></script>
+    <script src="../scripts/render_trupps.js"></script>
+    <script src="../scripts/render_patients.js"></script>
   </head>
   <body>
+    <script src="../scripts/main.js"></script>
+    <script src="../scripts/keyword_modal.js"></script>
     <div class="max-einsatz-time">
       <label for="maxEinsatzTime">Maximale Einsatzzeit (Min.)</label>
       <input
@@ -20,15 +26,24 @@
     </div>
 
     <div class="button-row">
-    <input type="text" id="newTruppName" placeholder="Neuer Truppname" />
-    <button onclick="addTrupp()">Trupp hinzufügen</button>
-    <button onclick="addTrupps('Stadion', 10, 60, 5)">Stadion 10-60 hinzufügen</button>
-    <button onclick="addTrupps('Kiellinie', 1, 10)">Kiellinie 1-10 hinzufügen</button>
-    <button onclick="addTrupps('Ostseekai', 1, 10)">Ostseekai 1-10 hinzufügen</button>
-    <button onclick="addTrupps('Innenstadt', 1, 10)">Innenstadt 1-10 hinzufügen</button>
-    <button onclick="addTrupps('Bahnhof', 1, 10)">Bahnhof 1-10 hinzufügen</button>
-  </div>
-
+      <input type="text" id="newTruppName" placeholder="Neuer Truppname" />
+      <button onclick="addTrupp()">Trupp hinzufügen</button>
+      <button onclick="addTrupps('Stadion', 10, 60, 5)">
+        Stadion 10-60 hinzufügen
+      </button>
+      <button onclick="addTrupps('Kiellinie', 1, 10)">
+        Kiellinie 1-10 hinzufügen
+      </button>
+      <button onclick="addTrupps('Ostseekai', 1, 10)">
+        Ostseekai 1-10 hinzufügen
+      </button>
+      <button onclick="addTrupps('Innenstadt', 1, 10)">
+        Innenstadt 1-10 hinzufügen
+      </button>
+      <button onclick="addTrupps('Bahnhof', 1, 10)">
+        Bahnhof 1-10 hinzufügen
+      </button>
+    </div>
 
     <div class="section">
       <h2>Im Einsatz</h2>
@@ -42,9 +57,6 @@
       <h2>Nicht Einsatzbereit</h2>
       <div id="nichtContainer"></div>
     </div>
-
-    <script src="categories.js"></script>
-    <script src="main.js"></script>
 
     <script>
       // === 1) nextPatientNumber purely in JS, kein Input ===
@@ -66,158 +78,6 @@
         }
       });
 
-      // === 4) updateTrupp: wenn Status Patient, nextPatientNumber verwenden ===
-      function updateTrupp(index, status) {
-        // 0) Scroll-Position merken
-        const scrollEl = document.scrollingElement || document.documentElement;
-        const scrollY = scrollEl.scrollTop;
-
-        const trupp = trupps[index];
-        const oldStatus = trupp.status;
-        const now = Date.now();
-        const timeStr = new Date(now).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-
-        // 1) Status-Gruppen definieren
-        const einsatzStatuses = [
-          "Streife",
-          "Patient",
-          "Spielfeldrand",
-          "Einsatz beendet",
-        ];
-        const pauseStatuses = [
-          "Einsatzbereit in UHS",
-          "Einsatzbereit unterwegs",
-          "Einsatzbereit in Rückhaltung",
-        ];
-        // Alles andere ist "Nicht Einsatzbereit"
-
-        // 2) Wechsel IN Pausen-Status → Pause neu starten
-        if (
-          pauseStatuses.includes(status) &&
-          !pauseStatuses.includes(oldStatus)
-        ) {
-          trupp.pausenzeit = 0;
-          trupp.currentPauseStart = now;
-        }
-
-        // 3) Wechsel WEG von Pausen-Status → Messung stoppen
-        if (
-          !pauseStatuses.includes(status) &&
-          pauseStatuses.includes(oldStatus)
-        ) {
-          trupp.currentPauseStart = null;
-        }
-
-        // 4) Wechsel IN Einsatz-Status → Einsatz neu starten
-        if (
-          einsatzStatuses.includes(status) &&
-          !einsatzStatuses.includes(oldStatus)
-        ) {
-          trupp.einsatzzeit = 0;
-          trupp.currentEinsatzStart = now;
-        }
-
-        // 5) Wechsel WEG von Einsatz-Status → Messung stoppen
-        if (
-          !einsatzStatuses.includes(status) &&
-          einsatzStatuses.includes(oldStatus)
-        ) {
-          trupp.currentEinsatzStart = null;
-        }
-
-        // 6) Historie-Eintrag
-        if (!trupp.history) trupp.history = [];
-        if (oldStatus !== status) {
-          trupp.history.push(`${timeStr} Status: ${status}`);
-        }
-
-        // 7) Spezielle Abschlüsse für Patient & Streife
-        if (
-          oldStatus === "Patient" &&
-          trupp.patientInput &&
-          trupp.patientStart
-        ) {
-          trupp.patientHistorie.push({
-            nummer: trupp.patientInput,
-            von: trupp.patientStart,
-            bis: now,
-          });
-          trupp.patientInput = trupp.patientStart = null;
-        }
-        if (
-          oldStatus === "Streife" &&
-          trupp.currentOrt &&
-          trupp.einsatzStartOrt
-        ) {
-          trupp.einsatzHistorie.push({
-            ort: trupp.currentOrt,
-            von: trupp.einsatzStartOrt,
-            bis: now,
-          });
-          trupp.currentOrt = trupp.einsatzStartOrt = null;
-        }
-
-        // 8) Wechsel auf Patient → neuen Patienten anlegen
-        if (oldStatus !== "Patient" && status === "Patient") {
-          const letzteOrt = trupp.currentOrt ||
-                            (trupp.einsatzHistorie.at(-1)?.ort || "");
-
-          // neue zentrale Funktion erzeugt Patient und erhöht ID
-          const pid = newPatient({
-            team: [trupp.name],
-            location: letzteOrt,
-            initialStatus: "disponiert"
-          });
-
-          trupp.patientInput = pid;
-          trupp.patientStart = Date.now();
-          openEditModal(pid);
-
-          // Füge den Historieneintrag für Status "disponiert" hinzu
-          addHistoryEntry(pid, "Status: disponiert");
-        }
-
-
-        // 9) Bei Streife → neuen Ort abfragen
-        if (status === "Streife") {
-          trupp.einsatzStartOrt = now;
-          const neuerOrt = prompt(
-            "Bitte Einsatzort eingeben:",
-            trupp.currentOrt || ""
-          );
-          if (neuerOrt !== null) trupp.currentOrt = neuerOrt.trim();
-        }
-
-        // 10) Status übernehmen
-        trupp.status = status;
-        trupp.lastStatusChange = now;
-
-        // 11) Trupp aus Patientendaten entfernen, wenn Weg von Patient
-        if (oldStatus === "Patient" && status !== "Patient") {
-          const stored = JSON.parse(localStorage.getItem("patients")) || [];
-          stored.forEach((p) => {
-            if (Array.isArray(p.team)) {
-              const idx = p.team.indexOf(trupp.name);
-              if (idx >= 0) {
-                p.team.splice(idx, 1);
-                p.history = p.history || [];
-                p.history.push(`${timeStr} Trupp ${trupp.name} entfernt`);
-              }
-            }
-          });
-        }
-
-        // 12) Speichern & neu rendern
-        saveTrupps();
-        renderTrupps();
-        window.scrollTo(0, scrollY);
-      }
-
-
-      const jsPDF = window.jspdf.jsPDF;
       function updateMaxEinsatzTime() {
         localStorage.setItem("nextMaxEinsatzTime", nextMaxEinsatzTime);
         renderTrupps();
@@ -243,81 +103,6 @@
             div.classList.remove("show-status-buttons");
           }
         });
-      }
-
-      function toggleDarkmode() {
-        document.body.classList.toggle("darkmode");
-        document
-          .querySelectorAll(".trupp")
-          .forEach((el) => el.classList.toggle("darkmode"));
-        document
-          .querySelectorAll("button")
-          .forEach((el) => el.classList.toggle("darkmode"));
-        document
-          .querySelectorAll("input")
-          .forEach((el) => el.classList.toggle("darkmode"));
-        localStorage.setItem(
-          "darkmode",
-          document.body.classList.contains("darkmode")
-        );
-      }
-      function copyToClipboard(truppName) {
-        const trupp = trupps.find((t) => t.name === truppName);
-        if (!trupp) return;
-
-        let meldung = "";
-
-        switch (trupp.status) {
-          case "Einsatzbereit in UHS":
-            meldung = `${trupp.name} einsatzbereit in UHS`;
-            break;
-          case "Nicht Einsatzbereit":
-            meldung = `${trupp.name} nicht einsatzbereit`;
-            break;
-          case "Streife":
-            meldung = `${trupp.name} übernimmt Streifengebiet ${
-              trupp.currentOrt || "[Ort]"
-            }`;
-            break;
-          case "Patient":
-            const standort =
-              trupp.currentOrt ||
-              (trupp.einsatzHistorie.length
-                ? trupp.einsatzHistorie[trupp.einsatzHistorie.length - 1].ort
-                : "");
-            meldung = `Patient Nr.: ${trupp.patientInput || "[Patientennummer]"}
-Trupp: ${trupp.name}
-Standort: ${standort || ""}
-Alter:
-Geschlecht:
-Verdachtsdiagnose:
-Nachforderung:
-Bemerkung:`;
-            break;
-          case "Spielfeldrand":
-            const alle = trupps
-              .filter((t) => t.status === "Spielfeldrand")
-              .map((t) => t.name)
-              .join(", ");
-            meldung = `${alle} Spielfeldrand erreicht`;
-            break;
-          default:
-            meldung = `${trupp.name}: ${trupp.status}`;
-        }
-
-        navigator.clipboard
-          .writeText(meldung)
-          .then(() => {
-            console.log("In Zwischenablage kopiert:", meldung);
-          })
-          .catch((err) => {
-            console.error("Fehler beim Kopieren:", err);
-          });
-      }
-
-      function formatTime(ms) {
-        const d = new Date(ms);
-        return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
       }
 
       let trupps = JSON.parse(localStorage.getItem("trupps") || "[]");
@@ -388,456 +173,49 @@ Bemerkung:`;
         }
       }, 5000);
 
-      function saveTrupps() {
-        localStorage.setItem("nextMaxEinsatzTime", nextMaxEinsatzTime);
-        localStorage.setItem("trupps", JSON.stringify(trupps));
-      }
-
-      function resetAll() {
-        if (confirm("Willst du wirklich alle Daten löschen?")) {
-          // Entferne alle relevanten LocalStorage-Einträge
-          localStorage.removeItem("trupps");
-          localStorage.removeItem("nextPatientNumber");
-          localStorage.removeItem("nextMaxEinsatzTime");
-
-          // Setze Arrays/Variablen zurück
-          trupps = [];
-          nextPatientNumber = 1;
-          nextMaxEinsatzTime = 45;
-
-          // Aktualisiere die Eingabefelder
-          document.getElementById("maxEinsatzTime").value = nextMaxEinsatzTime;
-
-          // Speichere und rendere neu
-          saveTrupps();
-          renderTrupps();
-        }
-      }
-
-      function addTrupp(name = null) {
-        const input =
-          name || document.getElementById("newTruppName").value.trim();
-        if (!input) return;
-        trupps.push({
-          name: input,
-          status: "Nicht Einsatzbereit",
-          lastStatusChange: Date.now(),
-          currentPauseStart: Date.now(),
-          currentEinsatzStart: null,
-          totalPauseTime: 0,
-          pausenzeit: 0, // neu: initiale Pausenzeit
-          einsatzzeit: 0, // neu: initiale Einsatzzeit
-          einsatzHistorie: [],
-          patientHistorie: [],
-          patientInput: "",
-          currentOrt: "",
-          einsatzStartOrt: null,
-          patientStart: null,
-        });
-        // Eingabefeld leeren, wenn vom Nutzer getriggert
-        if (!name) document.getElementById("newTruppName").value = "";
-        saveTrupps();
-        renderTrupps();
-      }
-
-      function addTrupps(prefix, start, end, step = 1) {
-        if (!confirm(`Willst du wirklich neue Trupps hinzufügen?`)) return;
-        for (let i = start; i <= end; i += step) {
-          addTrupp(`${prefix} ${i}`);
-        }
-      }
-
-      function deleteTrupp(index) {
-        if (!confirm("Willst du diesen Trupp wirklich löschen?")) return;
-        const key = trupps[index].name;
-        const el = document.querySelector(`[data-key="${key}"]`);
-        if (el) {
-          el.classList.add("move-out");
-          setTimeout(() => {
-            trupps.splice(index, 1);
-            saveTrupps();
-            renderTrupps();
-          }, 300); // Delay matches CSS transition time
-        } else {
-          trupps.splice(index, 1);
-          saveTrupps();
-          renderTrupps();
-        }
-      }
-
-      function renderTrupps() {
-        const scrollY = window.scrollY;
-        const now = Date.now();
-
-        const prevRects = new Map();
-        document.querySelectorAll(".trupp").forEach((el) => {
-          if (el.dataset.key)
-            prevRects.set(el.dataset.key, el.getBoundingClientRect());
-        });
-
-        einsatzContainer.innerHTML =
-          pauseContainer.innerHTML =
-          nichtContainer.innerHTML =
-            "";
-        const einsatz = [],
-          pause = [],
-          nicht = [];
-
-        trupps.forEach((trupp, i) => {
-          if (!trupp.id)
-            trupp.id = "trupp_" + Math.random().toString(36).substring(2, 10);
-          const div = document.createElement("div");
-          div.className = "trupp";
-          div.dataset.key = trupp.name;
-          div.dataset.truppId = trupp.id;
-
-          const einsatzzeit = trupp.einsatzzeit || 0;
-          let pausenzeit = trupp.pausenzeit || 0;
-          let totalPause = trupp.totalPauseTime || 0;
-
-          if (
-            trupp.currentEinsatzStart &&
-            einsatzzeit > nextMaxEinsatzTime * 60000
-          )
-            div.classList.add("ueberzogen");
-          if (trupp.status === "Einsatzbereit in Rückhaltung")
-            div.classList.add("rueckhaltung");
-          if (trupp.status === "Patient") div.classList.add("patient");
-          if (trupp.status === "Spielfeldrand")
-            div.classList.add("spielfeldrand");
-          // 1) erst einmal die gemeinsame Einsatz-Gruppe
-          if (
-            ["Streife", "Patient", "Spielfeldrand", "Einsatz beendet"].includes(
-              trupp.status
-            )
-          ) {
-            div.classList.add("einsatz");
-            // und wenn es genau "Einsatz beendet" ist, den lila Style
-            if (trupp.status === "Einsatz beendet") {
-              div.classList.add("einsatz-beendet");
-            }
-          }
-          // 2) Pause-Status
-          else if (
-            [
-              "Einsatzbereit in UHS",
-              "Einsatzbereit unterwegs",
-              "Einsatzbereit in Rückhaltung",
-            ].includes(trupp.status)
-          ) {
-            div.classList.add("pause");
-          }
-          // 3) alle anderen → nicht einsatzbereit
-          else {
-            div.classList.add("nicht-einsatzbereit");
-          }
-
-          const min = (ms) => Math.floor(ms / 60000);
-          const timeDisplay =
-            trupp.currentEinsatzStart &&
-            trupp.status !== "Einsatzbereit in Rückhaltung"
-              ? `Aktuelle Einsatzzeit: ${min(einsatzzeit)} Min`
-              : `Aktuelle Pausenzeit: ${min(pausenzeit)} Min${
-                  trupp.status === "Einsatzbereit in Rückhaltung"
-                    ? " (Rückhaltung zählt als Pause)"
-                    : ""
-                }`;
-
-          const gesamtPause = `Gesamte Pausenzeit: ${min(totalPause)} Min`;
-
-          const progress =
-            trupp.currentEinsatzStart &&
-            trupp.status !== "Einsatzbereit in Rückhaltung"
-              ? Math.min(einsatzzeit / (nextMaxEinsatzTime * 60000), 1)
-              : 0;
-          const progressBar =
-            trupp.currentEinsatzStart &&
-            trupp.status !== "Einsatzbereit in Rückhaltung"
-              ? `<div style='background:#ccc;height:8px;border-radius:4px;margin-top:4px;'>
-     <div style='height:8px;width:${Math.floor(
-       progress * 100
-     )}%;background:#28a745;border-radius:4px;'></div>
-   </div>`
-              : "";
-
-          div.innerHTML = `
-          <div class="trupp-header">
-  <h3>${trupp.name}</h3>
-  ${
-    trupp.status === "Nicht Einsatzbereit"
-      ? `<button class="delete-btn" onclick="deleteTrupp(${i})">×</button>`
-      : ""
-  }
-          </div>
-          <div style="display: flex; align-items: center; gap: 8px;">
-  <span class="status-display" onclick="toggleStatusButtons('${
-    trupp.id
-  }')">Status: ${trupp.status}</span>
-  ${
-    !["Einsatzbereit in Rückhaltung", "Einsatzbereit unterwegs"].includes(
-      trupp.status
-    )
-      ? `<button class="meldung-btn" onclick="copyToClipboard('${trupp.name}')">Meldung</button>`
-      : ""
-  }
-</div>
-<div class="status-buttons" style="display:none;">
-<button class="btn-nicht-einsatzbereit" onclick="updateTrupp(${i}, 'Nicht Einsatzbereit')">Nicht Einsatzbereit</button>
-            <button class="btn-pause" onclick="updateTrupp(${i}, 'Einsatzbereit in UHS')">In UHS</button>
-            <button class="btn-pause" onclick="updateTrupp(${i}, 'Einsatzbereit unterwegs')">Unterwegs</button>
-            <button class="btn-pause" onclick="updateTrupp(${i}, 'Einsatzbereit in Rückhaltung')">In Rückhaltung</button>
-            <button class="btn-einsatz" onclick="updateTrupp(${i}, 'Streife')">Streife</button>
-            ${
-              trupp.status !== "Patient"
-                ? `<button class="btn-patient" onclick="updateTrupp(${i}, 'Patient')">Patient</button>`
-                : ""
-            }
-            <button class="btn-spielfeldrand" onclick="updateTrupp(${i}, 'Spielfeldrand')">Spielfeldrand</button>
-          </div>
-
-		  ${
-        trupp.status === "Streife"
-          ? `<p><strong>${
-              trupp.currentOrt || "kein Einsatzort"
-            }</strong> <button onclick="editOrt(${i})">✎</button></p>`
-          : ""
-      }
-          ${
-            trupp.status === "Patient"
-              ? `<p><strong>Patient ${
-                  trupp.patientInput || "keine Nummer"
-                }</strong>`
-              : ""
-          }
-
-          <p>${timeDisplay}</p>
-          ${progressBar}
-          <p>${gesamtPause}</p>
-
-          <p><strong>Einsatzorte:</strong><br>
-            ${
-              trupp.einsatzHistorie.length
-                ? trupp.einsatzHistorie
-                    .map(
-                      (h) =>
-                        `${h.ort} (${formatTime(h.von)} - ${formatTime(h.bis)})`
-                    )
-                    .join("<br>")
-                : "–"
-            }
-          </p>
-          <p><strong>Patientennummern:</strong><br>
-            ${
-              trupp.patientHistorie.length
-                ? trupp.patientHistorie
-                    .map(
-                      (h) =>
-                        `${h.nummer} (${formatTime(h.von)} - ${formatTime(
-                          h.bis
-                        )})`
-                    )
-                    .join("<br>")
-                : "–"
-            }
-          </p>
-        `;
-
-          const einsatzSort =
-            trupp.status === "Spielfeldrand"
-              ? 99
-              : trupp.status === "Patient"
-              ? 2
-              : trupp.status === "Einsatz beendet"
-              ? 1
-              : 0;
-          if (
-            ["Streife", "Patient", "Spielfeldrand", "Einsatz beendet"].includes(
-              trupp.status
-            )
-          )
-            einsatz.push({ el: div, sort: einsatzSort });
-          else if (
-            ["Einsatzbereit in UHS", "Einsatzbereit unterwegs"].includes(
-              trupp.status
-            )
-          )
-            pause.push({ el: div, sort: pausenzeit });
-          else if (trupp.status === "Einsatzbereit in Rückhaltung")
-            pause.push({ el: div, sort: -1 });
-          else nicht.push({ el: div, sort: pausenzeit });
-        });
-
-        // 1) Im Einsatz: sortiere absteigend nach aktueller Einsatzzeit
-        // --- am Ende von renderTrupps(), statt deiner jetzigen drei .sort-Blöcke ---
-
-        // 1) IM EINSATZ: erst nach Status-Priorität (sort), dann nach Einsatzzeit absteigend
-        einsatz
-          .sort((a, b) => {
-            if (a.sort !== b.sort) return a.sort - b.sort;
-            const tA =
-              trupps.find((t) => t.name === a.el.dataset.key).einsatzzeit || 0;
-            const tB =
-              trupps.find((t) => t.name === b.el.dataset.key).einsatzzeit || 0;
-            return tB - tA; // längste Einsatzzeit zuerst
-          })
-          .forEach((t) => einsatzContainer.appendChild(t.el));
-
-        // 2) IN PAUSE: erst nach Pausen-Priorität (hier pausenstatus, wir haben kein sort dafür,
-        //    also überspringen wir stattdessen direkt die Zeit-Sortierung)
-        pause
-          .sort((a, b) => {
-            const statusOrder = [
-              "Einsatzbereit in UHS",
-              "Einsatzbereit unterwegs",
-              "Einsatzbereit in Rückhaltung",
-            ];
-            const trA = trupps.find((t) => t.name === a.el.dataset.key);
-            const trB = trupps.find((t) => t.name === b.el.dataset.key);
-            const ordA = statusOrder.indexOf(trA.status);
-            const ordB = statusOrder.indexOf(trB.status);
-            if (ordA !== ordB) return ordA - ordB;
-            // gleiche Gruppe → längste Pausenzeit zuerst
-            return (trB.pausenzeit || 0) - (trA.pausenzeit || 0);
-          })
-          .forEach((t) => pauseContainer.appendChild(t.el));
-
-        // 3) NICHT EINSATZBEREIT: weiter unverändert, nach Pausenzeit
-        nicht
-          .sort((a, b) => {
-            const pA =
-              trupps.find((t) => t.name === a.el.dataset.key).pausenzeit || 0;
-            const pB =
-              trupps.find((t) => t.name === b.el.dataset.key).pausenzeit || 0;
-            return pB - pA;
-          })
-          .forEach((t) => nichtContainer.appendChild(t.el));
-
-        window.scrollTo(0, scrollY);
-
-        requestAnimationFrame(() => {
-          document.querySelectorAll(".trupp").forEach((el) => {
-            const key = el.dataset.key;
-            const oldRect = prevRects.get(key);
-            if (!oldRect) return;
-            const newRect = el.getBoundingClientRect();
-            const dx = oldRect.left - newRect.left;
-            const dy = oldRect.top - newRect.top;
-            if (dx !== 0 || dy !== 0) {
-              el.style.transition = "none";
-              el.style.transform = `translate(${dx}px, ${dy}px)`;
-              requestAnimationFrame(() => {
-                el.style.transition = "transform 0.4s ease";
-                el.style.transform = "";
-              });
-            }
-          });
-        });
-      }
-
       renderTrupps();
       setInterval(renderTrupps, 30000);
 
       setInterval(() => {
-  const now = Date.now();
+        const now = Date.now();
 
-  // 1) explizit die beiden Status-Gruppen definieren
-  const pauseStatuses = [
-    "Einsatzbereit in UHS",
-    "Einsatzbereit unterwegs",
-    "Einsatzbereit in Rückhaltung",
-  ];
-  const einsatzStatuses = [
-    "Streife",
-    "Patient",
-    "Spielfeldrand",
-    "Einsatz beendet"
-  ];
-
-  trupps.forEach((trupp) => {
-    // 2) Erst Pause
-    if (pauseStatuses.includes(trupp.status)) {
-      if (trupp.currentPauseStart) {
-        const diff = now - trupp.currentPauseStart;
-        trupp.pausenzeit = (trupp.pausenzeit || 0) + diff;
-        trupp.totalPauseTime = (trupp.totalPauseTime || 0) + diff;
-        trupp.currentPauseStart = now;
-      }
-    }
-    // 3) Dann Einsatz (inkl. “Einsatz beendet”)
-    else if (einsatzStatuses.includes(trupp.status)) {
-      if (trupp.currentEinsatzStart) {
-        const diff = now - trupp.currentEinsatzStart;
-        trupp.einsatzzeit = (trupp.einsatzzeit || 0) + diff;
-        trupp.currentEinsatzStart = now;
-      }
-    }
-    // 4) alle anderen Status bleiben außen vor
-  });
-
-  saveTrupps();
-  renderTrupps();
-}, 15000);
-
-
-      async function exportPDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        let y = 10;
-
-        doc.setFontSize(14);
-        doc.text("Truppübersicht", 10, y);
-        y += 10;
+        // 1) explizit die beiden Status-Gruppen definieren
+        const pauseStatuses = [
+          "Einsatzbereit in UHS",
+          "Einsatzbereit unterwegs",
+          "Einsatzbereit in Rückhaltung",
+        ];
+        const einsatzStatuses = [
+          "Streife",
+          "Patient",
+          "Spielfeldrand",
+          "Einsatz beendet",
+        ];
 
         trupps.forEach((trupp) => {
-          // Gesamte Pausenzeit direkt aus totalPauseTime (in ms) in Minuten umrechnen
-          const totalPause = Math.floor((trupp.totalPauseTime || 0) / 60000);
-
-          if (y > 240) {
-            doc.addPage();
-            y = 10;
+          // 2) Erst Pause
+          if (pauseStatuses.includes(trupp.status)) {
+            if (trupp.currentPauseStart) {
+              const diff = now - trupp.currentPauseStart;
+              trupp.pausenzeit = (trupp.pausenzeit || 0) + diff;
+              trupp.totalPauseTime = (trupp.totalPauseTime || 0) + diff;
+              trupp.currentPauseStart = now;
+            }
           }
-
-          doc.setFontSize(12);
-          doc.text(`Trupp: ${trupp.name}`, 10, y);
-          y += 6;
-          doc.text(`Gesamte Pausenzeit: ${totalPause} Min`, 10, y);
-          y += 6;
-
-          const einsatzHistorie = trupp.einsatzHistorie.length
-            ? trupp.einsatzHistorie.map(
-                (e) =>
-                  `• ${e.ort} (${formatTime(e.von)} - ${formatTime(e.bis)})`
-              )
-            : ["–"];
-          doc.text("Einsatzorte:", 10, y);
-          y += 6;
-          einsatzHistorie.forEach((line) => {
-            doc.text(line, 15, y);
-            y += 6;
-          });
-
-          const patientHistorie = trupp.patientHistorie.length
-            ? trupp.patientHistorie.map(
-                (p) =>
-                  `• ${p.nummer} (${formatTime(p.von)} - ${formatTime(p.bis)})`
-              )
-            : ["–"];
-          doc.text("Patientennummern:", 10, y);
-          y += 6;
-          patientHistorie.forEach((line) => {
-            doc.text(line, 15, y);
-            y += 6;
-          });
-
-          y += 8;
-          if (y > 270) {
-            doc.addPage();
-            y = 10;
+          // 3) Dann Einsatz (inkl. “Einsatz beendet”)
+          else if (einsatzStatuses.includes(trupp.status)) {
+            if (trupp.currentEinsatzStart) {
+              const diff = now - trupp.currentEinsatzStart;
+              trupp.einsatzzeit = (trupp.einsatzzeit || 0) + diff;
+              trupp.currentEinsatzStart = now;
+            }
           }
+          // 4) alle anderen Status bleiben außen vor
         });
 
-        doc.save("trupp_status_report.pdf");
-      }
+        saveTrupps();
+        renderTrupps();
+      }, 15000);
 
       function editOrt(index) {
         const trupp = trupps[index];

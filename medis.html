@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de" style="overflow: auto;">
+<html lang="de" style="overflow: auto">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -7,9 +7,10 @@
     <link rel="icon" href="icons/medis_app.ico" type="image/x-icon" />
 
     <!-- Zentrales CSS -->
-    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/main.css" />
+    <script src="scripts/pdf_export.js"></script>
   </head>
-  <body style="overflow: auto;">
+  <body style="overflow: auto">
     <header
       style="
         display: flex;
@@ -22,44 +23,42 @@
         <img src="icons/medis_long.png" alt="MEDIS" style="height: 15vh" />
       </h1>
 
-
       <div>
-  <!-- „Alles löschen“-Button -->
-  <button
-    id="btnClearAll"
-    class="btnHeader"
-    title="Alle Trupps & Patienten löschen"
-    style="font-size: 3.5rem; padding: 8px 12px;"
-  >
-    🗑️
-  </button>
+        <!-- „Alles löschen“-Button -->
+        <button
+          id="btnClearAll"
+          class="btnHeader"
+          title="Alle Trupps & Patienten löschen"
+          style="font-size: 3.5rem; padding: 8px 12px"
+        >
+          🗑️
+        </button>
 
-  <!-- Neuer PDF-Export-Button -->
-  <button
-    id="btnExportPDF"
-    class="btnHeader"
-    title="PDF Export"
-    style="font-size: 3.5rem; padding: 8px 12px;"
-  >
-    📄
-  </button>
+        <!-- Neuer PDF-Export-Button -->
+        <button
+          id="btnExportPDF"
+          class="btnHeader"
+          title="PDF Export"
+          style="font-size: 3.5rem; padding: 8px 12px"
+        >
+          📄
+        </button>
 
-  <!-- Einstellungen -->
-  <button
-    id="btnSettings"
-    class="btnHeader"
-    title="Einstellungen"
-    style="font-size: 3.5rem; padding: 8px 12px;"
-  >
-    ⚙️
-  </button>
-</div>
+        <!-- Einstellungen -->
+        <button
+          id="btnSettings"
+          class="btnHeader"
+          title="Einstellungen"
+          style="font-size: 3.5rem; padding: 8px 12px"
+        >
+          ⚙️
+        </button>
+      </div>
 
-<div id="datetime" class="datetime">
-  <div id="currentDate"></div>
-  <div id="currentTime"></div>
-</div>
-
+      <div id="datetime" class="datetime">
+        <div id="currentDate"></div>
+        <div id="currentTime"></div>
+      </div>
     </header>
 
     <!-- HTML -->
@@ -75,7 +74,7 @@
       </div>
     </div>
 
-    <div class="container" style="overflow: auto;">
+    <div class="container" style="overflow: auto">
       <div class="tab-content active" id="tab1">
         <iframe src="sites/trupp_status_tracker.html"></iframe>
       </div>
@@ -131,206 +130,12 @@
           const patientIframe = document.querySelector(
             'iframe[src="sites/patienten_tracker.html"]'
           );
-
+          if (truppIframe && truppIframe.contentWindow)
+            truppIframe.contentWindow.location.reload();
+          if (patientIframe && patientIframe.contentWindow)
+            patientIframe.contentWindow.location.reload();
+          location.reload();
         });
-
-        const trupps = JSON.parse(localStorage.getItem("trupps") || "[]");
-        function formatTime(ms) {
-          const d = new Date(ms);
-          return d.toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          });
-        }
-
-        async function exportTruppPDF() {
-          const { jsPDF } = window.jspdf;
-          const doc = new jsPDF();
-          let y = 10;
-
-          doc.setFontSize(14);
-          doc.text("Truppübersicht", 10, y);
-          y += 10;
-
-          trupps.forEach((trupp) => {
-            // Gesamte Pausenzeit direkt aus totalPauseTime (in ms) in Minuten umrechnen
-            const totalPause = Math.floor((trupp.totalPauseTime || 0) / 60000);
-
-            if (y > 240) {
-              doc.addPage();
-              y = 10;
-            }
-
-            doc.setFontSize(12);
-            doc.text(`Trupp: ${trupp.name}`, 10, y);
-            y += 6;
-            doc.text(`Gesamte Pausenzeit: ${totalPause} Min`, 10, y);
-            y += 6;
-
-            const einsatzHistorie = trupp.einsatzHistorie.length
-              ? trupp.einsatzHistorie.map(
-                  (e) =>
-                    `• ${e.ort} (${formatTime(e.von)} - ${formatTime(e.bis)})`
-                )
-              : ["–"];
-            doc.text("Einsatzorte:", 10, y);
-            y += 6;
-            einsatzHistorie.forEach((line) => {
-              doc.text(line, 15, y);
-              y += 6;
-            });
-
-            const patientHistorie = trupp.patientHistorie.length
-              ? trupp.patientHistorie.map(
-                  (p) =>
-                    `• ${p.nummer} (${formatTime(p.von)} - ${formatTime(
-                      p.bis
-                    )})`
-                )
-              : ["–"];
-            doc.text("Patientennummern:", 10, y);
-            y += 6;
-            patientHistorie.forEach((line) => {
-              doc.text(line, 15, y);
-              y += 6;
-            });
-
-            y += 8;
-            if (y > 270) {
-              doc.addPage();
-              y = 10;
-            }
-          });
-
-          const now = new Date();
-          const pad = (n) => String(n).padStart(2, "0");
-          const ts = `${pad(now.getDate())}_${pad(
-            now.getMonth() + 1
-          )}_${now.getFullYear()}_${pad(now.getHours())}_${pad(
-            now.getMinutes()
-          )}`;
-          const filename = `trupp_uebersicht_${ts}.pdf`;
-
-          doc.save(filename);
-        }
-
-        async function exportPatientPDF() {
-          const { jsPDF } = window.jspdf;
-          const doc = new jsPDF({
-            unit: "pt",
-            format: "a4",
-            orientation: "portrait",
-          });
-          const margin = 20;
-          const pageH = doc.internal.pageSize.getHeight();
-          const pageW = doc.internal.pageSize.getWidth() - margin * 2;
-          const lineH = 14;
-          const padY = 10;
-
-          let y = margin;
-
-          doc.setFontSize(16);
-          doc.text("Patientenübersicht", margin, y);
-          y += lineH * 2;
-          doc.setFontSize(12);
-
-          const patients = JSON.parse(localStorage.getItem("patients")) || [];
-
-          // index-basierte Schleife statt for-of
-          for (let idx = 0; idx < patients.length; idx++) {
-            const p = patients[idx];
-            let sessionStartY = y;
-
-            function maybeNewPage() {
-              if (y > pageH - margin - padY) {
-                const sessionH = y - sessionStartY;
-                doc.setDrawColor(150);
-                doc.rect(margin, sessionStartY - padY, pageW, sessionH + padY);
-                doc.addPage();
-                y = margin;
-                sessionStartY = y;
-              }
-            }
-
-            function line(text, indent = 0, wrap = false) {
-              if (wrap) {
-                const maxW = pageW - indent - 10;
-                const lines = doc.splitTextToSize(text, maxW);
-                for (const l of lines) {
-                  maybeNewPage();
-                  doc.text(l, margin + 5 + indent, y);
-                  y += lineH;
-                }
-              } else {
-                maybeNewPage();
-                doc.text(text, margin + 5 + indent, y);
-                y += lineH;
-              }
-            }
-
-            // — deine line()-Aufrufe wie gehabt —
-            doc.setFont(undefined, "bold");
-            line(`Patient Nr.:    ${p.id}`);
-            doc.setFont(undefined, "normal");
-            line(`Status:         ${p.status}`);
-            line(`Standort:       ${p.location || "–"}`);
-            line(`Alter:          ${p.age || "–"}`);
-            line(`Geschlecht:     ${p.gender}`);
-            line(`Diagnose:       ${p.diagnosis || "–"}`);
-
-            const team = Array.isArray(p.team) ? p.team.join(", ") : "–";
-            const rtm = Array.isArray(p.rtm) ? p.rtm.join(", ") : "–";
-            line(`Trupp:           ${team}`);
-            line(`RTM:            ${rtm}`);
-
-            line(`Bemerkungen:    ${p.remarks || "–"}`, 0, true);
-
-            line("Historie:");
-            for (const entry of p.history || []) {
-              line(`• ${entry}`, 5, true);
-            }
-
-            line("", 0);
-
-            line("Einsatzzeiten (mm:ss):");
-            const d = p.durations || {};
-            [
-              ["Einsatzdauer", d.einsatzdauer || "–"],
-              ["Dispositionsdauer", d.dispositionsdauer || "–"],
-              ["Ausrückdauer", d.ausrueckdauer || "–"],
-              ["Behandlungsdauer", d.behandlungsdauer || "–"],
-              ["Verlegedauer UHS", d.verlegedauerUHS || "–"],
-            ].forEach(([label, val]) => {
-              line(`${label}: ${val}`, 5);
-            });
-
-            // Rahmen
-            const sessionH = y - sessionStartY;
-            doc.setDrawColor(150);
-            doc.rect(margin, sessionStartY - padY, pageW, sessionH + padY);
-
-            // **Seitenumbruch nach jedem Patienten (außer nach letztem)**
-            if (idx < patients.length - 1) {
-              doc.addPage();
-              y = margin;
-              doc.setFontSize(16);
-              doc.text("Patientenübersicht", margin, y);
-              y += lineH * 2;
-              doc.setFontSize(12);
-            }
-          }
-
-          const now = new Date();
-          const pad = (n) => String(n).padStart(2, "0");
-          const ts = `${pad(now.getDate())}_${pad(
-            now.getMonth() + 1
-          )}_${now.getFullYear()}_${pad(now.getHours())}_${pad(
-            now.getMinutes()
-          )}`;
-          const filename = `patienten_uebersicht_${ts}.pdf`;
-
-          doc.save(filename);
-        }
 
         // Nachdem die beiden Funktionen definiert sind:
         document
@@ -538,27 +343,37 @@
       });
 
       function updateDateTime() {
-  const now = new Date();
-  // Datum als TT.MM.JJJJ, Wochentag
-  const days = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
-  const d = String(now.getDate()).padStart(2,"0");
-  const m = String(now.getMonth()+1).padStart(2,"0");
-  const y = now.getFullYear();
-  document.getElementById("currentDate").textContent = `${d}.${m}.${y}, ${days[now.getDay()]}`;
+        const now = new Date();
+        // Datum als TT.MM.JJJJ, Wochentag
+        const days = [
+          "Sonntag",
+          "Montag",
+          "Dienstag",
+          "Mittwoch",
+          "Donnerstag",
+          "Freitag",
+          "Samstag",
+        ];
+        const d = String(now.getDate()).padStart(2, "0");
+        const m = String(now.getMonth() + 1).padStart(2, "0");
+        const y = now.getFullYear();
+        document.getElementById("currentDate").textContent = `${d}.${m}.${y}, ${
+          days[now.getDay()]
+        }`;
 
-  // Uhrzeit HH:MM:SS
-  const hh = String(now.getHours()).padStart(2,"0");
-  const mm = String(now.getMinutes()).padStart(2,"0");
-  const ss = String(now.getSeconds()).padStart(2,"0");
-  document.getElementById("currentTime").textContent = `${hh}:${mm}:${ss}`;
-}
+        // Uhrzeit HH:MM:SS
+        const hh = String(now.getHours()).padStart(2, "0");
+        const mm = String(now.getMinutes()).padStart(2, "0");
+        const ss = String(now.getSeconds()).padStart(2, "0");
+        document.getElementById(
+          "currentTime"
+        ).textContent = `${hh}:${mm}:${ss}`;
+      }
 
-document.addEventListener("DOMContentLoaded", () => {
-  updateDateTime();
-  setInterval(updateDateTime, 1000);
-});
-
-
+      document.addEventListener("DOMContentLoaded", () => {
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+      });
     </script>
   </body>
 </html>
