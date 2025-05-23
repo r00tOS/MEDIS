@@ -164,15 +164,20 @@
         if (oldStatus !== "Patient" && status === "Patient") {
           const letzteOrt = trupp.currentOrt ||
                             (trupp.einsatzHistorie.at(-1)?.ort || "");
+
           // neue zentrale Funktion erzeugt Patient und erhöht ID
           const pid = newPatient({
             team: [trupp.name],
             location: letzteOrt,
             initialStatus: "disponiert"
           });
+
           trupp.patientInput = pid;
           trupp.patientStart = Date.now();
           openEditModal(pid);
+
+          // Füge den Historieneintrag für Status "disponiert" hinzu
+          addHistoryEntry(pid, "Status: disponiert");
         }
 
 
