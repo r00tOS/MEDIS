@@ -74,6 +74,22 @@ Für den PDF-Export wird eine Internetverbindung benötigt, da die Bibliothek js
 
 ---
 
+### 📸 Screenshots
+
+**Truppübersicht:**  
+Zeigt alle verfügbaren Trupps, deren aktuellen Status und die jeweilige Zeit im Status.
+![Truppübersicht](https://i.imgur.com/bumlYnh.png)
+
+**Patientenübersicht:**  
+Listet alle erfassten Patienten auf und ermöglicht das Hinzufügen sowie die Dokumentation weiterer Informationen.
+![Patientenübersicht](https://i.imgur.com/63NntRl.png)
+
+**Dashboard:**  
+Bietet einen umfassenden Überblick über den gesamten Einsatzverlauf und alle relevanten Daten.
+![Dashboard](https://i.imgur.com/HmZO7tv.png)
+
+---
+
 ## 👨‍💻 Entwickler
 
 Projektleitung & Umsetzung:  
