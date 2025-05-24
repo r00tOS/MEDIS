@@ -71,15 +71,18 @@
       th {
         background: #fafafa;
       }
-      th.patient-id, td.patient-id {
-  width: 20px;
-}
-th.gender, td.gender {
-width: 10px;
-}
-th.age, td.age {
-width: 10px;
-}
+      th.patient-id,
+      td.patient-id {
+        width: 20px;
+      }
+      th.gender,
+      td.gender {
+        width: 10px;
+      }
+      th.age,
+      td.age {
+        width: 10px;
+      }
 
       /* ----- Status-Farbgebung ----- */
       tr[data-status="gemeldet"] {
@@ -160,80 +163,83 @@ width: 10px;
     </section>
 
     <script>
-    function renderDashboard() {
-      // Trupp-Zähler
-      const trupps = JSON.parse(localStorage.getItem("trupps") || "[]");
-      const einsatz = trupps.filter((t) =>
-        ["Streife", "Patient", "Spielfeldrand", "Einsatz beendet"].includes(t.status)
-      ).length;
-      const pause = trupps.filter((t) =>
-        [
-          "Einsatzbereit in UHS",
-          "Einsatzbereit unterwegs",
-          "Einsatzbereit in Rückhaltung",
-        ].includes(t.status)
-      ).length;
-      const nicht = trupps.length - einsatz - pause;
-      document.getElementById("count-einsatz").textContent = einsatz;
-      document.getElementById("count-pause").textContent = pause;
-      document.getElementById("count-nicht").textContent = nicht;
+      function renderDashboard() {
+        // Trupp-Zähler
+        const trupps = JSON.parse(localStorage.getItem("trupps") || "[]");
+        const einsatz = trupps.filter((t) =>
+          ["Streife", "Patient", "Spielfeldrand", "Einsatz beendet"].includes(
+            t.status
+          )
+        ).length;
+        const pause = trupps.filter((t) =>
+          [
+            "Einsatzbereit in UHS",
+            "Einsatzbereit unterwegs",
+            "Einsatzbereit in Rückhaltung",
+          ].includes(t.status)
+        ).length;
+        const nicht = trupps.length - einsatz - pause;
+        document.getElementById("count-einsatz").textContent = einsatz;
+        document.getElementById("count-pause").textContent = pause;
+        document.getElementById("count-nicht").textContent = nicht;
 
-      // Patienten-Zähler
-      const all = JSON.parse(localStorage.getItem("patients") || "[]");
-      const active = all.filter(
-        (p) => p.status !== "Entlassen" && p.status !== "Transport in KH"
-      );
-      document.getElementById("count-patients").textContent = active.length;
-      document.getElementById("count-inUHS").textContent = all.filter(
-        (p) => p.status === "Behandlung in UHS"
-      ).length;
-      document.getElementById("count-discharged").textContent = all.filter(
-        (p) => p.status === "Entlassen"
-      ).length;
-      document.getElementById("count-transport").textContent = all.filter(
-        (p) => p.status === "Transport in KH"
-      ).length;
+        // Patienten-Zähler
+        const all = JSON.parse(localStorage.getItem("patients") || "[]");
+        const active = all.filter(
+          (p) => p.status !== "Entlassen" && p.status !== "Transport in KH"
+        );
+        document.getElementById("count-patients").textContent = active.length;
+        document.getElementById("count-inUHS").textContent = all.filter(
+          (p) => p.status === "Behandlung in UHS"
+        ).length;
+        document.getElementById("count-discharged").textContent = all.filter(
+          (p) => p.status === "Entlassen"
+        ).length;
+        document.getElementById("count-transport").textContent = all.filter(
+          (p) => p.status === "Transport in KH"
+        ).length;
 
-      // Patienten-Tabelle
-      const tbody = document.getElementById("patient-list");
-      if (!active.length) {
-        tbody.innerHTML = `<tr><td colspan="8">Keine Daten</td></tr>`;
-      } else {
-        tbody.innerHTML = active
-          .sort((a, b) => a.id - b.id)
-          .map((p) => {
-            const showLoc = [
-              "gemeldet",
-              "disponiert",
-              "in Behandlung",
-            ].includes(p.status);
+        // Patienten-Tabelle
+        const tbody = document.getElementById("patient-list");
+        if (!active.length) {
+          tbody.innerHTML = `<tr><td colspan="8">Keine Daten</td></tr>`;
+        } else {
+          tbody.innerHTML = active
+            .sort((a, b) => a.id - b.id)
+            .map((p) => {
+              const showLoc = [
+                "gemeldet",
+                "disponiert",
+                "in Behandlung",
+              ].includes(p.status);
 
-            // Escape status für data-attribute
-            const statusAttr = p.status.replace(/"/g, "&quot;");
+              // Escape status für data-attribute
+              const statusAttr = p.status.replace(/"/g, "&quot;");
 
-            // Zuordnung der Trupps (Mehrere Trupps untereinander anzeigen)
-            const trupp = (trupps
-              .filter((t) => t.patientInput === p.id)
-              .map((t) => t.name)
-              .join("<br>") || "–");
+              // Zuordnung der Trupps (Mehrere Trupps untereinander anzeigen)
+              const trupp =
+                trupps
+                  .filter((t) => t.patientInput === p.id)
+                  .map((t) => t.name)
+                  .join("<br>") || "–";
 
-            // RTM: Fehlerbehandlung und Typüberprüfung
-            let rtm = "–"; // Standardwert
+              // RTM: Fehlerbehandlung und Typüberprüfung
+              let rtm = "–"; // Standardwert
 
-            // Wenn p.rtm ein String ist, teilen wir es bei Kommas und fügen <br> ein
-            if (typeof p.rtm === 'string' && p.rtm.trim() !== '') {
-              rtm = p.rtm.split(",").join("<br>");
-            }
-            // Wenn p.rtm ein Array ist, kombinieren wir es mit <br>
-            else if (Array.isArray(p.rtm)) {
-              rtm = p.rtm.join("<br>");
-            }
-            // Falls p.rtm ein Objekt oder anderer nicht-String-Typ ist, lassen wir es als "-"
-            else if (p.rtm && typeof p.rtm !== 'string') {
-              rtm = "–";
-            }
+              // Wenn p.rtm ein String ist, teilen wir es bei Kommas und fügen <br> ein
+              if (typeof p.rtm === "string" && p.rtm.trim() !== "") {
+                rtm = p.rtm.split(",").join("<br>");
+              }
+              // Wenn p.rtm ein Array ist, kombinieren wir es mit <br>
+              else if (Array.isArray(p.rtm)) {
+                rtm = p.rtm.join("<br>");
+              }
+              // Falls p.rtm ein Objekt oder anderer nicht-String-Typ ist, lassen wir es als "-"
+              else if (p.rtm && typeof p.rtm !== "string") {
+                rtm = "–";
+              }
 
-            return `
+              return `
               <tr data-status="${statusAttr}">
                 <td>${p.id}</td>
                 <td>${p.status}</td>
@@ -245,12 +251,10 @@ width: 10px;
                 <td>${showLoc ? p.location || "–" : ""}</td>
               </tr>
             `;
-          })
-          .join("");
+            })
+            .join("");
+        }
       }
-    }
-
-
 
       document.addEventListener("DOMContentLoaded", renderDashboard);
       window.addEventListener("storage", renderDashboard);

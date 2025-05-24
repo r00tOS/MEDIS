@@ -22,8 +22,11 @@
 
 .modal {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.5);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -41,7 +44,8 @@
 }
 .close {
   position: absolute;
-  top: 8px; right: 12px;
+  top: 8px;
+  right: 12px;
   font-size: 1.2em;
   cursor: pointer;
 }
@@ -56,13 +60,25 @@
   gap: 10px;
   align-items: flex-start;
 }
-.patient-card.gemeldet        { background: #ffe5e5; }
-.patient-card.disponiert      { background: #ffffe0; }
-.patient-card.in-Behandlung   { background: #e2f7e2; }
-.patient-card.verlegt-in-UHS  { background: #e0f0ff; }
-.patient-card.Behandlung-in-UHS { background: #d0e6ff; }
+.patient-card.gemeldet {
+  background: #ffe5e5;
+}
+.patient-card.disponiert {
+  background: #ffffe0;
+}
+.patient-card.in-Behandlung {
+  background: #e2f7e2;
+}
+.patient-card.verlegt-in-UHS {
+  background: #e0f0ff;
+}
+.patient-card.Behandlung-in-UHS {
+  background: #d0e6ff;
+}
 .patient-card.Transport-in-KH,
-.patient-card.Entlassen       { background: #f0f0f0; }
+.patient-card.Entlassen {
+  background: #f0f0f0;
+}
 
 .patient-card > div {
   min-width: 220px;
@@ -81,13 +97,28 @@
 }
 
 /* 3. Status-Buttons in Cards */
-button.status-gemeldet       { background: #f28b82; color: #fff; }
-button.status-disponiert     { background: #fff475; color: #000; }
-button.status-in-Behandlung  { background: #81c995; color: #fff; }
+button.status-gemeldet {
+  background: #f28b82;
+  color: #fff;
+}
+button.status-disponiert {
+  background: #fff475;
+  color: #000;
+}
+button.status-in-Behandlung {
+  background: #81c995;
+  color: #fff;
+}
 button.status-verlegt-in-UHS,
-button.status-Behandlung-in-UHS { background: #a7c7e7; color: #000; }
+button.status-Behandlung-in-UHS {
+  background: #a7c7e7;
+  color: #000;
+}
 button.status-Transport-in-KH,
-button.status-Entlassen      { background: #d3d3d3; color: #000; }
+button.status-Entlassen {
+  background: #d3d3d3;
+  color: #000;
+}
 
 /* 4. Abschnittsüberschriften */
 section {
@@ -100,15 +131,31 @@ h2 {
 
 /* 5. Slide-In/Out Animation */
 @keyframes slide-out-right {
-  from { opacity:1; transform:translateX(0); }
-  to   { opacity:0; transform:translateX(20px); }
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(20px);
+  }
 }
 @keyframes slide-in-left {
-  from { opacity:0; transform:translateX(-20px); }
-  to   { opacity:1; transform:translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
-.patient-card.slide-out { animation: slide-out-right 0.3s ease forwards; }
-.patient-card.slide-in  { animation: slide-in-left  0.3s ease forwards; }
+.patient-card.slide-out {
+  animation: slide-out-right 0.3s ease forwards;
+}
+.patient-card.slide-in {
+  animation: slide-in-left 0.3s ease forwards;
+}
 
 /* 6. Zeitdaten-Tabelle */
 .zeitdaten table {
@@ -155,19 +202,23 @@ h2 {
 .patient-info-table th {
   background: #f0f0f0;
   text-align: left;
-  width: 30%;       /* Label-Spalte etwas breiter */
+  width: 30%; /* Label-Spalte etwas breiter */
 }
 
 .patient-details-table td,
 .patient-info-table td {
-  width: 70%;       /* Wert-Spalte entsprechend */
+  width: 70%; /* Wert-Spalte entsprechend */
 }
-
 
 /* 8. Druck-Styles */
 @media print {
-  body * { visibility: hidden; }
-  #exportArea, #exportArea * { visibility: visible; }
+  body * {
+    visibility: hidden;
+  }
+  #exportArea,
+  #exportArea * {
+    visibility: visible;
+  }
   #exportArea button,
   #exportArea .buttons,
   #exportArea .status-gemeldet,
@@ -181,7 +232,8 @@ h2 {
   }
   #exportArea {
     position: absolute;
-    top: 0; left: 0;
+    top: 0;
+    left: 0;
     width: 100%;
   }
   .patient-card {
@@ -195,13 +247,13 @@ h2 {
 /* 1) Patient Card ins Flex-Layout verwandeln */
 .patient-card {
   display: flex;
-  gap: 1rem;               /* Abstand zwischen den Spalten */
+  gap: 1rem; /* Abstand zwischen den Spalten */
   align-items: flex-start; /* Oben ausrichten */
 }
 
 /* 2) Block mit den beiden Tabellen */
 .patient-info-block {
-  flex: 0 0 400px;         /* fixe Breite von 400px (anpassen nach Geschmack) */
+  flex: 0 0 400px; /* fixe Breite von 400px (anpassen nach Geschmack) */
 }
 
 /* 3) Tabellen auf 100% der Block-Breite strecken */
@@ -236,13 +288,13 @@ h2 {
 
 /* 7) Spalte mit Trupp-Dropdown nimmt den Rest */
 .patient-card > .patient-trupp-column {
-  flex: 1;                      /* füllt verbleibenden Platz */
+  flex: 1; /* füllt verbleibenden Platz */
   min-width: 200px;
 }
 /* Scroll-Container für Historie */
 .history-container {
-  max-height: 200px;       /* Höhe nach Bedarf anpassen */
-  overflow-y: auto;        /* vertikales Scrollen erlauben */
+  max-height: 200px; /* Höhe nach Bedarf anpassen */
+  overflow-y: auto; /* vertikales Scrollen erlauben */
   white-space: pre-wrap;
   word-wrap: break-word;
   overflow-x: hidden;
@@ -257,57 +309,57 @@ h2 {
   margin: 0;
   padding-left: 1.2em;
   padding: 0;
-margin: 0;
+  margin: 0;
 }
 .history-container li {
   margin-bottom: 4px;
   white-space: pre-wrap;
   word-wrap: break-word;
   margin: 0;
-padding: 0;
-list-style-position: inside; /* Listenpunkte bleiben sichtbar */
+  padding: 0;
+  list-style-position: inside; /* Listenpunkte bleiben sichtbar */
 }
 
 .history-container {
   /* nur links/rechts Padding lassen, oben/unten auf 0 */
   padding: 0 8px;
-  margin: 0;               /* falls doch noch ein Außenabstand drin ist */
+  margin: 0; /* falls doch noch ein Außenabstand drin ist */
 }
 
 .history-container ul {
-  margin: 0;               /* außen komplett raus */
-  padding: 0;              /* außen komplett raus */
+  margin: 0; /* außen komplett raus */
+  padding: 0; /* außen komplett raus */
 }
 
 .history-container li {
-  margin: 0;               /* kein Abstand zwischen Listenelement und Rand */
-  padding: 0;              /* kein internes Padding */
+  margin: 0; /* kein Abstand zwischen Listenelement und Rand */
+  padding: 0; /* kein internes Padding */
   list-style-position: inside;
   white-space: pre-wrap;
   word-wrap: break-word;
 }
 /* ############# History-Container jetzt ohne obere/untere Abstände ############# */
 .history-container {
-  max-height: 200px;        /* bleibt unverändert */
-  overflow-y: auto;         /* vertikales Scrollen erlauben */
-  overflow-x: hidden;       /* horizontales Scrollen verhindern */
-  padding: 0 8px;           /* nur links/rechts 8px, oben/unten 0 */
-  margin: 0;                /* kein Außenabstand */
-  white-space: normal;      /* normal umbrechen, kein pre-wrap mehr */
-  line-height: 1.4;         /* optional: etwas engerer Zeilenabstand */
-  box-sizing: border-box;   /* damit padding wirklich nur innen wirkt */
+  max-height: 200px; /* bleibt unverändert */
+  overflow-y: auto; /* vertikales Scrollen erlauben */
+  overflow-x: hidden; /* horizontales Scrollen verhindern */
+  padding: 0 8px; /* nur links/rechts 8px, oben/unten 0 */
+  margin: 0; /* kein Außenabstand */
+  white-space: normal; /* normal umbrechen, kein pre-wrap mehr */
+  line-height: 1.4; /* optional: etwas engerer Zeilenabstand */
+  box-sizing: border-box; /* damit padding wirklich nur innen wirkt */
 }
 
 /* Entferne sämtliche eigenen Abstände der Liste */
 .history-container ul {
   list-style-position: inside;
-  margin: 0;    /* kein Außenabstand */
-  padding: 0;   /* kein Innenabstand */
+  margin: 0; /* kein Außenabstand */
+  padding: 0; /* kein Innenabstand */
 }
 
 /* Und auch bei den einzelnen Einträgen */
 .history-container li {
-  margin: 0;    /* kein Außenabstand */
+  margin: 0; /* kein Außenabstand */
   padding: 2px 0; /* kleiner vertikaler Abstand zwischen Einträgen */
   word-wrap: break-word;
 }
