@@ -65,25 +65,28 @@ function updatePatientData(id, field, value) {
   }
 
   // 2) Update von History, Feld, Triggern von recordStatusChange und Speichern
+  // TODO: What is this used for? this dosnt push stuff into the history on status changes
   function applyUpdate() {
-    // a) History-Eintrag
-    if (field === "status") {
-      patient.history.push(`${getCurrentTime()} Status: ${value}`);
-    } else if (field === "diagnosis") {
-      patient.history.push(
-        `${getCurrentTime()} Verdachtsdiagnose geändert: ${value}`
-      );
-    } else if (field === "discharge") {
-      patient.history.push(`${getCurrentTime()} Entlassen: ${value}`);
-    } else if (field === "transport") {
-      patient.history.push(`${getCurrentTime()} Transport in KH: ${value}`);
-    } else if (field === "additionalRequest") {
-      patient.history.push(`${getCurrentTime()} ${value}`);
-    } else if (
-      !["age", "gender", "location", "team", "rtm", "remarks"].includes(field)
-    ) {
-      patient.history.push(`${getCurrentTime()} ${field} geändert: ${value}`);
-    }
+    addHistoryEvent(patient, field, value);
+
+    // // a) History-Eintrag
+    // if (field === "status") {
+    //   patient.history.push(`${getCurrentTime()} Status: ${value}`);
+    // } else if (field === "diagnosis") {
+    //   patient.history.push(
+    //     `${getCurrentTime()} Verdachtsdiagnose geändert: ${value}`
+    //   );
+    // } else if (field === "discharge") {
+    //   patient.history.push(`${getCurrentTime()} Entlassen: ${value}`);
+    // } else if (field === "transport") {
+    //   addHistoryEvent(patient, field, value);
+    // } else if (field === "additionalRequest") {
+    //   patient.history.push(`${getCurrentTime()} ${value}`);
+    // } else if (
+    //   !["age", "gender", "location", "team", "rtm", "remarks"].includes(field)
+    // ) {
+    //   patient.history.push(`${getCurrentTime()} ${field} geändert: ${value}`);
+    // }
 
     // b) Feld setzen
     patient[field] = value;
@@ -98,7 +101,8 @@ function updatePatientData(id, field, value) {
   // 3) Sonderfall Status → Animation + Delayed Update
   if (field === "status") {
     // a) History-Eintrag & Status setzen
-    patient.history.push(`${getCurrentTime()} Status: ${value}`);
+
+    addHistoryEvent(patient, field, value);
     patient.status = value;
 
     // b) Timestamp‐ und Dauer‐Berechnung
@@ -135,8 +139,7 @@ function disposeRequest(id, request) {
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
   const patient = patients.find((p) => p.id === id);
   patient.additionalRequest = request;
-  if (!patient.history) patient.history = [];
-  patient.history.push(`${getCurrentTime()} ${request}`);
+  addCustomHistoryEvent(patient, "resourceRequest", request);
   if (!patient.disposed) patient.disposed = {};
   patient.disposed[request] = false;
   localStorage.setItem("patients", JSON.stringify(patients));
@@ -394,11 +397,18 @@ function assignResource(id, type) {
     ) {
       patient.status = "disponiert";
       patient.history = patient.history || [];
-      patient.history.push(`${geCurrentTime()} Status: disponiert`);
+      addHistoryEvent(
+        patient,
+        type === "team" ? "assignedTeam" : "assignedRTM",
+        value
+      );
     }
+    addHistoryEvent(
+      patient,
+      type === "team" ? "assignedTeam" : "assignedRTM",
+      value
+    );
     // Und immer Eintrag, dass RTM disponiert wurde:
-    patient.history = patient.history || [];
-    patient.history.push(`${getCurrentTime()} ${label} ${value} disponiert`);
 
     localStorage.setItem("patients", JSON.stringify(patients));
     loadPatients();
@@ -490,8 +500,7 @@ function removeTrupp(id, index) {
   const removed = Array.isArray(patient.team)
     ? patient.team.splice(index, 1)
     : [];
-  patient.history = patient.history || [];
-  patient.history.push(`${getCurrentTime()} Trupp ${removed[0]} entfernt`);
+  addHistoryEvent(patient, "unassignedTeam", removed[0]);
   localStorage.setItem("patients", JSON.stringify(patients));
   loadPatients();
 
@@ -541,8 +550,7 @@ function removeRtm(id, index) {
   const patient = patients.find((p) => p.id === id);
   if (Array.isArray(patient.rtm)) {
     const removed = patient.rtm.splice(index, 1);
-    if (!patient.history) patient.history = [];
-    patient.history.push(`${getCurrentTime()} RTM ${removed[0]} entfernt`);
+    addHistoryEvent(patient, "unassignedRTM", removed[0]);
     localStorage.setItem("patients", JSON.stringify(patients));
     loadPatients();
   }
@@ -573,12 +581,12 @@ function editField(id, field) {
   }
 }
 
-function addCustomHistory(id, message) {
+function addCustomHistoryEvent(patientID, message) {
   if (!message.trim()) return;
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
-  const patient = patients.find((p) => p.id === id);
+  const patient = patients.find((p) => p.id === patientID);
   if (!patient.history) patient.history = [];
-  patient.history.push(`${getCurrentTime()} ${message}`);
+  addHistoryEvent(patient, "noteAdded", message);
   localStorage.setItem("patients", JSON.stringify(patients));
   loadPatients();
 }

@@ -95,7 +95,7 @@ function updateTrupp(index, status) {
     openEditModal(pid);
 
     // Füge den Historieneintrag für Status "disponiert" hinzu
-    addHistoryEntry(pid, "Status: disponiert");
+    addHistoryEntry(pid, "status", "disponiert");
   }
 
   // 9) Bei Streife → neuen Ort abfragen
@@ -263,37 +263,4 @@ Bemerkung:`;
     .catch((err) => {
       console.error("Fehler beim Kopieren:", err);
     });
-}
-
-function addHistoryEntry(pid, entry) {
-  // Alle Patienten aus dem lokalen Speicher holen
-  const allPatients = JSON.parse(localStorage.getItem("patients") || "[]");
-
-  // Den Patienten mit der angegebenen pid finden
-  const patient = allPatients.find((p) => p.id === pid);
-
-  // Wenn der Patient gefunden wird, Historie aktualisieren
-  if (patient) {
-    const now = Date.now();
-    const timeStr = new Date(now).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    // Füge den neuen Status zur Historie des Patienten hinzu
-    patient.history.push(`${timeStr} ${entry}`);
-
-    // Speichern der aktualisierten Patienten-Daten im lokalen Speicher
-    localStorage.setItem("patients", JSON.stringify(allPatients));
-
-    // Event für die Aktualisierung auslösen
-    window.dispatchEvent(
-      new StorageEvent("storage", {
-        key: "patients",
-        newValue: JSON.stringify(allPatients),
-      })
-    );
-  } else {
-    console.error("Patient nicht gefunden: " + pid);
-  }
 }

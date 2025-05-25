@@ -360,8 +360,7 @@ function confirmNachforderungModal() {
       (!Array.isArray(patient.rtm) || patient.rtm.length === 0)
     ) {
       patient.status = "disponiert";
-      patient.history = patient.history || [];
-      patient.history.push(`${getCurrentTime()} Status: disponiert`);
+      addHistoryEntry(patient, "status", "disponiert");
     }
     // History: Nachforderung + Trupp zugeordnet
     entryText += ` → Trupp ${trupp} disponiert`;
