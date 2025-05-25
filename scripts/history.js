@@ -1,10 +1,15 @@
+// TODO: maybe add promptAddEntry() & addCustomHistoryEvent() to this file
+// maybe also a function to generateHistoryHTML() but not sure
+// not sure if this is the right place for it
+// but it is not model-view-controller compliant in any way ^^
+
 /**
  * Types of history events for patient tracking:
- * - "statusChange": The patient's status has changed (e.g., stable → critical).
+ * - "statusChange": The patient's status has changed.
  * - "noteAdded": A note or comment has been added to the patient's record.
  * - "patientDataChange": Demographic or medical data of the patient was modified.
  * - "assignmentChange": The care team or responsible personnel for the patient has changed.
- * - "resourceRequest": Additional resources or personnel have been requested for the patient (e.g., specialist, equipment).
+ * - "resourceRequest": Additional resources or personnel have been requested for the patient.
  */
 
 const attributeTypeMap = {
@@ -22,6 +27,7 @@ const attributeTypeMap = {
   requestRTW: "resourceRequest",
   requestNEF: "resourceRequest",
   requestCarryTeam: "resourceRequest",
+  resourceRequest: "resourceRequest",
   // Add more mappings as needed...
 };
 
@@ -35,8 +41,6 @@ const attributeTypeMap = {
 function addHistoryEvent(patient, attribute, message) {
   if (!patient || !message) return;
 
-  const type = attributeTypeMap[attribute] || "noteAdded";
-
   // Preparing the payload
   var payload = {
     field: attribute,
@@ -45,6 +49,7 @@ function addHistoryEvent(patient, attribute, message) {
 
   //if it is the type statusChagne or patientDataChange there is an oldValue
   // that is the value before the change
+  const type = attributeTypeMap[attribute] || "noteAdded";
   if (type === "statusChange" || type === "patientDataChange") {
     payload.oldValue = patient[attribute];
   }
@@ -62,8 +67,52 @@ function addHistoryEvent(patient, attribute, message) {
 }
 
 /**
- * Returns the Eventhistory of a patient by their ID with the time formatted as HH:MM.
- * @param {number} patientID
+ * Returns the event history of a patient by their ID with the time formatted as HH:MM.
+ * @param {Object} patient
  * @returns {array} - An array of history entries with time formatted as HH:MM.
  */
-function getPatientHistoryHHMM(patientID) {}
+function getPatientHistoryHHMM(patient) {
+  const history = patient.history || [];
+
+  return history.map((historyEvent) => {
+    const date = new Date(historyEvent.timestamp);
+    const timeStr = date.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    let entryText = `[${timeStr}] `;
+    switch (historyEvent.type) {
+      case "statusChange":
+        entryText += `Status geändert auf: ${
+          historyEvent?.payload?.newValue ?? "Unbekannt"
+        }`;
+        break;
+      case "patientDataChange":
+        if (historyEvent.payload?.oldValue !== undefined) {
+          entryText += `${historyEvent.payload.field ?? "Feld"} geändert von ${
+            historyEvent.payload.oldValue
+          } zu ${historyEvent.payload.newValue}`;
+        } else {
+          entryText += `${historyEvent.payload.field ?? "Feld"} hinzugefügt: ${
+            historyEvent.payload.newValue
+          }`;
+        }
+        break;
+      case "assignmentChange":
+        entryText += `${historyEvent.payload?.field ?? "Ressource"} ${
+          historyEvent.payload?.newValue ? "zugewiesen" : "entzogen"
+        }`;
+        break;
+      case "resourceRequest":
+        entryText += `${
+          historyEvent.payload?.field ?? "Ressource"
+        } angefordert`;
+        break;
+      default:
+        entryText += historyEvent.payload?.newValue ?? "Unbekanntes Ereignis";
+        break;
+    }
+    return entryText;
+  });
+}

@@ -109,9 +109,8 @@ NEF
 `;
 
     // --- Historie ---
-    const histItems = (patient.history || [])
-      .map((h) => `<li>${h}</li>`)
-      .join("");
+    const historyEntries = getPatientHistoryHHMM(patient);
+    const histItems = historyEntries.map((h) => `<li>${h}</li>`).join("");
     const addEntry = `<button class="meldung-btn" style="width:100%;margin-top:6px;"
            onclick="promptAddEntry(${patient.id})">Eintrag hinzufügen</button>`;
     const historyHTML = `
