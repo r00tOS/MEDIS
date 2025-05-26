@@ -5,9 +5,9 @@
     "test:all": "jest"
   },
   "devDependencies": {
+    "http-server": "^14.x",
     "jest": "^29.x",
     "jest-puppeteer": "^7.x",
-    "http-server": "^14.x",
-    "puppeteer": "^20.x"
+    "puppeteer": "^24.9.0"
   }
 }
