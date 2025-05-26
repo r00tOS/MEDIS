@@ -1,7 +1,7 @@
 // jest-puppeteer.config.js
 module.exports = {
   server: {
-    // statt './sites' jetzt das gesamte Projekt
+    // Statt nur ./sites jetzt das gesamte Projekt
     command: 'http-server . -p 3000',
     port: 3000,
     launchTimeout: 10000,
@@ -9,5 +9,11 @@ module.exports = {
   },
   launch: {
     headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu'
+    ]
   },
 };
