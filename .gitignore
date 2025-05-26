@@ -1,6 +1,1 @@
 node_modules
-tests
-package-lock.json
-package.json
-jest.config.js
-jest-puppeteer.config.js
