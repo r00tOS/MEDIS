@@ -360,7 +360,7 @@ function confirmNachforderungModal() {
       (!Array.isArray(patient.rtm) || patient.rtm.length === 0)
     ) {
       patient.status = "disponiert";
-      addHistoryEntry(patient, "status", "disponiert");
+      addHistoryEvent(patient, "status", "disponiert");
     }
     // History: Nachforderung + Trupp zugeordnet
     entryText += ` → Trupp ${trupp} disponiert`;
@@ -411,8 +411,7 @@ function confirmNachforderungModal() {
 
   // Nachforderung als "disponiert" markieren, Details speichern
   patient.disposed[nachforderungRequest] = details;
-  patient.history = patient.history || [];
-  patient.history.push(`${getCurrentTime()} ${entryText}`);
+  addHistoryEvent(patient, "assignedRTM", entryText);
 
   // Persistieren und UI refresh
   localStorage.setItem("patients", JSON.stringify(patients));

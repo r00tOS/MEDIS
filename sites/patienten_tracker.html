@@ -100,10 +100,7 @@
 
             before.forEach((name) => {
               if (!patient.team.includes(name)) {
-                patient.history = patient.history || [];
-                patient.history.push(
-                  `${getCurrentTime()} Trupp ${name} entfernt (via Trupp-Tracker)`
-                );
+                addHistoryEvent(patient, "unassignedTeam", name);
                 dirty = true;
               }
             });
@@ -122,8 +119,7 @@
               !Array.isArray(patient.rtm) || patient.rtm.length === 0;
             if (noTrupp && noRtm && patient.status !== "gemeldet") {
               patient.status = "gemeldet";
-              patient.history = patient.history || [];
-              patient.history.push(`${getCurrentTime()} Status: gemeldet`);
+              addHistoryEvent(patient, "status", "gemeldet");
               dirty = true;
             }
           });

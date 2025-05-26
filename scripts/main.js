@@ -44,17 +44,18 @@
       },
       team: Array.isArray(team) ? team : [team],
       location,
-      history: [`${timeStr} Status: gemeldet`],
     };
 
+    addHistoryEvent(patient, "status", "gemeldet");
+
     // in den Storage schreiben und Event feuern
-    const all = JSON.parse(localStorage.getItem("patients") || "[]");
-    all.push(patient);
-    localStorage.setItem("patients", JSON.stringify(all));
+    const patients = JSON.parse(localStorage.getItem("patients") || "[]");
+    patients.push(patient);
+    localStorage.setItem("patients", JSON.stringify(patients));
     window.dispatchEvent(
       new StorageEvent("storage", {
         key: "patients",
-        newValue: JSON.stringify(all),
+        newValue: JSON.stringify(patients),
       })
     );
 

@@ -32,14 +32,14 @@ const attributeTypeMap = {
 };
 
 /**
- * Adds a history event to a patient's record in local storage.
- * @param {Object} patient - The patient object to which the history event will be added.
+ * Adds a history event to an entity's record in local storage.
+ * @param {Object} entity - The object (patient, trupp, etc.) to which the history event will be added.
  * @param {string} attribute - The attribute that is being changed (e.g., "Status", "Verdachtsdiagnose", "Patientenalter").
- * @param {string} message - The message to be added to the patient's history.
+ * @param {string} message - The message to be added to the entity's history.
  * @returns {void}
  */
-function addHistoryEvent(patient, attribute, message) {
-  if (!patient || !message) return;
+function addHistoryEvent(entity, attribute, message) {
+  if (!entity || !message) return;
 
   // Preparing the payload
   var payload = {
@@ -47,11 +47,11 @@ function addHistoryEvent(patient, attribute, message) {
     newValue: message,
   };
 
-  //if it is the type statusChagne or patientDataChange there is an oldValue
+  // If it is the type statusChange or patientDataChange there is an oldValue
   // that is the value before the change
   const type = attributeTypeMap[attribute] || "noteAdded";
   if (type === "statusChange" || type === "patientDataChange") {
-    payload.oldValue = patient[attribute];
+    payload.oldValue = entity[attribute];
   }
 
   // Creating the history entry
@@ -62,8 +62,8 @@ function addHistoryEvent(patient, attribute, message) {
   };
 
   // Initialize history if necessary and push the new entry.
-  if (!Array.isArray(patient.history)) patient.history = [];
-  patient.history.push(historyEntry);
+  if (!Array.isArray(entity.history)) entity.history = [];
+  entity.history.push(historyEntry);
 }
 
 /**

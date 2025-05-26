@@ -55,9 +55,8 @@ function updateTrupp(index, status) {
   }
 
   // 6) Historie-Eintrag
-  if (!trupp.history) trupp.history = [];
   if (oldStatus !== status) {
-    trupp.history.push(`${timeStr} Status: ${status}`);
+    addHistoryEvent(trupp, "status", status);
   }
 
   // 7) Spezielle Abschlüsse für Patient & Streife
@@ -120,8 +119,7 @@ function updateTrupp(index, status) {
         const idx = p.team.indexOf(trupp.name);
         if (idx >= 0) {
           p.team.splice(idx, 1);
-          p.history = p.history || [];
-          p.history.push(`${timeStr} Trupp ${trupp.name} entfernt`);
+          addHistoryEvent(p, "unassignedTeam", trupp.name);
         }
       }
     });

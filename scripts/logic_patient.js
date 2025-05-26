@@ -30,11 +30,7 @@ function clearAssignments(patientId, finalStatus) {
       t.status = "Einsatz beendet";
 
       // d) Eigene Historie ergänzen
-      t.history = t.history || [];
-      t.history.push({
-        when: now,
-        event: "Einsatz beendet",
-      });
+      addCustomHistoryEvent(t, "statusChange", "Einsatz beendet");
     }
   });
 
@@ -52,8 +48,6 @@ function updatePatientData(id, field, value) {
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
   const patient = patients.find((p) => p.id === id);
   if (!patient) return;
-  // History-Array initialisieren, falls nötig
-  if (!patient.history) patient.history = [];
 
   // Hilfs-Objekte sicherstellen
   patient.statusTimestamps = patient.statusTimestamps || {};
@@ -396,7 +390,6 @@ function assignResource(id, type) {
       (!Array.isArray(patient.rtm) || patient.rtm.length === 0)
     ) {
       patient.status = "disponiert";
-      patient.history = patient.history || [];
       addHistoryEvent(
         patient,
         type === "team" ? "assignedTeam" : "assignedRTM",
@@ -418,24 +411,23 @@ function assignResource(id, type) {
 function assignSelectedTrupp(patientId) {
   // Patienten laden und Objekt finden
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
-  const p = patients.find((x) => x.id === patientId);
-  if (!p) return;
+  const patient = patients.find((p) => p.id === patientId);
+  if (!patient) return;
 
   // Sicherstellen, dass p.team ein Array ist
-  if (!Array.isArray(p.team)) p.team = [];
+  if (!Array.isArray(patient.team)) patient.team = [];
 
   // ①: Status-Logik & Timestamp setzen, bevor irgendwas anderes passiert
-  recordStatusChange(p, "disponiert");
+  recordStatusChange(patient, "disponiert");
 
   // ②: Wenn noch kein Trupp/RTM und Status nicht 'in Behandlung', auf 'disponiert' setzen
   if (
-    p.status !== "in Behandlung" &&
-    p.team.length === 0 &&
-    (!Array.isArray(p.rtm) || p.rtm.length === 0)
+    patient.status !== "in Behandlung" &&
+    patient.team.length === 0 &&
+    (!Array.isArray(patient.rtm) || patient.rtm.length === 0)
   ) {
-    p.status = "disponiert";
-    p.history = p.history || [];
-    p.history.push(`${getCurrentTime()} Status: disponiert`);
+    patient.status = "disponiert";
+    addHistoryEvent(patient, "status", "disponiert");
   }
 
   // ③: Tatsächlichen Trupp-Namen aus dem Select ziehen
@@ -448,8 +440,8 @@ function assignSelectedTrupp(patientId) {
   }
 
   // ④: Trupp zu p.team hinzufügen und Historie eintragen
-  p.team.push(truppName);
-  p.history.push(`${getCurrentTime()} Trupp ${truppName} disponiert`);
+  patient.team.push(truppName);
+  addHistoryEvent(patient, "assignedTeam", truppName);
 
   // ⑤: Speichern und neu rendern
   localStorage.setItem("patients", JSON.stringify(patients));
@@ -527,11 +519,7 @@ function removeTrupp(id, index) {
     t.status = "Einsatz beendet";
 
     // Eigene Trupp-Historie ergänzen
-    t.history = t.history || [];
-    t.history.push({
-      when: now,
-      event: "Einsatz beendet",
-    });
+    addHistoryEvent(t, "status", "Einsatz beendet");
 
     // Speichern und Renderer anstoßen
     localStorage.setItem("trupps", JSON.stringify(trupps));
@@ -579,16 +567,6 @@ function editField(id, field) {
   if (value !== null) {
     updatePatientData(id, field, value);
   }
-}
-
-function addCustomHistoryEvent(patientID, message) {
-  if (!message.trim()) return;
-  const patients = JSON.parse(localStorage.getItem("patients")) || [];
-  const patient = patients.find((p) => p.id === patientID);
-  if (!patient.history) patient.history = [];
-  addHistoryEvent(patient, "noteAdded", message);
-  localStorage.setItem("patients", JSON.stringify(patients));
-  loadPatients();
 }
 
 // Globale Variable, die immer aktuell ist
