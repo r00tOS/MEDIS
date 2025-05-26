@@ -7,7 +7,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-
     steps:
       - name: Code auschecken
         uses: actions/checkout@v3
@@ -15,49 +14,32 @@ jobs:
       - name: Node.js einrichten
         uses: actions/setup-node@v3
         with:
-          node-version: "18"
-          cache: "npm"
+          node-version: '18'
+          cache: 'npm'
 
       - name: Abhängigkeiten installieren
         run: npm install
 
-      - name: System-Dependencies für Puppeteer
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libx11-6 \
-            libatk1.0-0 \
-            libgtk-3-0 \
-            libgbm-dev \
-            libnss3 \
-            libxss1
-
-      - name: Unit-Tests mit HTML-Report
-        run: |
-          npm test -- --reporters=default --reporters=jest-html-reporter
+      - name: Unit-Tests (JUnit-Output)
+        run: npm test -- --runInBand --reporters=default --reporters=jest-junit
         env:
+          JEST_JUNIT_OUTPUT: jest-junit.xml
           CI: true
 
-      - name: Sammle HTML-Report
-        if: always()
-        run: |
-          mkdir -p reports
-          mv jest-html-report.html reports/
-
-      - name: Upload HTML-Report als Artifact
-        if: always()
-        uses: actions/upload-artifact@v2    # <-- hier auf v2 zurückgestuft
+      - name: 📊 Test-Report veröffentlichen
+        uses: actions/upload-test-report@v1
         with:
-          name: jest-html-report
-          path: reports/
+          name: Jest Unit Tests
+          path: jest-junit.xml
 
       - name: E2E-Tests mit Puppeteer
-        run: npm run test:e2e
+        run: npm run test:e2e -- --runInBand --reporters=default --reporters=jest-junit
+        env:
+          JEST_JUNIT_OUTPUT: e2e-junit.xml
+          CI: true
 
-      - name: Upload E2E-Logs
-        if: failure()
-        uses: actions/upload-artifact@v2    # <-- und hier ebenfalls v2
+      - name: 📊 E2E-Test-Report veröffentlichen
+        uses: actions/upload-test-report@v1
         with:
-          name: e2e-logs
-          path: tests/e2e/*.log
+          name: Jest E2E Tests
+          path: e2e-junit.xml
