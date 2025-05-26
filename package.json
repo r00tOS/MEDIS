@@ -5,10 +5,13 @@
     "test:all": "jest"
   },
   "devDependencies": {
+    "expect-puppeteer": "^11.0.0",
     "http-server": "^14.x",
     "jest": "^29.x",
+    "jest-dev-server": "^11.0.0",
     "jest-environment-jsdom": "^29.7.0",
-    "jest-puppeteer": "^7.x",
+    "jest-environment-puppeteer": "^11.0.0",
+    "jest-puppeteer": "^11.0.0",
     "puppeteer": "^24.9.0"
   }
 }
