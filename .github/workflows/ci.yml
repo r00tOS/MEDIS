@@ -39,19 +39,6 @@ jobs:
         env:
           CI: true
 
-      - name: Sammle HTML-Report
-        if: always()
-        run: |
-          mkdir -p reports
-          mv jest-html-report.html reports/
-
-      - name: Upload HTML-Report als Artifact
-        if: always()
-        uses: actions/upload-artifact@v4    # <-- hier auf v2 zurückgestuft
-        with:
-          name: jest-html-report
-          path: reports/
-
       - name: E2E-Tests mit Puppeteer
         run: npm run test:e2e
 
