@@ -39,7 +39,7 @@ jobs:
           CI: true
 
       - name: 📊 E2E-Test-Report veröffentlichen
-        uses: actions/upload-test-report@v1
+        uses: actions/upload-artifact
         with:
           name: Jest E2E Tests
           path: e2e-junit.xml
