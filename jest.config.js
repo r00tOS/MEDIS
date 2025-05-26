@@ -7,19 +7,6 @@ module.exports = {
       // Alle normalen Tests (inkl. Unit- und Integration), außer E2E
       testMatch: ['<rootDir>/tests/**/*.test.js'],
       testPathIgnorePatterns: ['/tests/e2e/'],
-      // HTML-Report für Unit-Tests
-      reporters: [
-        'default',
-        [
-          'jest-html-reporter',
-          {
-            pageTitle: 'MEDIS Unit Test Report',
-            outputPath: 'reports/unit-test-report.html',
-            includeFailureMsg: true,
-            includeConsoleLog: true
-          }
-        ]
-      ]
     },
     {
       displayName: 'e2e',
@@ -46,19 +33,6 @@ module.exports = {
           }
         }
       },
-      // HTML-Report für E2E-Tests
-      reporters: [
-        'default',
-        [
-          'jest-html-reporter',
-          {
-            pageTitle: 'MEDIS E2E Test Report',
-            outputPath: 'reports/e2e-test-report.html',
-            includeFailureMsg: true,
-            includeConsoleLog: true
-          }
-        ]
-      ]
     }
   ]
 }

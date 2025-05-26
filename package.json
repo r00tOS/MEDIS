@@ -12,6 +12,7 @@
     "jest-environment-jsdom": "^29.7.0",
     "jest-environment-puppeteer": "^11.0.0",
     "jest-html-reporter": "^4.1.0",
+    "jest-html-reporters": "^3.1.7",
     "jest-puppeteer": "^11.0.0",
     "puppeteer": "^24.9.0"
   }
