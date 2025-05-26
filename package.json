@@ -7,6 +7,7 @@
   "devDependencies": {
     "http-server": "^14.x",
     "jest": "^29.x",
+    "jest-environment-jsdom": "^29.7.0",
     "jest-puppeteer": "^7.x",
     "puppeteer": "^24.9.0"
   }
