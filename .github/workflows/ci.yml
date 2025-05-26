@@ -21,7 +21,7 @@ jobs:
           cache: "npm"
 
       - name: Abhängigkeiten installieren
-        run: npm ci
+        run: npm install
 
       # Falls Puppeteer native libs braucht:
       - name: System-Dependencies für Puppeteer
