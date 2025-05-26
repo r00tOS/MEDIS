@@ -4,16 +4,29 @@ module.exports = {
     {
       displayName: 'unit',
       testEnvironment: 'jsdom',
-      // Alle normalen Tests (inkl. unit und integration), außer E2E
+      // Alle normalen Tests (inkl. Unit- und Integration), außer E2E
       testMatch: ['<rootDir>/tests/**/*.test.js'],
       testPathIgnorePatterns: ['/tests/e2e/'],
+      // HTML-Report für Unit-Tests
+      reporters: [
+        'default',
+        [
+          'jest-html-reporter',
+          {
+            pageTitle: 'MEDIS Unit Test Report',
+            outputPath: 'reports/unit-test-report.html',
+            includeFailureMsg: true,
+            includeConsoleLog: true
+          }
+        ]
+      ]
     },
     {
       displayName: 'e2e',
       preset: 'jest-puppeteer',
       testEnvironment: 'jest-environment-puppeteer',
       testMatch: ['<rootDir>/tests/e2e/**/*.test.js'],
-      // Puppeteer-Flags explizit hier konfigurieren:
+      // Puppeteer-Flags und Dev-Server konfigurieren
       globals: {
         'jest-puppeteer': {
           launch: {
@@ -22,17 +35,30 @@ module.exports = {
               '--no-sandbox',
               '--disable-setuid-sandbox',
               '--disable-dev-shm-usage',
-              '--disable-gpu',
-            ],
+              '--disable-gpu'
+            ]
           },
           server: {
             command: 'http-server . -p 3000',
             port: 3000,
             launchTimeout: 10000,
-            debug: true,
-          },
-        },
+            debug: true
+          }
+        }
       },
-    },
-  ],
-};
+      // HTML-Report für E2E-Tests
+      reporters: [
+        'default',
+        [
+          'jest-html-reporter',
+          {
+            pageTitle: 'MEDIS E2E Test Report',
+            outputPath: 'reports/e2e-test-report.html',
+            includeFailureMsg: true,
+            includeConsoleLog: true
+          }
+        ]
+      ]
+    }
+  ]
+}

@@ -2,9 +2,7 @@ name: CI
 
 on:
   push:
-
   pull_request:
-
 
 jobs:
   test:
@@ -17,13 +15,12 @@ jobs:
       - name: Node.js einrichten
         uses: actions/setup-node@v3
         with:
-          node-version: "18"
-          cache: "npm"
+          node-version: '18'
+          cache: 'npm'
 
       - name: Abhängigkeiten installieren
         run: npm ci
 
-      # Falls Puppeteer native libs braucht:
       - name: System-Dependencies für Puppeteer
         if: runner.os == 'Linux'
         run: |
@@ -36,8 +33,17 @@ jobs:
             libnss3 \
             libxss1
 
+      - name: Create reports directory
+        run: mkdir -p reports
+
       - name: Unit- und Logic-Tests
         run: npm test
 
       - name: End-to-End Tests mit Puppeteer
         run: npm run test:e2e
+
+      - name: Upload Test Reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: jest-html-reports
+          path: reports/*.html
