@@ -1,7 +1,7 @@
 name: CI
 
 on:
-  push:
+  push:       # läuft auf jeden Push, nicht nur main
   pull_request:
 
 jobs:
@@ -15,12 +15,13 @@ jobs:
       - name: Node.js einrichten
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
-          cache: 'npm'
+          node-version: "18"
+          cache: "npm"
 
       - name: Abhängigkeiten installieren
-        run: npm ci
+        run: npm install
 
+      # Puppeteer native libs (Linux)
       - name: System-Dependencies für Puppeteer
         if: runner.os == 'Linux'
         run: |
@@ -33,17 +34,37 @@ jobs:
             libnss3 \
             libxss1
 
-      - name: Create reports directory
+      # Unit- und Logic-Tests inkl. HTML-Report
+      - name: Unit-Tests mit HTML-Report
+        run: |
+          # wir nutzen jest-html-reporter
+          npm test -- --reporters=default --reporters=jest-html-reporter
+        env:
+          CI: true
+
+      - name: Sammle HTML-Report
+        if: always()
         run: mkdir -p reports
+      - name: Verschiebe HTML-Report
+        if: always()
+        run: mv jest-html-report.html reports/
 
-      - name: Unit- und Logic-Tests
-        run: npm test
-
-      - name: End-to-End Tests mit Puppeteer
-        run: npm run test:e2e
-
-      - name: Upload Test Reports
+      - name: Upload HTML-Report als Artifact
+        if: always()
         uses: actions/upload-artifact@v3
         with:
-          name: jest-html-reports
-          path: reports/*.html
+          name: jest-html-report
+          path: reports/
+
+      # End-to-End Tests mit Puppeteer
+      - name: E2E-Tests mit Puppeteer
+        run: npm run test:e2e
+
+      - name: Upload E2E-Logs
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: e2e-logs
+          path: |
+            tests/e2e/*.log
+            puppeteer_debug.log
