@@ -47,7 +47,7 @@ jobs:
 
       - name: Upload HTML-Report als Artifact
         if: always()
-        uses: actions/upload-artifact    # <-- hier auf v2 zurückgestuft
+        uses: actions/upload-artifact@v4    # <-- hier auf v2 zurückgestuft
         with:
           name: jest-html-report
           path: reports/
@@ -57,7 +57,7 @@ jobs:
 
       - name: Upload E2E-Logs
         if: failure()
-        uses: actions/upload-artifact   # <-- und hier ebenfalls v2
+        uses: actions/upload-artifact@v4    # <-- und hier ebenfalls v2
         with:
           name: e2e-logs
           path: tests/e2e/*.log
