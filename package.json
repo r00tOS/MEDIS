@@ -1,0 +1,13 @@
+{
+  "scripts": {
+    "test": "jest --selectProjects unit",
+    "test:e2e": "jest --selectProjects e2e",
+    "test:all": "jest"
+  },
+  "devDependencies": {
+    "jest": "^29.x",
+    "jest-puppeteer": "^7.x",
+    "http-server": "^14.x",
+    "puppeteer": "^20.x"
+  }
+}
