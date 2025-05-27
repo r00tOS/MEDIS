@@ -1,0 +1,19 @@
+{
+  "scripts": {
+    "test": "jest --selectProjects unit",
+    "test:e2e": "jest --selectProjects e2e",
+    "test:all": "jest"
+  },
+  "devDependencies": {
+    "expect-puppeteer": "^11.0.0",
+    "http-server": "^14.x",
+    "jest": "^29.x",
+    "jest-dev-server": "^11.0.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "jest-environment-puppeteer": "^11.0.0",
+    "jest-html-reporter": "^4.1.0",
+    "jest-html-reporters": "^3.1.7",
+    "jest-puppeteer": "^11.0.0",
+    "puppeteer": "^24.9.0"
+  }
+}
