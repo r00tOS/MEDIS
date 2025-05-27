@@ -129,11 +129,11 @@ function updatePatientData(id, field, value) {
   loadPatients();
 }
 
-function disposeRequest(id, request) {
+function disposeRequest(patientID, request) {
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
-  const patient = patients.find((p) => p.id === id);
+  const patient = patients.find((p) => p.id === patientID);
   patient.additionalRequest = request;
-  addCustomHistoryEvent(patient, "resourceRequest", request);
+  addHistoryEvent(patient, "resourceRequest", request);
   if (!patient.disposed) patient.disposed = {};
   patient.disposed[request] = false;
   localStorage.setItem("patients", JSON.stringify(patients));

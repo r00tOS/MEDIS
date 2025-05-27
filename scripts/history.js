@@ -100,9 +100,11 @@ function getPatientHistoryHHMM(patient) {
         }
         break;
       case "assignmentChange":
-        entryText += `${historyEvent.payload?.field ?? "Ressource"} ${
-          historyEvent.payload?.newValue ? "zugewiesen" : "entzogen"
-        }`;
+        let action = "zugewiesen";
+        if (historyEvent.payload.field.startsWith("unassigned")) {
+          action = "entzogen";
+        }
+        entryText += `${historyEvent.payload.newValue} ${action}`;
         break;
       case "resourceRequest":
         entryText += `${
