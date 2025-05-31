@@ -62,18 +62,23 @@ function openKeywordModal(patientId) {
   document.getElementById("keywordModal").style.display = "flex";
 }
 
+// Funktion zum Rendern der Kategorienliste
 function renderCategoryList() {
   const catDiv = document.getElementById("categoryList");
-  catDiv.innerHTML = "";
+  catDiv.innerHTML = "";  // Leeren der Kategorie-Liste
+
   alarmConfig.forEach((c, i) => {
     const d = document.createElement("div");
     d.textContent = c.name;
-    d.className = "item" + (selectedCategory === i ? " selected" : "");
+    d.className = "item";  // Keine "selected"-Markierung hinzufügen
+    if (selectedCategory === i) {
+      d.classList.add("selected");  // Markiere die ausgewählte Kategorie
+    }
     d.onclick = () => {
-      selectedCategory = i;
-      selectedKeyword = null;
-      renderCategoryList();
-      renderKeywordList();
+      selectedCategory = i; // Setzen der ausgewählten Kategorie
+      selectedKeyword = null; // Zurücksetzen der ausgewählten Keywords
+      renderCategoryList(); // Erneutes Rendern der Kategorie-Liste
+      renderKeywordList();  // Erneutes Rendern der Keyword-Liste
     };
     catDiv.appendChild(d);
   });
@@ -445,26 +450,38 @@ function openEditModal(id) {
     if (sel) sel.checked = true;
   }
 
-  // 3) Keyword-Modal resetten
-  document.getElementById("searchInput").value = "";
-  document.getElementById("otherDetail").style.display = "none";
-  document.getElementById("categoryList").style.display = "block";
-  document.getElementById("keywordList").style.display = "block";
-  document.getElementById("searchResults").style.display = "none";
+  // 3) Keyword-Modal zurücksetzen
+  selectedCategory = null;  // Kategorie zurücksetzen
+  selectedKeyword = null;   // Keyword zurücksetzen
+
+  // 4) UI zurücksetzen
+  document.getElementById("searchInput").value = "";  // Suchfeld zurücksetzen
+  document.getElementById("otherDetail").style.display = "none";  // Immer ausblenden, wenn keine Kategorie ausgewählt
+  document.getElementById("categoryList").style.display = "block";  // Kategorien-Liste einblenden
+  document.getElementById("keywordList").style.display = "block";   // Keyword-Liste einblenden
+  document.getElementById("searchResults").style.display = "none";  // Suchergebnisse ausblenden
+
+  // Leeren der Keyword-Liste
+  document.getElementById("keywordList").innerHTML = "";
+
+  // 5) Alle Kategorie-Auswahlmarkierungen entfernen
+  resetCategorySelection();  // Die Kategorien-Darstellung zurücksetzen
+
+  // 6) Rendern der Kategorienliste (nichts ausgewählt)
   renderCategoryList();
 
-  // 4) Modal anzeigen
+  // 7) Modal anzeigen
   const modal = document.getElementById("keywordModal");
   modal.style.display = "flex";
 
-  // 5) Alter-Feld fokussieren
+  // 8) Alter-Feld fokussieren
   const ageInput = document.getElementById("editAge");
   if (ageInput) {
     ageInput.focus();
     ageInput.select();
   }
 
-  // 6) Gender-Shortcut: nur aktiv, wenn Gender-Feld fokussiert ist
+  // 9) Gender-Shortcut: nur aktiv, wenn Gender-Feld fokussiert ist
   const genderFieldset = document.querySelector("#keywordModal fieldset");
   function onGenderKey(e) {
     const k = e.key.toLowerCase();
@@ -479,7 +496,7 @@ function openEditModal(id) {
   // Listener nur auf das Fieldset setzen
   genderFieldset.addEventListener("keydown", onGenderKey);
 
-  // 7) Beim Schließen Listener entfernen
+  // 10) Beim Schließen Listener entfernen
   const closeBtn = modal.querySelector(".close");
   const cleanup = () => {
     modal.removeEventListener("keydown", onGenderKey);
@@ -490,6 +507,23 @@ function openEditModal(id) {
     cleanup();
   };
 }
+
+// Funktion zum Zurücksetzen der visuellen Markierungen der Kategorien
+function resetCategorySelection() {
+  const categoryListItems = document.querySelectorAll('#categoryList .item');
+  categoryListItems.forEach(item => {
+    item.classList.remove('selected');  // Entfernen der "selected"-Markierung
+  });
+}
+
+// Funktion zum Zurücksetzen der visuellen Markierungen der Keywords
+function resetKeywordSelection() {
+  const keywordListItems = document.querySelectorAll('#keywordList .item');
+  keywordListItems.forEach(item => {
+    item.classList.remove('selected');  // Entfernen der "selected"-Markierung
+  });
+}
+
 
 /**
  * Schließt das Edit-/Keyword-Modal.

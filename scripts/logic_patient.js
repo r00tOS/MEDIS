@@ -48,89 +48,6 @@ function clearAssignments(patientId, finalStatus) {
   );
 }
 
-function updatePatientData(id, field, value) {
-  const patients = JSON.parse(localStorage.getItem("patients")) || [];
-  const patient = patients.find((p) => p.id === id);
-  if (!patient) return;
-  // History-Array initialisieren, falls nötig
-  if (!patient.history) patient.history = [];
-
-  // Hilfs-Objekte sicherstellen
-  patient.statusTimestamps = patient.statusTimestamps || {};
-  patient.durations = patient.durations || {};
-
-  // 1) Timestamp & Dauer-Kalkulation zentral in recordStatusChange
-  function doTimeTracking() {
-    recordStatusChange(patient, value);
-  }
-
-  // 2) Update von History, Feld, Triggern von recordStatusChange und Speichern
-  function applyUpdate() {
-    // a) History-Eintrag
-    if (field === "status") {
-      patient.history.push(`${getCurrentTime()} Status: ${value}`);
-    } else if (field === "diagnosis") {
-      patient.history.push(
-        `${getCurrentTime()} Verdachtsdiagnose geändert: ${value}`
-      );
-    } else if (field === "discharge") {
-      patient.history.push(`${getCurrentTime()} Entlassen: ${value}`);
-    } else if (field === "transport") {
-      patient.history.push(`${getCurrentTime()} Transport in KH: ${value}`);
-    } else if (field === "additionalRequest") {
-      patient.history.push(`${getCurrentTime()} ${value}`);
-    } else if (
-      !["age", "gender", "location", "team", "rtm", "remarks"].includes(field)
-    ) {
-      patient.history.push(`${getCurrentTime()} ${field} geändert: ${value}`);
-    }
-
-    // b) Feld setzen
-    patient[field] = value;
-
-    // c) Timestamp & Dauer-Berechnungen
-    doTimeTracking();
-
-    // d) persistieren
-    localStorage.setItem("patients", JSON.stringify(patients));
-  }
-
-  // 3) Sonderfall Status → Animation + Delayed Update
-  if (field === "status") {
-    // a) History-Eintrag & Status setzen
-    patient.history.push(`${getCurrentTime()} Status: ${value}`);
-    patient.status = value;
-
-    // b) Timestamp‐ und Dauer‐Berechnung
-    recordStatusChange(patient, value);
-
-    // c) Persist
-    localStorage.setItem("patients", JSON.stringify(patients));
-
-    // d) Animation & Trupp‐Aufräum‐Logik
-    const oldCard = document.querySelector(`.patient-card[data-id='${id}']`);
-    const finish = () => {
-      if (value === "Entlassen" || value === "Transport in KH") {
-        clearAssignments(id);
-      }
-      loadPatients(id);
-      updateLiveTimers(); // einmal direkt nachladen
-    };
-
-    if (oldCard) {
-      oldCard.classList.add("slide-out");
-      oldCard.addEventListener("animationend", finish, { once: true });
-    } else {
-      finish();
-    }
-    return;
-  }
-
-  // 4) Alle anderen Felder → direkt updaten
-  applyUpdate();
-  loadPatients();
-}
-
 function disposeRequest(id, request) {
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
   const patient = patients.find((p) => p.id === id);
@@ -252,7 +169,52 @@ function confirmEdit() {
   // 3) Modal schließen & neu rendern
   closeEditModal();
   loadPatients(editPatientId);
+
+  // 4) Immer die “Patientendaten geändert: …”-Zeile in die Historie schreiben
+  //     – unabhängig davon, welche Felder wirklich verändert wurden.
+  addCombinedHistoryEntry(editPatientId);
 }
+
+/**
+ * Baut die Text‐Zeile „Patientendaten geändert: Verdachtsdiagnose=…, Alter=…, Geschlecht=…, Standort=…, Bemerkung=…“
+ * und hängt sie an patient.history an. Persistiert in localStorage.
+ */
+function addCombinedHistoryEntry(patientId) {
+  const stored = JSON.parse(localStorage.getItem("patients")) || [];
+  const patient = stored.find((p) => p.id === patientId);
+  if (!patient) return;
+
+  // Stelle sicher, dass history‐Array existiert
+  if (!patient.history) patient.history = [];
+
+  // Hole aktuellen Zeitstempel (so wie getCurrentTime() ihn formatiert)
+  const nowFormatted = getCurrentTime(); // Voraussetzung: getCurrentTime() existiert
+
+  // Baue den kombinierten Eintrag
+  const line =
+    `${nowFormatted} Patientendaten geändert: ` +
+    `Verdachtsdiagnose=${patient.diagnosis || "–"}, ` +
+    `Alter=${patient.age || "–"}, ` +
+    `Geschlecht=${patient.gender || "–"}, ` +
+    `Standort=${patient.location || "–"}, ` +
+    `Bemerkung=${patient.remarks || "–"}`;
+
+  // Hänge in history an
+  patient.history.push(line);
+
+  // Speichere zurück
+  localStorage.setItem("patients", JSON.stringify(stored));
+
+  // Damit alle UIs (z. B. loadPatients‐Listener) reagieren, feuern wir ein Storage‐Event:
+  window.dispatchEvent(
+    new StorageEvent("storage", {
+      key: "patients",
+      newValue: JSON.stringify(stored),
+    })
+  );
+}
+
+
 
 // 1) Zentrale Update-Funktion
 function updatePatientData(id, field, value) {
@@ -276,16 +238,6 @@ function updatePatientData(id, field, value) {
     // a) History-Eintrag
     if (field === "status") {
       patient.history.push(`${getCurrentTime()} Status: ${value}`);
-    } else if (field === "diagnosis") {
-      // kompakten Überblick aller Felder in die Historie
-      patient.history.push(
-        `${getCurrentTime()} Patientendaten geändert: ` +
-          `Verdachtsdiagnose=${value}, ` +
-          `Alter=${patient.age || "–"}, ` +
-          `Geschlecht=${patient.gender || "–"}, ` +
-          `Standort=${patient.location || "–"}, ` +
-          `Bemerkung=${patient.remarks || "–"}`
-      );
     } else if (field === "discharge") {
       patient.history.push(`${getCurrentTime()} Entlassen: ${value}`);
     } else if (field === "transport") {
