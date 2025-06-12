@@ -135,7 +135,7 @@ function renderTrupps() {
             trupp.status === "Patient"
               ? `<p><strong>Patient ${
                   trupp.patientInput || "keine Nummer"
-                }</strong> <button onclick="editPatient(${i})">✎</button></p>`
+                }</strong>`
               : ""
           }
 
