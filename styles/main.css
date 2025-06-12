@@ -159,13 +159,13 @@ header {
 
 /* Datum */
 #currentDate {
-  font-size: 1.8rem; /* ausreichend groß */
+  font-size: 2.8rem; /* ausreichend groß */
   font-weight: bold;
 }
 
 /* Uhrzeit */
 #currentTime {
-  font-size: 2.4rem;
+  font-size: 3.4rem;
   margin-top: 0.2em;
   font-variant-numeric: tabular-nums; /* gleichmäßiger Abstand */
 }
