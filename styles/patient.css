@@ -1,4 +1,8 @@
 /* === css/patient.css === */
+html, body {
+  /* deaktiviert Scroll Anchoring im gesamten Dokument */
+  overflow-anchor: none;
+}
 
 /* 1. Listen & Modal */
 .list {

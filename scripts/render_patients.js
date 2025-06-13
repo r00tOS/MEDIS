@@ -10,6 +10,7 @@ function loadPatients(highlightId) {
   if (!document.getElementById("activePatients")) return;
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
   const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+  const scrollY = window.scrollY;
 
   patients.forEach((p) => {
     // 1) createdAt sicher als Zahl
@@ -407,4 +408,5 @@ ${dispoButtons}
   document.querySelectorAll(".history-container").forEach((hc) => {
     hc.scrollTop = hc.scrollHeight;
   });
+  window.scrollTo(0, scrollY); 
 }

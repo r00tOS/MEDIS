@@ -1,8 +1,18 @@
 /* === css/trupp.css === */
 
 /* 1. Max-Einsatzzeit-Widget ausblenden (nur patienten-Widget bleibt) */
+
+html, body {
+  /* deaktiviert Scroll Anchoring im gesamten Dokument */
+  overflow-anchor: none;
+}
+
 .max-einsatz-time {
   display: none !important;
+}
+
+body {
+  overflow-anchor: none;
 }
 
 /* 2. Sektionen im Trupp-Tracker */

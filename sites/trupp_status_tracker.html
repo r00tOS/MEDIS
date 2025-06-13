@@ -178,6 +178,7 @@
 
       setInterval(() => {
         const now = Date.now();
+        const prev = JSON.stringify(trupps);
 
         // 1) explizit die beiden Status-Gruppen definieren
         const pauseStatuses = [
@@ -213,9 +214,11 @@
           // 4) alle anderen Status bleiben außen vor
         });
 
+        if (JSON.stringify(trupps) !== prev) {
         saveTrupps();
         renderTrupps();
-      }, 15000);
+        }
+      }, 10000);
 
       function editOrt(index) {
         const trupp = trupps[index];

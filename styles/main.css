@@ -1,4 +1,9 @@
 /* === css/main.css === */
+html, body {
+  /* deaktiviert Scroll Anchoring im gesamten Dokument */
+  overflow-anchor: none;
+}
+
 
 /* 1. Reset & Basis */
 * {
@@ -47,6 +52,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  overflow-anchor: none;
 }
 body > header {
   display: flex;
