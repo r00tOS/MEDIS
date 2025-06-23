@@ -82,29 +82,30 @@
           const patients = JSON.parse(localStorage.getItem("patients")) || [];
           let dirty = false;
 
-          // 4) Entferne alle Trupp-Namen, die nicht mehr Status "Patient" haben
-          patients.forEach((patient) => {
-            if (
-              patient.status === "Entlassen" ||
-              patient.status === "Transport in KH"
-            )
-              return;
-            if (!Array.isArray(patient.team)) return;
+          // 4) Entferne alle Trupp-Namen, die nicht mehr Status 3 haben
+patients.forEach((patient) => {
+  if (
+    patient.status === "Entlassen" ||
+    patient.status === "Transport in KH"
+  )
+    return;
+  if (!Array.isArray(patient.team)) return;
 
-            const before = [...patient.team];
-            patient.team = patient.team.filter((name) => {
-              const t = newTrupps.find((x) => x.name === name);
-              return t && t.status === "Patient";
-            });
+  const keepStatuses = [3, 4, 7, 8];              // diese Status sollen behalten werden
+  const before = [...patient.team];
+  patient.team = patient.team.filter((name) => {
+    const t = newTrupps.find((x) => x.name === name);
+    return t && keepStatuses.includes(t.status);
+  });
 
-            before.forEach((name) => {
-              if (!patient.team.includes(name)) {
-                patient.history = patient.history || [];
-                patient.history.push(
-                  `${getCurrentTime()} Trupp ${name} entfernt (via Trupp-Tracker)`
-                );
-                dirty = true;
-              }
+  before.forEach((name) => {
+    if (!patient.team.includes(name)) {
+      patient.history = patient.history || [];
+      patient.history.push(
+        `${getCurrentTime()} Trupp ${name} entfernt (via Trupp-Tracker)`
+      );
+      dirty = true;
+    }
             });
           });
 

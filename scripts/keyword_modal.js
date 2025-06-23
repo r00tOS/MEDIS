@@ -296,7 +296,7 @@ function openNachforderungModal(patientId, request) {
 
   // Trupp-Liste vorbereiten (wie gehabt)
   const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
-  const excluded = ["Nicht Einsatzbereit", "Patient", "Spielfeldrand"];
+  const excluded = [6, 3, 12, 4, 7, 8];
   const options = trupps
     .filter((t) => !excluded.includes(t.status))
     .map((t) => `<option value="${t.name}">${t.name}</option>`)
@@ -386,7 +386,7 @@ function confirmNachforderungModal() {
           bis: now,
         });
       }
-      t.status = "Patient";
+      t.status = 3;
       t.patientInput = patient.id;
       t.patientStart = now;
       t.currentEinsatzStart = now;

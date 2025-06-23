@@ -3,7 +3,8 @@ function updateTrupp(index, status) {
   // 0) Scroll-Position merken
   const scrollEl = document.scrollingElement || document.documentElement;
   const scrollY = scrollEl.scrollTop;
-
+  status = Number(status);
+  const patientKeepStatuses = ["3","4","7","8"];
   const trupp = trupps[index];
   const oldStatus = trupp.status;
   const now = Date.now();
@@ -12,19 +13,40 @@ function updateTrupp(index, status) {
     minute: "2-digit",
   });
 
+    if (oldStatus === 3 && status === 4 && trupp.patientInput) {
+    // …dann setze im zugehörigen Patientendatensatz den Status auf "in Behandlung"
+    updatePatientData(trupp.patientInput, 'status', 'in Behandlung');
+  }
+
+      if (oldStatus === 3 && status === 8 && trupp.patientInput) {
+    // …dann setze im zugehörigen Patientendatensatz den Status auf "in Behandlung"
+    updatePatientData(trupp.patientInput, 'status', 'Behandlung in UHS');
+  }
+
+      if (oldStatus === 4 && status === 7 && trupp.patientInput) {
+    updatePatientData(trupp.patientInput, 'status', 'verlegt in UHS');
+  }
+
+        if (oldStatus === 7 && status === 8 && trupp.patientInput) {
+    updatePatientData(trupp.patientInput, 'status', 'Behandlung in UHS');
+  }
+
   // 1) Status-Gruppen definieren
-  const einsatzStatuses = [
-    "Streife",
-    "Patient",
-    "Spielfeldrand",
-    "Einsatz beendet",
-  ];
+    const einsatzStatuses = [
+      11, // Streife
+      3,  // Patient
+      12, // Spielfeldrand
+      0,  // Einsatz beendet
+      4,  // dein neuer Status "Einsatzort" z.B.
+      7,  // …
+      8,  // …
+    ];
   const pauseStatuses = [
-    "Einsatzbereit in UHS",
-    "Einsatzbereit unterwegs",
-    "Einsatzbereit in Rückhaltung",
+    2,
+    1,
+    61,
   ];
-  // Alles andere ist "Nicht Einsatzbereit"
+  // Alles andere ist 6
 
   // 2) Wechsel IN Pausen-Status → Pause neu starten
   if (pauseStatuses.includes(status) && !pauseStatuses.includes(oldStatus)) {
@@ -61,7 +83,13 @@ function updateTrupp(index, status) {
   }
 
   // 7) Spezielle Abschlüsse für Patient & Streife
-  if (oldStatus === "Patient" && trupp.patientInput && trupp.patientStart) {
+  // nur löschen, wenn wir aus 3 in *keinen* der Sonder‐Status [4,7,8] wechseln
+if (
+  oldStatus === 3 &&
+  trupp.patientInput &&
+  trupp.patientStart &&
+  !patientKeepStatuses.includes(String(status))
+) {
     trupp.patientHistorie.push({
       nummer: trupp.patientInput,
       von: trupp.patientStart,
@@ -69,7 +97,7 @@ function updateTrupp(index, status) {
     });
     trupp.patientInput = trupp.patientStart = null;
   }
-  if (oldStatus === "Streife" && trupp.currentOrt && trupp.einsatzStartOrt) {
+  if (oldStatus === 11 && trupp.currentOrt && trupp.einsatzStartOrt) {
     trupp.einsatzHistorie.push({
       ort: trupp.currentOrt,
       von: trupp.einsatzStartOrt,
@@ -79,7 +107,7 @@ function updateTrupp(index, status) {
   }
 
   // 8) Wechsel auf Patient → neuen Patienten anlegen
-  if (oldStatus !== "Patient" && status === "Patient") {
+  if (oldStatus !== 3 && status === 3) {
     const letzteOrt =
       trupp.currentOrt || trupp.einsatzHistorie.at(-1)?.ort || "";
 
@@ -99,7 +127,7 @@ function updateTrupp(index, status) {
   }
 
   // 9) Bei Streife → neuen Ort abfragen
-  if (status === "Streife") {
+  if (status === 11) {
     trupp.einsatzStartOrt = now;
     const neuerOrt = prompt(
       "Bitte Einsatzort eingeben:",
@@ -107,13 +135,14 @@ function updateTrupp(index, status) {
     );
     if (neuerOrt !== null) trupp.currentOrt = neuerOrt.trim();
   }
-
   // 10) Status übernehmen
   trupp.status = status;
   trupp.lastStatusChange = now;
 
   // 11) Trupp aus Patientendaten entfernen, wenn Weg von Patient
-  if (oldStatus === "Patient" && status !== "Patient") {
+  //      Ausnahme: bleibe zugeordnet bei Status 3, 4, 7 oder 8
+  const keepStatuses = [3, 4, 7, 8];
+  if (oldStatus === 3 && !keepStatuses.includes(status)) {
     const stored = JSON.parse(localStorage.getItem("patients")) || [];
     stored.forEach((p) => {
       if (Array.isArray(p.team)) {
@@ -164,7 +193,7 @@ function addTrupp(name = null) {
   if (!input) return;
   trupps.push({
     name: input,
-    status: "Nicht Einsatzbereit",
+    status: 6,
     lastStatusChange: Date.now(),
     currentPauseStart: Date.now(),
     currentEinsatzStart: null,
@@ -178,6 +207,7 @@ function addTrupp(name = null) {
     einsatzStartOrt: null,
     patientStart: null,
   });
+
   // Eingabefeld leeren, wenn vom Nutzer getriggert
   if (!name) document.getElementById("newTruppName").value = "";
   saveTrupps();
@@ -218,18 +248,18 @@ function copyToClipboard(truppName) {
   let alle;
 
   switch (trupp.status) {
-    case "Einsatzbereit in UHS":
+    case 2:
       meldung = `${trupp.name} einsatzbereit in UHS`;
       break;
-    case "Nicht Einsatzbereit":
+    case 6:
       meldung = `${trupp.name} nicht einsatzbereit`;
       break;
-    case "Streife":
+    case 11:
       meldung = `${trupp.name} übernimmt Streifengebiet ${
         trupp.currentOrt || "[Ort]"
       }`;
       break;
-    case "Patient":
+    case 3:
       standort =
         trupp.currentOrt ||
         (trupp.einsatzHistorie.length
@@ -244,9 +274,9 @@ Verdachtsdiagnose:
 Nachforderung:
 Bemerkung:`;
       break;
-    case "Spielfeldrand":
+    case 12:
       alle = trupps
-        .filter((t) => t.status === "Spielfeldrand")
+        .filter((t) => t.status === 12)
         .map((t) => t.name)
         .join(", ");
       meldung = `${alle} Spielfeldrand erreicht`;
@@ -264,6 +294,7 @@ Bemerkung:`;
       console.error("Fehler beim Kopieren:", err);
     });
 }
+
 
 function addHistoryEntry(pid, entry) {
   // Alle Patienten aus dem lokalen Speicher holen
@@ -296,4 +327,24 @@ function addHistoryEntry(pid, entry) {
   } else {
     console.error("Patient nicht gefunden: " + pid);
   }
+}
+
+
+function toggleStatusDropdown(truppId) {
+  const prev = localStorage.getItem('openTruppId');
+  const next = prev === truppId ? null : truppId;
+  localStorage.setItem('openTruppId', next);
+  renderTrupps();
+}
+
+function closeStatusDropdown() {
+  localStorage.removeItem('openTruppId');
+  renderTrupps();
+}
+
+// Wird von jedem <li> aufgerufen, nachdem updateTrupp() ausgeführt wurde:
+function onStatusSelected(i, status, truppId) {
+  updateTrupp(i, status);
+  // schließe das Dropdown
+  closeStatusDropdown();
 }

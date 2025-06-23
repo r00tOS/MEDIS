@@ -53,7 +53,7 @@ function loadPatients(highlightId) {
       patient.status === "Transport in KH" || patient.status === "Entlassen";
 
     // --- Trupp-Dropdown ---
-    const excluded = ["Nicht Einsatzbereit", "Patient", "Spielfeldrand"];
+    const excluded = [6, 3, 12];
     const options = trupps
       .filter((t) => !excluded.includes(t.status))
       .map((t) => `<option value="${t.name}">${t.name}</option>`)
@@ -212,28 +212,6 @@ ${patient.durations.behandlungsdauer || "–"}
 
 <div style="min-width:200px;">
 <strong>Status:</strong> ${patient.status}<br>
-<p><button class="status-gemeldet"
-       onclick="updatePatientData(${patient.id}, 'status', 'gemeldet')">
- gemeldet
-</button></p>
-<p><button class="status-disponiert"
-       onclick="updatePatientData(${patient.id}, 'status', 'disponiert')">
- disponiert
-</button></p>
-<p><button class="status-in-Behandlung"
-       onclick="updatePatientData(${patient.id}, 'status', 'in Behandlung')">
- in Behandlung
-</button></p>
-<p><button class="status-verlegt-in-UHS"
-       onclick="updatePatientData(${patient.id}, 'status', 'verlegt in UHS')">
- verlegt in UHS
-</button></p>
-<p><button class="status-Behandlung-in-UHS"
-       onclick="updatePatientData(${
-         patient.id
-       }, 'status', 'Behandlung in UHS')">
- Behandlung in UHS
-</button></p>
 <button class="status-Transport-in-KH"
        onclick="transportPatient(${patient.id})">
  Transport in KH

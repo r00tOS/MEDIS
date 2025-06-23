@@ -1,6 +1,7 @@
 function renderTrupps() {
   const scrollY = window.scrollY;
   const now = Date.now();
+  const openId = localStorage.getItem("openTruppId");
 
   const prevRects = new Map();
   document.querySelectorAll(".trupp").forEach((el) => {
@@ -20,9 +21,19 @@ function renderTrupps() {
     if (!trupp.id)
       trupp.id = "trupp_" + Math.random().toString(36).substring(2, 10);
     const div = document.createElement("div");
+    const statusDefs = window.statusOptions;
+    const currentDef = statusDefs.find(o => o.status === trupp.status) || statusDefs[0];
+    const opt = window.statusOptions.find(o => o.status === trupp.status);
+    const statusLabel = opt
+    ? `${trupp.status} – ${opt.text}`
+    : String(trupp.status);
+    
     div.className = "trupp";
     div.dataset.key = trupp.name;
     div.dataset.truppId = trupp.id;
+    // wenn diese ID die gespeicherte offene ist, öffnen wir sie gleich
+    const isOpen = trupp.id === openId;
+    if (isOpen) div.classList.add('show-status-buttons');
 
     const einsatzzeit = trupp.einsatzzeit || 0;
     let pausenzeit = trupp.pausenzeit || 0;
@@ -30,29 +41,26 @@ function renderTrupps() {
 
     if (trupp.currentEinsatzStart && einsatzzeit > nextMaxEinsatzTime * 60000)
       div.classList.add("ueberzogen");
-    if (trupp.status === "Einsatzbereit in Rückhaltung")
+    if (trupp.status === 61)
       div.classList.add("rueckhaltung");
-    if (trupp.status === "Patient") div.classList.add("patient");
-    if (trupp.status === "Spielfeldrand") div.classList.add("spielfeldrand");
-    // 1) erst einmal die gemeinsame Einsatz-Gruppe
+    if (trupp.status === 12) div.classList.add("spielfeldrand");
+    if ([3, 4, 7, 8].includes(trupp.status))
+      div.classList.add("patient");
+    // 1)gemeinsame Einsatz-Gruppe
     if (
-      ["Streife", "Patient", "Spielfeldrand", "Einsatz beendet"].includes(
+      [11, 12, 0].includes(
         trupp.status
       )
     ) {
       div.classList.add("einsatz");
-      // und wenn es genau "Einsatz beendet" ist, den lila Style
-      if (trupp.status === "Einsatz beendet") {
+      // und wenn es genau 0 ist, den lila Style
+      if (trupp.status === 0) {
         div.classList.add("einsatz-beendet");
       }
     }
     // 2) Pause-Status
     else if (
-      [
-        "Einsatzbereit in UHS",
-        "Einsatzbereit unterwegs",
-        "Einsatzbereit in Rückhaltung",
-      ].includes(trupp.status)
+      [1, 2, 61].includes(trupp.status)
     ) {
       div.classList.add("pause");
     }
@@ -64,10 +72,10 @@ function renderTrupps() {
     const min = (ms) => Math.floor(ms / 60000);
     const timeDisplay =
       trupp.currentEinsatzStart &&
-      trupp.status !== "Einsatzbereit in Rückhaltung"
+      trupp.status !== 61
         ? `Aktuelle Einsatzzeit: ${min(einsatzzeit)} Min`
         : `Aktuelle Pausenzeit: ${min(pausenzeit)} Min${
-            trupp.status === "Einsatzbereit in Rückhaltung"
+            trupp.status === 61
               ? " (Rückhaltung zählt als Pause)"
               : ""
           }`;
@@ -76,12 +84,12 @@ function renderTrupps() {
 
     const progress =
       trupp.currentEinsatzStart &&
-      trupp.status !== "Einsatzbereit in Rückhaltung"
+      trupp.status !== 61
         ? Math.min(einsatzzeit / (nextMaxEinsatzTime * 60000), 1)
         : 0;
     const progressBar =
       trupp.currentEinsatzStart &&
-      trupp.status !== "Einsatzbereit in Rückhaltung"
+      trupp.status !== 61
         ? `<div style='background:#ccc;height:8px;border-radius:4px;margin-top:4px;'>
      <div style='height:8px;width:${Math.floor(
        progress * 100
@@ -89,55 +97,52 @@ function renderTrupps() {
    </div>`
         : "";
 
-    div.innerHTML = `
-          <div class="trupp-header">
-  <h3>${trupp.name}</h3>
-  ${
-    trupp.status === "Nicht Einsatzbereit"
+div.innerHTML = `
+  <div class="trupp-header">
+    <h3>${trupp.name}</h3>
+    ${trupp.status === 6
       ? `<button class="delete-btn" onclick="deleteTrupp(${i})">×</button>`
-      : ""
-  }
-          </div>
-          <div style="display: flex; align-items: center; gap: 8px;">
-  <span class="status-display" onclick="toggleStatusButtons('${
-    trupp.id
-  }')">Status: ${trupp.status}</span>
-  ${
-    !["Einsatzbereit in Rückhaltung", "Einsatzbereit unterwegs"].includes(
-      trupp.status
-    )
-      ? `<button class="meldung-btn" onclick="copyToClipboard('${trupp.name}')">Meldung</button>`
-      : ""
-  }
+      : ""}
+  </div>
+
+  <div class="status-dropdown">
+    <button
+      class="status-toggle"
+      onclick="toggleStatusDropdown('${trupp.id}')"
+    >
+      Status: ${statusLabel}▾
+    </button>
+    <ul class="status-menu${trupp.id === localStorage.getItem('openTruppId') ? ' open' : ''}">
+          ${statusDefs.map(o => `
+            <li class="${o.status === currentDef.status ? 'active' : ''}"
+                onclick="onStatusSelected(${i}, ${o.status}, '${trupp.id}')">
+              ${o.status} – ${o.text}
+            </li>
+          `).join('')}
+        </ul>
+  </div>
+  
+
+  ${![61, 1].includes(
+    trupp.status
+  )
+    ? `<button class="meldung-btn" onclick="copyToClipboard('${trupp.name}')">Meldung</button>`
+    : ""}
 </div>
-<div class="status-buttons" style="display:none;">
-<button class="btn-nicht-einsatzbereit" onclick="updateTrupp(${i}, 'Nicht Einsatzbereit')">Nicht Einsatzbereit</button>
-            <button class="btn-pause" onclick="updateTrupp(${i}, 'Einsatzbereit in UHS')">In UHS</button>
-            <button class="btn-pause" onclick="updateTrupp(${i}, 'Einsatzbereit unterwegs')">Unterwegs</button>
-            <button class="btn-pause" onclick="updateTrupp(${i}, 'Einsatzbereit in Rückhaltung')">In Rückhaltung</button>
-            <button class="btn-einsatz" onclick="updateTrupp(${i}, 'Streife')">Streife</button>
-            ${
-              trupp.status !== "Patient"
-                ? `<button class="btn-patient" onclick="updateTrupp(${i}, 'Patient')">Patient</button>`
-                : ""
-            }
-            <button class="btn-spielfeldrand" onclick="updateTrupp(${i}, 'Spielfeldrand')">Spielfeldrand</button>
-          </div>
+
 
 		  ${
-        trupp.status === "Streife"
+        trupp.status === 11
           ? `<p><strong>${
               trupp.currentOrt || "kein Einsatzort"
             }</strong> <button onclick="editOrt(${i})">✎</button></p>`
           : ""
       }
-          ${
-            trupp.status === "Patient"
-              ? `<p><strong>Patient ${
-                  trupp.patientInput || "keine Nummer"
-                }</strong>`
-              : ""
-          }
+${
+  [3, 4, 7, 8].includes(trupp.status)
+    ? `<p><strong>Patient ${trupp.patientInput || "keine Nummer"}</strong></p>`
+    : ""
+}
 
           <p>${timeDisplay}</p>
           ${progressBar}
@@ -172,24 +177,24 @@ function renderTrupps() {
         `;
 
     const einsatzSort =
-      trupp.status === "Spielfeldrand"
+      trupp.status === 12
         ? 99
-        : trupp.status === "Patient"
+        : trupp.status === 3
         ? 2
-        : trupp.status === "Einsatz beendet"
+        : trupp.status === 0
         ? 1
         : 0;
     if (
-      ["Streife", "Patient", "Spielfeldrand", "Einsatz beendet"].includes(
+      [11, 3, 12, 0, 4, 7, 8].includes(
         trupp.status
       )
     )
       einsatz.push({ el: div, sort: einsatzSort });
     else if (
-      ["Einsatzbereit in UHS", "Einsatzbereit unterwegs"].includes(trupp.status)
+      [2, 1].includes(trupp.status)
     )
       pause.push({ el: div, sort: pausenzeit });
-    else if (trupp.status === "Einsatzbereit in Rückhaltung")
+    else if (trupp.status === 61)
       pause.push({ el: div, sort: -1 });
     else nicht.push({ el: div, sort: pausenzeit });
   });
@@ -214,9 +219,9 @@ function renderTrupps() {
   pause
     .sort((a, b) => {
       const statusOrder = [
-        "Einsatzbereit in UHS",
-        "Einsatzbereit unterwegs",
-        "Einsatzbereit in Rückhaltung",
+        2,
+        1,
+        61,
       ];
       const trA = trupps.find((t) => t.name === a.el.dataset.key);
       const trB = trupps.find((t) => t.name === b.el.dataset.key);

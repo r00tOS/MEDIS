@@ -1,3 +1,16 @@
+/**
+ * Wandelt Millisekunden in MM:SS um.
+ * @param {number} ms Millisekunden
+ * @returns {string} formatierte Zeit MM:SS
+ */
+function formatMS(ms) {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+
 function clearAssignments(patientId, finalStatus) {
   const now = Date.now();
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
@@ -26,14 +39,14 @@ function clearAssignments(patientId, finalStatus) {
       t.patientInput = null;
       t.patientStart = null;
 
-      // c) Status auf "Einsatz beendet" setzen
-      t.status = "Einsatz beendet";
+      // c) Status auf 0 setzen
+      t.status = 0;
 
       // d) Eigene Historie ergänzen
       t.history = t.history || [];
       t.history.push({
         when: now,
-        event: "Einsatz beendet",
+        event: 0,
       });
     }
   });
@@ -504,7 +517,7 @@ function assignSelectedTrupp(patientId) {
     }
 
     // b) Status auf Patient setzen
-    t.status = "Patient";
+    t.status = 3;
     t.patientInput = patientId;
     // c) Einsatz-Timer starten
     t.patientStart = now;
@@ -557,13 +570,13 @@ function removeTrupp(id, index) {
     }
 
     // Statuswechsel, aber Einsatzzeit weiterlaufen lassen
-    t.status = "Einsatz beendet";
+    t.status = 0;
 
     // Eigene Trupp-Historie ergänzen
     t.history = t.history || [];
     t.history.push({
       when: now,
-      event: "Einsatz beendet",
+      event: 0,
     });
 
     // Speichern und Renderer anstoßen
