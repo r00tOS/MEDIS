@@ -110,16 +110,37 @@ div.innerHTML = `
       class="status-toggle"
       onclick="toggleStatusDropdown('${trupp.id}')"
     >
-      Status: ${statusLabel}▾
+      <span
+        class="status-code"
+        style="
+          background: ${currentDef.color};
+          border: 1px solid ${currentDef.color};
+        "
+      >
+        ${currentDef.status}
+      </span>
+      ${currentDef.text} ▾
     </button>
-    <ul class="status-menu${trupp.id === localStorage.getItem('openTruppId') ? ' open' : ''}">
-          ${statusDefs.map(o => `
-            <li class="${o.status === currentDef.status ? 'active' : ''}"
-                onclick="onStatusSelected(${i}, ${o.status}, '${trupp.id}')">
-              ${o.status} – ${o.text}
-            </li>
-          `).join('')}
-        </ul>
+
+    <ul class="status-menu${trupp.id === openId ? ' open' : ''}">
+      ${statusDefs.map(o => `
+        <li
+          class="${o.status === currentDef.status ? 'active' : ''}"
+          onclick="onStatusSelected(${i}, ${o.status}, '${trupp.id}')"
+        >
+          <span
+            class="status-code"
+            style="
+              background: ${o.color};
+              border: 1px solid ${o.color};
+            "
+          >
+            ${o.status}
+          </span>
+          ${o.text}
+        </li>
+      `).join('')}
+    </ul>
   </div>
   
 
@@ -176,12 +197,12 @@ ${
           </p>
         `;
 
-    const einsatzSort =
-      trupp.status === 12
-        ? 99
-        : trupp.status === 3
-        ? 2
-        : trupp.status === 0
+const einsatzSort = 
+  trupp.status === 12
+    ? 99
+    : [3, 4, 7, 8].includes(trupp.status)
+      ? 2
+      : trupp.status === 0
         ? 1
         : 0;
     if (

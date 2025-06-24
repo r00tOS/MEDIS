@@ -78,6 +78,20 @@ body {
 }
 .status-menu li.active { font-weight: bold; }
 .status-menu li:hover { background: #eee; }
+.status-code {
+  display: inline-block;
+  border: 1px solid;
+  border-radius: 3px;
+  padding: 0.1em 0.4em;
+  margin-right: 0.5em;
+  font-weight: bold;
+  color: #333;         /* Schriftfarbe */
+  /* Hintergrund‐ und Rahmenfarbe werden jetzt inline gesetzt */
+}
+.status-menu li.active .status-code {
+  /* optional: für den aktiven Eintrag eine extra Betonung */
+  box-shadow: 0 0 2px rgba(0,0,0,0.2);
+}
 
 /* 4. Statusfarben */
 .einsatz {

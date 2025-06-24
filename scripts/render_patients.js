@@ -53,7 +53,7 @@ function loadPatients(highlightId) {
       patient.status === "Transport in KH" || patient.status === "Entlassen";
 
     // --- Trupp-Dropdown ---
-    const excluded = [6, 3, 12];
+    const excluded = [6, 3, 4, 7, 8, 12];
     const options = trupps
       .filter((t) => !excluded.includes(t.status))
       .map((t) => `<option value="${t.name}">${t.name}</option>`)
