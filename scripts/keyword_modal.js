@@ -534,3 +534,85 @@ function closeEditModal() {
     modal.style.display = "none";
   }
 }
+
+// ==== Einsatzort-Modal hinzufügen ====
+const einsatzortModalTemplate = `
+<div id="einsatzortModal" class="modal" style="display:none; z-index:2000">
+  <div class="modal-content">
+    <span class="close" onclick="closeEinsatzortModal()">&times;</span>
+    <h2>Einsatzgebiet wählen</h2>
+    <ul id="presetList" class="list"></ul>
+    <div style="margin-top:1em">
+      <input
+  type="text"
+  id="customEinsatzort"
+  placeholder="Eigenen Ort eingeben…"
+  style="width: 100%; max-width: 400px; padding: 8px; font-size: 1rem; box-sizing: border-box;"
+/>
+    </div>
+    <div style="margin-top:1em; text-align:right">
+      <button onclick="closeEinsatzortModal()">Abbrechen</button>
+      <button class="confirm-btn" id="confirmEinsatzort">OK</button>
+    </div>
+  </div>
+</div>
+`;
+document.body.insertAdjacentHTML("beforeend", einsatzortModalTemplate);
+
+// globale Variable für den gerade bearbeiteten Trupp-Index
+let _pendingTruppIndex = null;
+
+// öffnet den Einsatzort-Modal und füllt die Liste
+function openEinsatzortModal(truppIndex) {
+  _pendingTruppIndex = truppIndex;
+  const ul = document.getElementById("presetList");
+  ul.innerHTML = "";
+  // window.einsatzorte muss aus deiner presets-Datei kommen
+  window.einsatzorte.forEach(o => {
+    const li = document.createElement("li");
+    li.className = "item";
+    li.textContent = o;
+    li.onclick = () => {
+      ul.querySelectorAll("li").forEach(x => x.classList.remove("selected"));
+      li.classList.add("selected");
+      document.getElementById("customEinsatzort").value = o;
+    };
+    ul.appendChild(li);
+  });
+  document.getElementById("customEinsatzort").value = "";
+  document.getElementById("einsatzortModal").style.display = "flex";
+}
+
+// schließt den Modal
+function closeEinsatzortModal() {
+  document.getElementById("einsatzortModal").style.display = "none";
+  _pendingTruppIndex = null;
+}
+
+// klick auf OK im Modal
+document.getElementById("confirmEinsatzort").addEventListener("click", () => {
+  const ort = document.getElementById("customEinsatzort").value.trim();
+  if (!ort || _pendingTruppIndex === null) return;
+
+  const t = trupps[_pendingTruppIndex];
+  const now = Date.now();
+  const timeStr = new Date(now).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  // 1) Ort setzen
+  t.currentOrt = ort;
+  t.einsatzStartOrt = now;
+
+  // 2) Trupp-Historie ergänzen
+  if (!t.history) t.history = [];
+  t.history.push(`${timeStr} Einsatzort gesetzt: ${ort}`);
+
+  // 3) Speichern & neu rendern
+  saveTrupps();
+  renderTrupps();
+
+  // 4) Modal schließen
+  closeEinsatzortModal();
+});

@@ -60,6 +60,14 @@
     </div>
 
     <script>
+        (function(){
+    // Nimm das im LocalStorage gespeicherte Preset, oder Default
+    const preset = localStorage.getItem('selectedPresetFile') || 'holstein.js';
+    const s = document.createElement('script');
+    // Pfad relativ zu sites/: 
+    s.src = `../presets/${preset}`;
+    document.head.appendChild(s);
+  })();
       // === 1) nextPatientNumber purely in JS, kein Input ===
       let nextPatientNumber =
         parseInt(localStorage.getItem("nextPatientNumber"), 10) || 1;
@@ -205,16 +213,7 @@
       }, 10000);
 
       function editOrt(index) {
-        const trupp = trupps[index];
-        const newOrt = prompt(
-          "Neuen Einsatzort eingeben:",
-          trupp.currentOrt || ""
-        );
-        if (newOrt !== null) {
-          trupp.currentOrt = newOrt.trim();
-          saveTrupps();
-          renderTrupps();
-        }
+  openEinsatzortModal(index);
       }
 
       function editPatient(index) {

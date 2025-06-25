@@ -1,4 +1,22 @@
 // === 4) updateTrupp: wenn Status Patient, nextPatientNumber verwenden ===
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("confirmEinsatzort");
+  if (!btn) {
+    console.error("Button #confirmEinsatzort nicht gefunden!");
+    return;
+  }
+
+  btn.addEventListener("click", () => {
+    const ort = document.getElementById("customEinsatzort").value.trim();
+    if (!ort || _pendingTruppIndex === null) return;
+    const t = trupps[_pendingTruppIndex];
+    t.currentOrt = ort;
+    addHistoryEntry(t.patientInput, `Einsatzort gesetzt: ${ort}`);
+    saveTrupps();
+    renderTrupps();
+    closeEinsatzortModal();
+  });
+});
 function updateTrupp(index, status) {
   // 0) Scroll-Position merken
   const scrollEl = document.scrollingElement || document.documentElement;
@@ -97,14 +115,25 @@ if (
     });
     trupp.patientInput = trupp.patientStart = null;
   }
-  if (oldStatus === 11 && trupp.currentOrt && trupp.einsatzStartOrt) {
-    trupp.einsatzHistorie.push({
-      ort: trupp.currentOrt,
-      von: trupp.einsatzStartOrt,
-      bis: now,
-    });
-    trupp.currentOrt = trupp.einsatzStartOrt = null;
-  }
+// 7b) Streife abschließen
+if (oldStatus === 11 && trupp.currentOrt && trupp.einsatzStartOrt) {
+  const abgeschlossenerOrt = trupp.currentOrt;
+  // 1) In die Einsatz-Historie
+  trupp.einsatzHistorie.push({
+    ort: abgeschlossenerOrt,
+    von: trupp.einsatzStartOrt,
+    bis: now,
+  });
+  // 2) In die Trupp-History (für Timeline-Log)
+  if (!trupp.history) trupp.history = [];
+  const timeStr = new Date(now).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  trupp.history.push(`${timeStr} Streife beendet am Ort: ${abgeschlossenerOrt}`);
+  // 3) Felder zurücksetzen
+  trupp.currentOrt = trupp.einsatzStartOrt = null;
+}
 
   // 8) Wechsel auf Patient → neuen Patienten anlegen
   if (oldStatus !== 3 && status === 3) {
@@ -127,14 +156,10 @@ if (
   }
 
   // 9) Bei Streife → neuen Ort abfragen
-  if (status === 11) {
-    trupp.einsatzStartOrt = now;
-    const neuerOrt = prompt(
-      "Bitte Einsatzort eingeben:",
-      trupp.currentOrt || ""
-    );
-    if (neuerOrt !== null) trupp.currentOrt = neuerOrt.trim();
-  }
+if (status === 11) {
+  openEinsatzortModal(index);
+  // restliche Logik übernimmt dann confirmEinsatzort()
+}
   // 10) Status übernehmen
   trupp.status = status;
   trupp.lastStatusChange = now;
