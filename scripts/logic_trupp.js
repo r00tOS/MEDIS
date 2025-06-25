@@ -123,7 +123,7 @@ if (
     openEditModal(pid);
 
     // Füge den Historieneintrag für Status "disponiert" hinzu
-    addHistoryEntry(pid, "Status: disponiert");
+    updatePatientData(pid, "status", "disponiert");
   }
 
   // 9) Bei Streife → neuen Ort abfragen

@@ -265,26 +265,45 @@ const einsatzSort =
     })
     .forEach((t) => nichtContainer.appendChild(t.el));
 
-  window.scrollTo(0, scrollY);
+// am Ende von renderTrupps(), kurz vor dem schließenden '}':
 
+// 1) Scroll zurücksetzen
+window.scrollTo(0, scrollY);
+
+// 2) FLIP: First
+const cards = Array.from(document.querySelectorAll(".trupp"));
+const newRects = new Map();
+cards.forEach(el => {
+  newRects.set(el.dataset.key, el.getBoundingClientRect());
+});
+
+// 3) Invert + Play
+cards.forEach(el => {
+  const key = el.dataset.key;
+  const oldRect = prevRects.get(key);
+  const newRect = newRects.get(key);
+  if (!oldRect || !newRect) return;
+
+  const dx = oldRect.left - newRect.left;
+  const dy = oldRect.top  - newRect.top;
+  if (dx === 0 && dy === 0) return;
+
+  // a) Übergang abschalten und sofort in alte Position versetzen
+  el.style.transition = "none";
+  el.style.transform  = `translate(${dx}px, ${dy}px)`;
+  el.style.willChange = "transform";
+
+  // b) Im nächsten Frame Übergang aktivieren und Transform zurücksetzen
   requestAnimationFrame(() => {
-    document.querySelectorAll(".trupp").forEach((el) => {
-      const key = el.dataset.key;
-      const oldRect = prevRects.get(key);
-      if (!oldRect) return;
-      const newRect = el.getBoundingClientRect();
-      const dx = oldRect.left - newRect.left;
-      const dy = oldRect.top - newRect.top;
-      if (dx !== 0 || dy !== 0) {
-        el.style.transition = "none";
-        el.style.transform = `translate(${dx}px, ${dy}px)`;
-        requestAnimationFrame(() => {
-          el.style.transition = "transform 0.4s ease";
-          el.style.transform = "";
-        });
-      }
+    el.style.transition = "transform 0.4s ease";
+    el.style.transform  = "";
+    // c) Cleanup nach Ende der Transition
+    el.addEventListener("transitionend", function cleanup() {
+      el.style.transition = el.style.transform = el.style.willChange = "";
+      el.removeEventListener("transitionend", cleanup);
     });
   });
+});
 }
 
 function formatTime(ms) {

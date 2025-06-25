@@ -461,52 +461,54 @@ function assignResource(id, type) {
 }
 
 function assignSelectedTrupp(patientId) {
-  // Patienten laden und Objekt finden
+  // 1) Patienten laden und finden
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
-  const p = patients.find((x) => x.id === patientId);
-  if (!p) return;
+  const patient = patients.find((p) => p.id === patientId);
+  if (!patient) return;
 
-  // Sicherstellen, dass p.team ein Array ist
-  if (!Array.isArray(p.team)) p.team = [];
+  // 2) Arrays sicherstellen
+  patient.team = Array.isArray(patient.team) ? patient.team : [];
+  patient.rtm  = Array.isArray(patient.rtm)  ? patient.rtm  : [];
 
-  // ①: Status-Logik & Timestamp setzen, bevor irgendwas anderes passiert
-  recordStatusChange(p, "disponiert");
-
-  // ②: Wenn noch kein Trupp/RTM und Status nicht 'in Behandlung', auf 'disponiert' setzen
-  if (
-    p.status !== "in Behandlung" &&
-    p.team.length === 0 &&
-    (!Array.isArray(p.rtm) || p.rtm.length === 0)
-  ) {
-    p.status = "disponiert";
-    p.history = p.history || [];
-    p.history.push(`${getCurrentTime()} Status: disponiert`);
+  // 3) Falls noch nie disponiert ⇒ Timestamp "gemeldet" setzen, damit
+  //    recordStatusChange beim dispo richtig die Dispositionsdauer errechnet
+  patient.statusTimestamps = patient.statusTimestamps || {};
+  const now = Date.now();
+  if (!patient.statusTimestamps.gemeldet) {
+    // einmalig den Meldungs-Zeitstempel setzen
+    patient.statusTimestamps.gemeldet = patient.createdAt || now;
+    // jetzt den Wechsel auf dispo auslösen (dort wird dann
+    // dispositionsdauer = now - statusTimestamps.gemeldet berechnet)
+    recordStatusChange(patient, "disponiert");
+    patient.status = "disponiert";
+    patient.history = patient.history || [];
+    patient.history.push(`${getCurrentTime()} Status: disponiert`);
   }
 
-  // ③: Tatsächlichen Trupp-Namen aus dem Select ziehen
+  // 4) Ausgewählten Trupp ermitteln
   const sel = document.getElementById(`teamSelect-${patientId}`);
   const truppName = sel ? sel.value : null;
   if (!truppName) {
-    // Nichts ausgewählt → abbrechen
+    // Nichts ausgewählt → nur persistieren und zurück
     localStorage.setItem("patients", JSON.stringify(patients));
     return;
   }
 
-  // ④: Trupp zu p.team hinzufügen und Historie eintragen
-  p.team.push(truppName);
-  p.history.push(`${getCurrentTime()} Trupp ${truppName} disponiert`);
+  // 5) Trupp zum Team hinzufügen + Historie
+  patient.team.push(truppName);
+  patient.history.push(`${getCurrentTime()} Trupp ${truppName} disponiert`);
 
-  // ⑤: Speichern und neu rendern
+  // 6) Speichern + Patientenliste neu laden
   localStorage.setItem("patients", JSON.stringify(patients));
   loadPatients(patientId);
 
-  // ⑥: Trupp-Tracker aktualisieren (Einsatzzeit starten)
+  // 7) Trupp-Tracker updaten
   const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
   const t = trupps.find((t) => t.name === truppName);
   if (t) {
     const now = Date.now();
 
-    // a) eventuell laufenden Einsatz beenden
+    // a) laufenden Einsatz ggf. abschließen
     if (t.currentOrt && t.einsatzStartOrt) {
       t.einsatzHistorie = t.einsatzHistorie || [];
       t.einsatzHistorie.push({
@@ -515,17 +517,14 @@ function assignSelectedTrupp(patientId) {
         bis: now,
       });
     }
-
-    // b) Status auf Patient setzen
+    // b) Patientenzuweisung starten
     t.status = 3;
     t.patientInput = patientId;
-    // c) Einsatz-Timer starten
     t.patientStart = now;
     t.currentEinsatzStart = now;
-    // d) Pause-Timer zurücksetzen
     t.currentPauseStart = null;
 
-    // e) Speichern & Storage-Event feuern
+    // c) speichern + Storage-Event
     localStorage.setItem("trupps", JSON.stringify(trupps));
     window.dispatchEvent(
       new StorageEvent("storage", {
