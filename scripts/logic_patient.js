@@ -431,84 +431,84 @@ function recordStatusChange(patient, newStatus) {
 function assignResource(id, type) {
   const label = type === "team" ? "Trupp" : "RTM";
   const value = prompt(`${label} disponieren:`);
-  if (value !== null && value.trim() !== "") {
-    const patients = JSON.parse(localStorage.getItem("patients")) || [];
-    const patient = patients.find((p) => p.id === id);
-    if (type === "team") {
-      if (!Array.isArray(patient.team)) patient.team = [];
-      patient.team.push(value);
-    } else {
-      if (!Array.isArray(patient.rtm)) patient.rtm = [];
-      patient.rtm.push(value);
-    }
-    // Nur wenn vorher noch kein Trupp und kein RTM zugewiesen war:
-    if (
-      patient.status !== "in Behandlung" &&
-      (!Array.isArray(patient.team) || patient.team.length === 0) &&
-      (!Array.isArray(patient.rtm) || patient.rtm.length === 0)
-    ) {
-      patient.status = "disponiert";
-      patient.history = patient.history || [];
-      patient.history.push(`${geCurrentTime()} Status: disponiert`);
-    }
-    // Und immer Eintrag, dass RTM disponiert wurde:
-    patient.history = patient.history || [];
-    patient.history.push(`${getCurrentTime()} ${label} ${value} disponiert`);
+  if (!value || !value.trim()) return;
 
-    localStorage.setItem("patients", JSON.stringify(patients));
-    loadPatients();
+  // 1) Patienten laden und finden
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  const patient  = patients.find((p) => p.id === id);
+  if (!patient) return;
+
+  // 2) Array sicherstellen und Ressource hinzufügen
+  if (type === "team") {
+    if (!Array.isArray(patient.team)) patient.team = [];
+    patient.team.push(value.trim());
+  } else {
+    if (!Array.isArray(patient.rtm)) patient.rtm = [];
+    patient.rtm.push(value.trim());
+  }
+
+  // 3) Sofort speichern
+  localStorage.setItem("patients", JSON.stringify(patients));
+
+  // 4) Nur wenn vorher gemeldet → Status auf „disponiert“ setzen
+  if (patient.status === "gemeldet") {
+    updatePatientData(id, "status", "disponiert");
+  }
+
+  // 5) Historieneintrag für die Ressource
+  const updated = JSON.parse(localStorage.getItem("patients")) || [];
+  const p2 = updated.find((p) => p.id === id);
+  if (p2) {
+    p2.history = p2.history || [];
+    p2.history.push(`${getCurrentTime()} ${label} ${value.trim()} disponiert`);
+    localStorage.setItem("patients", JSON.stringify(updated));
+    loadPatients(id);
   }
 }
 
 function assignSelectedTrupp(patientId) {
   // 1) Patienten laden und finden
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
-  const patient = patients.find((p) => p.id === patientId);
+  const patient  = patients.find((p) => p.id === patientId);
   if (!patient) return;
 
-  // 2) Arrays sicherstellen
-  patient.team = Array.isArray(patient.team) ? patient.team : [];
-  patient.rtm  = Array.isArray(patient.rtm)  ? patient.rtm  : [];
+  // 2) Team-Array sicherstellen
+  if (!Array.isArray(patient.team)) patient.team = [];
 
-  // 3) Falls noch nie disponiert ⇒ Timestamp "gemeldet" setzen, damit
-  //    recordStatusChange beim dispo richtig die Dispositionsdauer errechnet
-  patient.statusTimestamps = patient.statusTimestamps || {};
-  const now = Date.now();
-  if (!patient.statusTimestamps.gemeldet) {
-    // einmalig den Meldungs-Zeitstempel setzen
-    patient.statusTimestamps.gemeldet = patient.createdAt || now;
-    // jetzt den Wechsel auf dispo auslösen (dort wird dann
-    // dispositionsdauer = now - statusTimestamps.gemeldet berechnet)
-    recordStatusChange(patient, "disponiert");
-    patient.status = "disponiert";
-    patient.history = patient.history || [];
-    patient.history.push(`${getCurrentTime()} Status: disponiert`);
-  }
-
-  // 4) Ausgewählten Trupp ermitteln
-  const sel = document.getElementById(`teamSelect-${patientId}`);
+  // 3) Gewählten Trupp aus dem <select> holen
+  const sel       = document.getElementById(`teamSelect-${patientId}`);
   const truppName = sel ? sel.value : null;
   if (!truppName) {
-    // Nichts ausgewählt → nur persistieren und zurück
+    // nichts ausgewählt → nur speichern, zurück
     localStorage.setItem("patients", JSON.stringify(patients));
     return;
   }
 
-  // 5) Trupp zum Team hinzufügen + Historie
+  // 4) Trupp dem Team hinzufügen
   patient.team.push(truppName);
-  patient.history.push(`${getCurrentTime()} Trupp ${truppName} disponiert`);
-
-  // 6) Speichern + Patientenliste neu laden
+  // 5) Änderungen sofort persistieren
   localStorage.setItem("patients", JSON.stringify(patients));
-  loadPatients(patientId);
 
-  // 7) Trupp-Tracker updaten
+  // 6) Nur wenn vorher gemeldet → Status auf „disponiert“ setzen
+  if (patient.status === "gemeldet") {
+    updatePatientData(patientId, "status", "disponiert");
+  }
+
+  // 7) Historieneintrag für den Trupp
+  const updated = JSON.parse(localStorage.getItem("patients")) || [];
+  const p2 = updated.find((p) => p.id === patientId);
+  if (p2) {
+    p2.history = p2.history || [];
+    p2.history.push(`${getCurrentTime()} Trupp ${truppName} disponiert`);
+    localStorage.setItem("patients", JSON.stringify(updated));
+    loadPatients(patientId);
+  }
+
+  // 8) Und zum Schluss Trupp-Tracker starten, wie gehabt:
   const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
   const t = trupps.find((t) => t.name === truppName);
   if (t) {
     const now = Date.now();
-
-    // a) laufenden Einsatz ggf. abschließen
     if (t.currentOrt && t.einsatzStartOrt) {
       t.einsatzHistorie = t.einsatzHistorie || [];
       t.einsatzHistorie.push({
@@ -517,14 +517,11 @@ function assignSelectedTrupp(patientId) {
         bis: now,
       });
     }
-    // b) Patientenzuweisung starten
-    t.status = 3;
-    t.patientInput = patientId;
-    t.patientStart = now;
+    t.status              = 3;
+    t.patientInput        = patientId;
+    t.patientStart        = now;
     t.currentEinsatzStart = now;
-    t.currentPauseStart = null;
-
-    // c) speichern + Storage-Event
+    t.currentPauseStart   = null;
     localStorage.setItem("trupps", JSON.stringify(trupps));
     window.dispatchEvent(
       new StorageEvent("storage", {
@@ -534,6 +531,7 @@ function assignSelectedTrupp(patientId) {
     );
   }
 }
+
 
 function removeTrupp(id, index) {
   if (!confirm("Soll dieser Trupp wirklich entfernt werden?")) return;
