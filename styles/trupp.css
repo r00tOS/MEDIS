@@ -268,3 +268,39 @@ body {
 #presetList li.selected {
   background:#007bff; color:white;
 }
+
+.end-buttons {
+  display: inline-flex;
+  gap: 8px;
+  margin-left: 8px;
+}
+.end-buttons button {
+  flex: 1;
+}
+
+.patient-summary-table {
+  width: 100%;
+  box-sizing: border-box;
+  border-collapse: collapse;
+  margin: 0.5em 0;
+  overflow-x: auto;
+}
+.patient-summary-table th,
+.patient-summary-table td {
+  border: 1px solid #ccc;
+  padding: 4px 8px;
+  text-align: left;
+  font-size: 0.9rem;
+}
+.patient-summary-table th {
+  width: 100%;              /* füllt .patient-summary aus */
+  border-collapse: collapse;
+  background-color: #f2f2f2;
+}
+.patient-summary-table caption {
+  caption-side: top;
+  font-weight: bold;
+  font-size: 1.1em;
+  text-align: left;
+  padding-bottom: 0.3em;
+}

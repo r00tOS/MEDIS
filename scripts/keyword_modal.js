@@ -616,3 +616,115 @@ document.getElementById("confirmEinsatzort").addEventListener("click", () => {
   // 4) Modal schließen
   closeEinsatzortModal();
 });
+
+// ————————————————————————————————————————————————————————————————
+// 1) Discharge-Modal definieren
+const dischargeModalHTML = `
+<div id="dischargeModal" class="modal" style="display:none; z-index:2000">
+  <div class="modal-content">
+    <span class="close" onclick="closeDischargeModal()">&times;</span>
+    <h2>Patient entlassen</h2>
+    <form id="dischargeForm">
+      <label><input type="radio" name="dischargeType" value="in veranstaltung entlassen" checked> in Veranstaltung entlassen</label><br>
+      <label><input type="radio" name="dischargeType" value="begibt sich eigenständig nach hause"> begibt sich eigenständig nach Hause</label><br>
+      <label><input type="radio" name="dischargeType" value="begibt sich eigenständig in krankenhaus"> begibt sich eigenständig ins Krankenhaus</label><br>
+      <label><input type="radio" name="dischargeType" value="in obhut der eltern entlassen"> in Obhut der Eltern entlassen</label><br>
+      <label><input type="radio" name="dischargeType" value="in obhut von lebenspartner*in entlassen"> in Obhut von Lebenspartner*in entlassen</label><br>
+      <label><input type="radio" name="dischargeType" value="sonstige"> sonstige:</label>
+      <input type="text" id="dischargeOther" placeholder="Bitte Text eingeben…" style="width:100%; margin-top:4px;">
+      <div style="text-align:right; margin-top:12px">
+        <button type="button" onclick="closeDischargeModal()">Abbrechen</button>
+        <button type="button" onclick="confirmDischarge()">OK</button>
+      </div>
+    </form>
+  </div>
+</div>`;
+document.body.insertAdjacentHTML("beforeend", dischargeModalHTML);
+
+// 2) Transport-Modal definieren
+const transportModalHTML = `
+<div id="transportModal" class="modal" style="display:none; z-index:2000">
+  <div class="modal-content">
+    <span class="close" onclick="closeTransportModal()">&times;</span>
+    <h2>Patient transportieren</h2>
+    <form id="transportForm">
+      <label><input type="radio" name="transportType" value="an rtw übergeben" checked> an RTW übergeben</label><br>
+      <label><input type="radio" name="transportType" value="an nef übergeben"> an NEF übergeben</label><br>
+      <label><input type="radio" name="transportType" value="an ktw übergeben"> an KTW übergeben</label><br>
+      <label><input type="radio" name="transportType" value="sonstige"> sonstige:</label>
+      <input type="text" id="transportOther" placeholder="Bitte Text eingeben…" style="width:100%; margin-top:4px;">
+      <div style="text-align:right; margin-top:12px">
+        <button type="button" onclick="closeTransportModal()">Abbrechen</button>
+        <button type="button" onclick="confirmTransport()">OK</button>
+      </div>
+    </form>
+  </div>
+</div>`;
+document.body.insertAdjacentHTML("beforeend", transportModalHTML);
+
+// 3) State-Variablen für aktuell zu bearbeitenden Patienten
+let _pendingDischargeId = null;
+let _pendingTransportId = null;
+
+// 4) Öffnen-Funktionen
+function dischargePatient(id) {
+  _pendingDischargeId = id;
+  document.getElementById("dischargeOther").value = "";
+  // standardmäßig erster Radiosatz checked
+  document.querySelector('input[name="dischargeType"]:checked').checked = true;
+  document.getElementById("dischargeModal").style.display = "flex";
+}
+
+function transportPatient(id) {
+  _pendingTransportId = id;
+  document.getElementById("transportOther").value = "";
+  document.querySelector('input[name="transportType"]:checked').checked = true;
+  document.getElementById("transportModal").style.display = "flex";
+}
+
+// 5) Schließen-Funktionen
+function closeDischargeModal() {
+  document.getElementById("dischargeModal").style.display = "none";
+  _pendingDischargeId = null;
+}
+function closeTransportModal() {
+  document.getElementById("transportModal").style.display = "none";
+  _pendingTransportId = null;
+}
+
+// 6) Confirm-Handler
+function confirmDischarge() {
+  const form = document.getElementById("dischargeForm");
+  const type = form.dischargeType.value;
+  let text = type;
+  if (type === "sonstige") {
+    const other = document.getElementById("dischargeOther").value.trim();
+    if (!other) return alert("Bitte einen Text eingeben");
+    text = other;
+  }
+  // 1) Discharge-Feld setzen
+  updatePatientData(_pendingDischargeId, "discharge", text);
+  // 2) Status auf Entlassen
+  updatePatientData(_pendingDischargeId, "status", "Entlassen");
+  // 3) Trupps beenden
+  clearAssignments(_pendingDischargeId, "Entlassen");
+  closeDischargeModal();
+}
+
+function confirmTransport() {
+  const form = document.getElementById("transportForm");
+  const type = form.transportType.value;
+  let text = type;
+  if (type === "sonstige") {
+    const other = document.getElementById("transportOther").value.trim();
+    if (!other) return alert("Bitte einen Text eingeben");
+    text = other;
+  }
+  // 1) Transport-Feld setzen
+  updatePatientData(_pendingTransportId, "transport", text);
+  // 2) Status auf Transport in KH
+  updatePatientData(_pendingTransportId, "status", "Transport in KH");
+  // 3) Trupps beenden
+  clearAssignments(_pendingTransportId, "Transport in KH");
+  closeTransportModal();
+}

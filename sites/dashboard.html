@@ -167,7 +167,7 @@
         // Trupp-Zähler
         const trupps = JSON.parse(localStorage.getItem("trupps") || "[]");
         const einsatz = trupps.filter((t) =>
-          [11, 3, 12, 0].includes(
+          [11, 3, 4, 7, 8, 12, 0].includes(
             t.status
           )
         ).length;

@@ -284,13 +284,17 @@ function copyToClipboard(truppName) {
         trupp.currentOrt || "[Ort]"
       }`;
       break;
-    case 3:
-      standort =
-        trupp.currentOrt ||
-        (trupp.einsatzHistorie.length
-          ? trupp.einsatzHistorie[trupp.einsatzHistorie.length - 1].ort
-          : "");
-      meldung = `Patient Nr.: ${trupp.patientInput || "[Patientennummer]"}
+// Status 3, 4, 7 und 8 → Patienten‐Meldung
+  case 3:
+  case 4:
+  case 7:
+  case 8:
+    const standort =
+      trupp.currentOrt ||
+      (trupp.einsatzHistorie.length
+        ? trupp.einsatzHistorie[trupp.einsatzHistorie.length - 1].ort
+        : "");
+    meldung = `Patient Nr.: ${trupp.patientInput || "[Patientennummer]"}
 Trupp: ${trupp.name}
 Standort: ${standort || ""}
 Alter:
@@ -298,7 +302,7 @@ Geschlecht:
 Verdachtsdiagnose:
 Nachforderung:
 Bemerkung:`;
-      break;
+    break;
     case 12:
       alle = trupps
         .filter((t) => t.status === 12)

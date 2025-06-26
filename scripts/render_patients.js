@@ -211,15 +211,18 @@ ${patient.durations.behandlungsdauer || "–"}
 </div>
 
 <div style="min-width:200px;">
-<strong>Status:</strong> ${patient.status}<br>
-<button class="status-Transport-in-KH"
-       onclick="transportPatient(${patient.id})">
- Transport in KH
-</button>
-<p><button class="status-Entlassen"
-       onclick="dischargePatient(${patient.id})">
- Entlassen
-</button></p>
+  <strong>Status:</strong> ${patient.status}<br>
+
+  ${!["Entlassen","Transport in KH"].includes(patient.status) ? `
+    <button class="status-Transport-in-KH"
+            onclick="transportPatient(${patient.id})">
+      Transport in KH
+    </button>
+    <button class="status-Entlassen"
+            onclick="dischargePatient(${patient.id})">
+      Entlassen
+    </button>
+  ` : ``}
 </div>
 
 
@@ -346,9 +349,11 @@ ${patient.remarks || "–"}
 <div style="min-width:240px;">
 <strong>Nachforderung:</strong>
 <div style="display:flex; gap:8px; align-items:flex-start; margin-top:4px;">
-<div style="flex:1;">
-${requestBox}
-</div>
+${!["Entlassen", "Transport in KH"].includes(patient.status) ? `
+  <div style="flex:1;">
+    ${requestBox}
+  </div>
+` : ''}
 <div>
 ${dispoButtons}
 </div>

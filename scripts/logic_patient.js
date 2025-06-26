@@ -180,9 +180,14 @@ function confirmEdit() {
   }
 
   // 3) Modal schließen & neu rendern
-  closeEditModal();
-  loadPatients(editPatientId);
+closeEditModal();
+loadPatients(editPatientId);
 
+// Trupp-Cards neu laden:
+window.dispatchEvent(new StorageEvent('storage', {
+  key: 'trupps',
+  newValue: localStorage.getItem('trupps')
+}));
   // 4) Immer die “Patientendaten geändert: …”-Zeile in die Historie schreiben
   //     – unabhängig davon, welche Felder wirklich verändert wurden.
   addCombinedHistoryEntry(editPatientId);
@@ -821,3 +826,4 @@ function updateLiveTimers() {
     }
   });
 }
+

@@ -105,7 +105,7 @@ div.innerHTML = `
       : ""}
   </div>
 
-  <div class="status-dropdown">
+ <div class="status-dropdown">
     <button
       class="status-toggle"
       onclick="toggleStatusDropdown('${trupp.id}')"
@@ -143,12 +143,33 @@ div.innerHTML = `
     </ul>
   </div>
   
-
-  ${![61, 1].includes(
-    trupp.status
-  )
-    ? `<button class="meldung-btn" onclick="copyToClipboard('${trupp.name}')">Meldung</button>`
-    : ""}
+  ${![61, 1].includes(trupp.status)
+    ? `
+      <button class="meldung-btn" onclick="copyToClipboard('${trupp.name}')">
+        Meldung
+      </button>
+      ${[3,4,7,8].includes(trupp.status)
+        ? `
+          <div class="end-buttons" style="display:inline-flex; gap:8px; margin-left:8px;">
+            <button
+              class="status-transport-in-kh"
+              onclick="transportPatient(${trupp.patientInput})"
+            >
+              Transport in KH
+            </button>
+            <button
+              class="status-entlassen"
+              onclick="dischargePatient(${trupp.patientInput})"
+            >
+              Entlassen
+            </button>
+          </div>
+        `
+        : ``
+      }
+    `
+    : ``
+  }
 </div>
 
 
@@ -159,11 +180,66 @@ div.innerHTML = `
             }</strong> <button onclick="editOrt(${i})">✎</button></p>`
           : ""
       }
-${
-  [3, 4, 7, 8].includes(trupp.status)
-    ? `<p><strong>Patient ${trupp.patientInput || "keine Nummer"}</strong></p>`
-    : ""
-}
+${(() => {
+  // nur für Patient-Status 3, 4, 7, 8
+  if (![3, 4, 7, 8].includes(trupp.status)) return "";
+
+  // passenden Patient holen
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  const patient  = patients.find(p => p.id === trupp.patientInput);
+  if (!patient) return "";
+
+  // jetzt das Markup mit <table> drumherum plus Bearbeiten-Button
+  return `
+<div class="patient-summary">
+${(() => {
+  // nur für Patient-Status 3, 4, 7, 8
+  if (![3,4,7,8].includes(trupp.status)) return "";
+
+  // passenden Patient holen
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  const patient  = patients.find(p => p.id === trupp.patientInput);
+  if (!patient) return "";
+
+  // jetzt das Markup mit <table> und <caption>
+  return `
+<div class="patient-summary">
+  <table class="patient-summary-table">
+    <caption>Patient ${trupp.patientInput}</caption>
+    <thead>
+      <tr>
+        <th>Diagnose</th>
+        <th>Alter</th>
+        <th>Geschlecht</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>${patient.diagnosis || "–"}</td>
+        <td>${patient.age       || "–"}</td>
+        <td>${patient.gender    || "–"}</td>
+      </tr>
+      <tr>
+        <th>Standort</th>
+        <td colspan="2">${patient.location || "–"}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+  `;
+})()}
+
+  <button
+    class="meldung-btn edit-info-btn"
+    onclick="openEditModal(${patient.id})"
+  >
+    ✏️ Patientendaten bearbeiten
+  </button>
+</div>
+  `;
+})()}
+
+
 
           <p>${timeDisplay}</p>
           ${progressBar}
