@@ -80,7 +80,7 @@ describe('renderTrupps', () => {
     // Status 3 → nur "patient", aber kein extra "einsatz"-Label
     expect(div.classList.contains('patient')).toBe(true);
     expect(div.classList.contains('einsatz')).toBe(false);
-    expect(div.querySelector('h3').textContent).toBe('T1');
+    expect(div.querySelector('h3').textContent.trim()).toBe('T1');
     // Kein Einsatzort → formatMS nicht aufgerufen
     expect(formatMS).not.toHaveBeenCalled();
   });

@@ -66,10 +66,14 @@ function updateTrupp(index, status) {
   ];
   // Alles andere ist 6
 
-  // 2) Wechsel IN Pausen-Status → Pause neu starten
+  // 2) Wechsel IN Pausen-Status → Pause neu starten und Einsatzzeit zurücksetzen
   if (pauseStatuses.includes(status) && !pauseStatuses.includes(oldStatus)) {
+    // Pause neu starten
     trupp.pausenzeit = 0;
     trupp.currentPauseStart = now;
+    // Einsatzzeit zurücksetzen
+    trupp.einsatzzeit = 0;
+    trupp.currentEinsatzStart = null;
   }
 
   // 3) Wechsel WEG von Pausen-Status → Messung stoppen

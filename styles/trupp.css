@@ -26,7 +26,7 @@ body {
 }
 .section div {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+ grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
   gap: 16px;
 }
 
@@ -304,3 +304,18 @@ body {
   text-align: left;
   padding-bottom: 0.3em;
 }
+
+.trupp-header.u18 {
+  background-color: #fff9c4; /* helles Gelb hinter dem Header */
+}
+
+.badge-u18 {
+  display: inline-block;
+  margin-left: 0.4em;
+  padding: 0.1em 0.4em;
+  border: 1px solid #333;
+  border-radius: 3px;
+  font-size: 0.75em;
+  vertical-align: middle;
+}
+

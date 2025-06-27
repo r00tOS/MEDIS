@@ -88,6 +88,47 @@
 
     <script src="./scripts/jspdf.umd.min.js"></script>
     <script>
+      // 1) Trupp-Checkboxen füllen
+function renderU18List() {
+  const container = document.getElementById('settingsU18List');
+  container.innerHTML = '';
+  // aktuelle Trupp-Liste aus localStorage
+  const trupps = JSON.parse(localStorage.getItem('trupps') || '[]');
+  // gespeicherte U18-Auswahl (Array von Namen/IDs)
+  const u18 = JSON.parse(localStorage.getItem('u18Trupps') || '[]');
+
+  trupps.forEach(t => {
+    const id = t.name; // oder t.id, je nach Deinem key
+    const cb = document.createElement('label');
+    cb.style.display = 'block';
+    cb.innerHTML = `
+      <input type="checkbox" value="${id}" ${u18.includes(id)?'checked':''}>
+      ${id}
+    `;
+    cb.querySelector('input').addEventListener('change', e => {
+      let newU18 = JSON.parse(localStorage.getItem('u18Trupps') || '[]');
+      if (e.target.checked) {
+        if (!newU18.includes(id)) newU18.push(id);
+      } else {
+        newU18 = newU18.filter(x => x !== id);
+      }
+      localStorage.setItem('u18Trupps', JSON.stringify(newU18));
+      // trupp tracker neu rendern
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'u18Trupps',
+        newValue: JSON.stringify(newU18)
+      }));
+    });
+    container.appendChild(cb);
+  });
+}
+
+// rufe initial auf, sobald modal geöffnet wird
+btnSettings.addEventListener('click', () => {
+  // … bestehende Befüllung …
+  renderU18List();
+  settingsModal.style.display = 'flex';
+});
 // 1) Liste der verfügbaren Preset-Dateien
   window.presetFiles = [
     "holstein.js",
@@ -384,6 +425,14 @@ document.addEventListener("DOMContentLoaded", () => {
     ">
     <!-- Optionen werden per JS befüllt -->
   </select>
+</div>
+<div style="margin-bottom:12px">
+  <label style="display:block; font-weight:600; margin-bottom:4px">
+    U18-Hervorhebung für Trupps
+  </label>
+  <div id="settingsU18List" style="max-height:200px; overflow:auto; border:1px solid #ddd; padding:8px; border-radius:4px">
+    <!-- JS füllt hier eine Checkbox pro Trupp -->
+  </div>
 </div>
         <button
           id="saveSettings"

@@ -3,6 +3,14 @@ function renderTrupps() {
   const now = Date.now();
   const openId = localStorage.getItem("openTruppId");
 
+  let u18List = JSON.parse(localStorage.getItem('u18Trupps') || '[]');
+window.addEventListener('storage', e => {
+  if (e.key === 'u18Trupps') {
+    u18List = JSON.parse(e.newValue || '[]');
+    renderTrupps();
+  }
+});
+
   const prevRects = new Map();
   document.querySelectorAll(".trupp").forEach((el) => {
     if (el.dataset.key)
@@ -97,12 +105,16 @@ function renderTrupps() {
    </div>`
         : "";
 
+        const isU18 = u18List.includes(trupp.name);
 div.innerHTML = `
-  <div class="trupp-header">
-    <h3>${trupp.name}</h3>
+<div class="trupp-header${isU18 ? ' u18' : ''}">
+    <h3>
+      ${trupp.name}
+      ${isU18 ? '<span class="badge-u18">U18</span>' : ''}
+    </h3>
     ${trupp.status === 6
       ? `<button class="delete-btn" onclick="deleteTrupp(${i})">×</button>`
-      : ""}
+      : ''}
   </div>
 
  <div class="status-dropdown">
