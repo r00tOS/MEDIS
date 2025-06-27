@@ -25,8 +25,7 @@ describe('clearAssignments', () => {
     catScript.textContent = categoriesCode;
     document.body.appendChild(catScript);
 
-    // 4) Eure Logik-Datei in DOM ausführen:
-    //    Hier anpassen, falls der Name anders ist:
+    // 4) logic_patient.js in DOM ausführen
     const logicCode = fs.readFileSync(
       path.resolve(__dirname, '../scripts/logic_patient.js'),
       'utf8'
@@ -69,7 +68,7 @@ describe('clearAssignments', () => {
         name: 'T1',
         patientInput: 'p1',
         patientStart: 500,
-        status: 'Patient',
+        status: 3,             // numerischer Code für „Patient“
         patientHistorie: [],
         history: []
       }])
@@ -80,14 +79,25 @@ describe('clearAssignments', () => {
 
     const trupps = JSON.parse(localStorage.getItem('trupps'));
     const t = trupps[0];
+    // patientInput und patientStart wurden zurückgesetzt
     expect(t.patientInput).toBeNull();
-    expect(t.status).toBe('Einsatz beendet');
-    expect(t.patientHistorie).toEqual([{ nummer: 'p1', von: 500, bis: 1000 }]);
-    expect(t.history).toEqual([{ when: 1000, event: 'Einsatz beendet' }]);
+    expect(t.patientStart).toBeNull();
+    // Status wurde auf 0 („Einsatz beendet“) gesetzt
+    expect(t.status).toBe(0);
+    // die Historie des Patienteneinsatzes wurde korrekt ergänzt
+    expect(t.patientHistorie).toEqual([
+      { nummer: 'p1', von: 500, bis: 1000 }
+    ]);
+    // und das eigene History‐Array enthält ein Event { when, event }
+    expect(t.history).toEqual([
+      { when: 1000, event: 0 }
+    ]);
 
+    // Storage‐Event wurde gefeuert
     expect(dispatchSpy).toHaveBeenCalled();
-    const evt = dispatchSpy.mock.calls[0][0];
-    expect(evt).toBeInstanceOf(StorageEvent);
+    const evt = dispatchSpy.mock.calls.find(
+      call => call[0] instanceof StorageEvent
+    )[0];
     expect(evt.key).toBe('trupps');
   });
 });

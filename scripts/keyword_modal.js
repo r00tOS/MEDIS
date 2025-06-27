@@ -296,7 +296,7 @@ function openNachforderungModal(patientId, request) {
 
   // Trupp-Liste vorbereiten (wie gehabt)
   const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
-  const excluded = ["Nicht Einsatzbereit", "Patient", "Spielfeldrand"];
+  const excluded = [6, 3, 12, 4, 7, 8];
   const options = trupps
     .filter((t) => !excluded.includes(t.status))
     .map((t) => `<option value="${t.name}">${t.name}</option>`)
@@ -386,7 +386,7 @@ function confirmNachforderungModal() {
           bis: now,
         });
       }
-      t.status = "Patient";
+      t.status = 3;
       t.patientInput = patient.id;
       t.patientStart = now;
       t.currentEinsatzStart = now;
@@ -533,4 +533,198 @@ function closeEditModal() {
   if (modal) {
     modal.style.display = "none";
   }
+}
+
+// ==== Einsatzort-Modal hinzufügen ====
+const einsatzortModalTemplate = `
+<div id="einsatzortModal" class="modal" style="display:none; z-index:2000">
+  <div class="modal-content">
+    <span class="close" onclick="closeEinsatzortModal()">&times;</span>
+    <h2>Einsatzgebiet wählen</h2>
+    <ul id="presetList" class="list"></ul>
+    <div style="margin-top:1em">
+      <input
+  type="text"
+  id="customEinsatzort"
+  placeholder="Eigenen Ort eingeben…"
+  style="width: 100%; max-width: 400px; padding: 8px; font-size: 1rem; box-sizing: border-box;"
+/>
+    </div>
+    <div style="margin-top:1em; text-align:right">
+      <button onclick="closeEinsatzortModal()">Abbrechen</button>
+      <button class="confirm-btn" id="confirmEinsatzort">OK</button>
+    </div>
+  </div>
+</div>
+`;
+document.body.insertAdjacentHTML("beforeend", einsatzortModalTemplate);
+
+// globale Variable für den gerade bearbeiteten Trupp-Index
+let _pendingTruppIndex = null;
+
+// öffnet den Einsatzort-Modal und füllt die Liste
+function openEinsatzortModal(truppIndex) {
+  _pendingTruppIndex = truppIndex;
+  const ul = document.getElementById("presetList");
+  ul.innerHTML = "";
+  // window.einsatzorte muss aus deiner presets-Datei kommen
+  window.einsatzorte.forEach(o => {
+    const li = document.createElement("li");
+    li.className = "item";
+    li.textContent = o;
+    li.onclick = () => {
+      ul.querySelectorAll("li").forEach(x => x.classList.remove("selected"));
+      li.classList.add("selected");
+      document.getElementById("customEinsatzort").value = o;
+    };
+    ul.appendChild(li);
+  });
+  document.getElementById("customEinsatzort").value = "";
+  document.getElementById("einsatzortModal").style.display = "flex";
+}
+
+// schließt den Modal
+function closeEinsatzortModal() {
+  document.getElementById("einsatzortModal").style.display = "none";
+  _pendingTruppIndex = null;
+}
+
+// klick auf OK im Modal
+document.getElementById("confirmEinsatzort").addEventListener("click", () => {
+  const ort = document.getElementById("customEinsatzort").value.trim();
+  if (!ort || _pendingTruppIndex === null) return;
+
+  const t = trupps[_pendingTruppIndex];
+  const now = Date.now();
+  const timeStr = new Date(now).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  // 1) Ort setzen
+  t.currentOrt = ort;
+  t.einsatzStartOrt = now;
+
+  // 2) Trupp-Historie ergänzen
+  if (!t.history) t.history = [];
+  t.history.push(`${timeStr} Einsatzort gesetzt: ${ort}`);
+
+  // 3) Speichern & neu rendern
+  saveTrupps();
+  renderTrupps();
+
+  // 4) Modal schließen
+  closeEinsatzortModal();
+});
+
+// ————————————————————————————————————————————————————————————————
+// 1) Discharge-Modal definieren
+const dischargeModalHTML = `
+<div id="dischargeModal" class="modal" style="display:none; z-index:2000">
+  <div class="modal-content">
+    <span class="close" onclick="closeDischargeModal()">&times;</span>
+    <h2>Patient entlassen</h2>
+    <form id="dischargeForm">
+      <label><input type="radio" name="dischargeType" value="in veranstaltung entlassen" checked> in Veranstaltung entlassen</label><br>
+      <label><input type="radio" name="dischargeType" value="begibt sich eigenständig nach hause"> begibt sich eigenständig nach Hause</label><br>
+      <label><input type="radio" name="dischargeType" value="begibt sich eigenständig in krankenhaus"> begibt sich eigenständig ins Krankenhaus</label><br>
+      <label><input type="radio" name="dischargeType" value="in obhut der eltern entlassen"> in Obhut der Eltern entlassen</label><br>
+      <label><input type="radio" name="dischargeType" value="in obhut von lebenspartner*in entlassen"> in Obhut von Lebenspartner*in entlassen</label><br>
+      <label><input type="radio" name="dischargeType" value="sonstige"> sonstige:</label>
+      <input type="text" id="dischargeOther" placeholder="Bitte Text eingeben…" style="width:100%; margin-top:4px;">
+      <div style="text-align:right; margin-top:12px">
+        <button type="button" onclick="closeDischargeModal()">Abbrechen</button>
+        <button type="button" onclick="confirmDischarge()">OK</button>
+      </div>
+    </form>
+  </div>
+</div>`;
+document.body.insertAdjacentHTML("beforeend", dischargeModalHTML);
+
+// 2) Transport-Modal definieren
+const transportModalHTML = `
+<div id="transportModal" class="modal" style="display:none; z-index:2000">
+  <div class="modal-content">
+    <span class="close" onclick="closeTransportModal()">&times;</span>
+    <h2>Patient transportieren</h2>
+    <form id="transportForm">
+      <label><input type="radio" name="transportType" value="an rtw übergeben" checked> an RTW übergeben</label><br>
+      <label><input type="radio" name="transportType" value="an nef übergeben"> an NEF übergeben</label><br>
+      <label><input type="radio" name="transportType" value="an ktw übergeben"> an KTW übergeben</label><br>
+      <label><input type="radio" name="transportType" value="sonstige"> sonstige:</label>
+      <input type="text" id="transportOther" placeholder="Bitte Text eingeben…" style="width:100%; margin-top:4px;">
+      <div style="text-align:right; margin-top:12px">
+        <button type="button" onclick="closeTransportModal()">Abbrechen</button>
+        <button type="button" onclick="confirmTransport()">OK</button>
+      </div>
+    </form>
+  </div>
+</div>`;
+document.body.insertAdjacentHTML("beforeend", transportModalHTML);
+
+// 3) State-Variablen für aktuell zu bearbeitenden Patienten
+let _pendingDischargeId = null;
+let _pendingTransportId = null;
+
+// 4) Öffnen-Funktionen
+function dischargePatient(id) {
+  _pendingDischargeId = id;
+  document.getElementById("dischargeOther").value = "";
+  // standardmäßig erster Radiosatz checked
+  document.querySelector('input[name="dischargeType"]:checked').checked = true;
+  document.getElementById("dischargeModal").style.display = "flex";
+}
+
+function transportPatient(id) {
+  _pendingTransportId = id;
+  document.getElementById("transportOther").value = "";
+  document.querySelector('input[name="transportType"]:checked').checked = true;
+  document.getElementById("transportModal").style.display = "flex";
+}
+
+// 5) Schließen-Funktionen
+function closeDischargeModal() {
+  document.getElementById("dischargeModal").style.display = "none";
+  _pendingDischargeId = null;
+}
+function closeTransportModal() {
+  document.getElementById("transportModal").style.display = "none";
+  _pendingTransportId = null;
+}
+
+// 6) Confirm-Handler
+function confirmDischarge() {
+  const form = document.getElementById("dischargeForm");
+  const type = form.dischargeType.value;
+  let text = type;
+  if (type === "sonstige") {
+    const other = document.getElementById("dischargeOther").value.trim();
+    if (!other) return alert("Bitte einen Text eingeben");
+    text = other;
+  }
+  // 1) Discharge-Feld setzen
+  updatePatientData(_pendingDischargeId, "discharge", text);
+  // 2) Status auf Entlassen
+  updatePatientData(_pendingDischargeId, "status", "Entlassen");
+  // 3) Trupps beenden
+  clearAssignments(_pendingDischargeId, "Entlassen");
+  closeDischargeModal();
+}
+
+function confirmTransport() {
+  const form = document.getElementById("transportForm");
+  const type = form.transportType.value;
+  let text = type;
+  if (type === "sonstige") {
+    const other = document.getElementById("transportOther").value.trim();
+    if (!other) return alert("Bitte einen Text eingeben");
+    text = other;
+  }
+  // 1) Transport-Feld setzen
+  updatePatientData(_pendingTransportId, "transport", text);
+  // 2) Status auf Transport in KH
+  updatePatientData(_pendingTransportId, "status", "Transport in KH");
+  // 3) Trupps beenden
+  clearAssignments(_pendingTransportId, "Transport in KH");
+  closeTransportModal();
 }

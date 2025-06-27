@@ -167,15 +167,15 @@
         // Trupp-Zähler
         const trupps = JSON.parse(localStorage.getItem("trupps") || "[]");
         const einsatz = trupps.filter((t) =>
-          ["Streife", "Patient", "Spielfeldrand", "Einsatz beendet"].includes(
+          [11, 3, 4, 7, 8, 12, 0].includes(
             t.status
           )
         ).length;
         const pause = trupps.filter((t) =>
           [
-            "Einsatzbereit in UHS",
-            "Einsatzbereit unterwegs",
-            "Einsatzbereit in Rückhaltung",
+            2,
+            1,
+            61,
           ].includes(t.status)
         ).length;
         const nicht = trupps.length - einsatz - pause;

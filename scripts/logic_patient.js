@@ -1,3 +1,16 @@
+/**
+ * Wandelt Millisekunden in MM:SS um.
+ * @param {number} ms Millisekunden
+ * @returns {string} formatierte Zeit MM:SS
+ */
+function formatMS(ms) {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+
 function clearAssignments(patientId, finalStatus) {
   const now = Date.now();
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
@@ -26,14 +39,14 @@ function clearAssignments(patientId, finalStatus) {
       t.patientInput = null;
       t.patientStart = null;
 
-      // c) Status auf "Einsatz beendet" setzen
-      t.status = "Einsatz beendet";
+      // c) Status auf 0 setzen
+      t.status = 0;
 
       // d) Eigene Historie ergänzen
       t.history = t.history || [];
       t.history.push({
         when: now,
-        event: "Einsatz beendet",
+        event: 0,
       });
     }
   });
@@ -167,9 +180,14 @@ function confirmEdit() {
   }
 
   // 3) Modal schließen & neu rendern
-  closeEditModal();
-  loadPatients(editPatientId);
+closeEditModal();
+loadPatients(editPatientId);
 
+// Trupp-Cards neu laden:
+window.dispatchEvent(new StorageEvent('storage', {
+  key: 'trupps',
+  newValue: localStorage.getItem('trupps')
+}));
   // 4) Immer die “Patientendaten geändert: …”-Zeile in die Historie schreiben
   //     – unabhängig davon, welche Felder wirklich verändert wurden.
   addCombinedHistoryEntry(editPatientId);
@@ -418,82 +436,84 @@ function recordStatusChange(patient, newStatus) {
 function assignResource(id, type) {
   const label = type === "team" ? "Trupp" : "RTM";
   const value = prompt(`${label} disponieren:`);
-  if (value !== null && value.trim() !== "") {
-    const patients = JSON.parse(localStorage.getItem("patients")) || [];
-    const patient = patients.find((p) => p.id === id);
-    if (type === "team") {
-      if (!Array.isArray(patient.team)) patient.team = [];
-      patient.team.push(value);
-    } else {
-      if (!Array.isArray(patient.rtm)) patient.rtm = [];
-      patient.rtm.push(value);
-    }
-    // Nur wenn vorher noch kein Trupp und kein RTM zugewiesen war:
-    if (
-      patient.status !== "in Behandlung" &&
-      (!Array.isArray(patient.team) || patient.team.length === 0) &&
-      (!Array.isArray(patient.rtm) || patient.rtm.length === 0)
-    ) {
-      patient.status = "disponiert";
-      patient.history = patient.history || [];
-      patient.history.push(`${geCurrentTime()} Status: disponiert`);
-    }
-    // Und immer Eintrag, dass RTM disponiert wurde:
-    patient.history = patient.history || [];
-    patient.history.push(`${getCurrentTime()} ${label} ${value} disponiert`);
+  if (!value || !value.trim()) return;
 
-    localStorage.setItem("patients", JSON.stringify(patients));
-    loadPatients();
+  // 1) Patienten laden und finden
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  const patient  = patients.find((p) => p.id === id);
+  if (!patient) return;
+
+  // 2) Array sicherstellen und Ressource hinzufügen
+  if (type === "team") {
+    if (!Array.isArray(patient.team)) patient.team = [];
+    patient.team.push(value.trim());
+  } else {
+    if (!Array.isArray(patient.rtm)) patient.rtm = [];
+    patient.rtm.push(value.trim());
+  }
+
+  // 3) Sofort speichern
+  localStorage.setItem("patients", JSON.stringify(patients));
+
+  // 4) Nur wenn vorher gemeldet → Status auf „disponiert“ setzen
+  if (patient.status === "gemeldet") {
+    updatePatientData(id, "status", "disponiert");
+  }
+
+  // 5) Historieneintrag für die Ressource
+  const updated = JSON.parse(localStorage.getItem("patients")) || [];
+  const p2 = updated.find((p) => p.id === id);
+  if (p2) {
+    p2.history = p2.history || [];
+    p2.history.push(`${getCurrentTime()} ${label} ${value.trim()} disponiert`);
+    localStorage.setItem("patients", JSON.stringify(updated));
+    loadPatients(id);
   }
 }
 
 function assignSelectedTrupp(patientId) {
-  // Patienten laden und Objekt finden
+  // 1) Patienten laden und finden
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
-  const p = patients.find((x) => x.id === patientId);
-  if (!p) return;
+  const patient  = patients.find((p) => p.id === patientId);
+  if (!patient) return;
 
-  // Sicherstellen, dass p.team ein Array ist
-  if (!Array.isArray(p.team)) p.team = [];
+  // 2) Team-Array sicherstellen
+  if (!Array.isArray(patient.team)) patient.team = [];
 
-  // ①: Status-Logik & Timestamp setzen, bevor irgendwas anderes passiert
-  recordStatusChange(p, "disponiert");
-
-  // ②: Wenn noch kein Trupp/RTM und Status nicht 'in Behandlung', auf 'disponiert' setzen
-  if (
-    p.status !== "in Behandlung" &&
-    p.team.length === 0 &&
-    (!Array.isArray(p.rtm) || p.rtm.length === 0)
-  ) {
-    p.status = "disponiert";
-    p.history = p.history || [];
-    p.history.push(`${getCurrentTime()} Status: disponiert`);
-  }
-
-  // ③: Tatsächlichen Trupp-Namen aus dem Select ziehen
-  const sel = document.getElementById(`teamSelect-${patientId}`);
+  // 3) Gewählten Trupp aus dem <select> holen
+  const sel       = document.getElementById(`teamSelect-${patientId}`);
   const truppName = sel ? sel.value : null;
   if (!truppName) {
-    // Nichts ausgewählt → abbrechen
+    // nichts ausgewählt → nur speichern, zurück
     localStorage.setItem("patients", JSON.stringify(patients));
     return;
   }
 
-  // ④: Trupp zu p.team hinzufügen und Historie eintragen
-  p.team.push(truppName);
-  p.history.push(`${getCurrentTime()} Trupp ${truppName} disponiert`);
-
-  // ⑤: Speichern und neu rendern
+  // 4) Trupp dem Team hinzufügen
+  patient.team.push(truppName);
+  // 5) Änderungen sofort persistieren
   localStorage.setItem("patients", JSON.stringify(patients));
-  loadPatients(patientId);
 
-  // ⑥: Trupp-Tracker aktualisieren (Einsatzzeit starten)
+  // 6) Nur wenn vorher gemeldet → Status auf „disponiert“ setzen
+  if (patient.status === "gemeldet") {
+    updatePatientData(patientId, "status", "disponiert");
+  }
+
+  // 7) Historieneintrag für den Trupp
+  const updated = JSON.parse(localStorage.getItem("patients")) || [];
+  const p2 = updated.find((p) => p.id === patientId);
+  if (p2) {
+    p2.history = p2.history || [];
+    p2.history.push(`${getCurrentTime()} Trupp ${truppName} disponiert`);
+    localStorage.setItem("patients", JSON.stringify(updated));
+    loadPatients(patientId);
+  }
+
+  // 8) Und zum Schluss Trupp-Tracker starten, wie gehabt:
   const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
   const t = trupps.find((t) => t.name === truppName);
   if (t) {
     const now = Date.now();
-
-    // a) eventuell laufenden Einsatz beenden
     if (t.currentOrt && t.einsatzStartOrt) {
       t.einsatzHistorie = t.einsatzHistorie || [];
       t.einsatzHistorie.push({
@@ -502,17 +522,11 @@ function assignSelectedTrupp(patientId) {
         bis: now,
       });
     }
-
-    // b) Status auf Patient setzen
-    t.status = "Patient";
-    t.patientInput = patientId;
-    // c) Einsatz-Timer starten
-    t.patientStart = now;
+    t.status              = 3;
+    t.patientInput        = patientId;
+    t.patientStart        = now;
     t.currentEinsatzStart = now;
-    // d) Pause-Timer zurücksetzen
-    t.currentPauseStart = null;
-
-    // e) Speichern & Storage-Event feuern
+    t.currentPauseStart   = null;
     localStorage.setItem("trupps", JSON.stringify(trupps));
     window.dispatchEvent(
       new StorageEvent("storage", {
@@ -522,6 +536,7 @@ function assignSelectedTrupp(patientId) {
     );
   }
 }
+
 
 function removeTrupp(id, index) {
   if (!confirm("Soll dieser Trupp wirklich entfernt werden?")) return;
@@ -557,13 +572,13 @@ function removeTrupp(id, index) {
     }
 
     // Statuswechsel, aber Einsatzzeit weiterlaufen lassen
-    t.status = "Einsatz beendet";
+    t.status = 0;
 
     // Eigene Trupp-Historie ergänzen
     t.history = t.history || [];
     t.history.push({
       when: now,
-      event: "Einsatz beendet",
+      event: 0,
     });
 
     // Speichern und Renderer anstoßen
@@ -811,3 +826,4 @@ function updateLiveTimers() {
     }
   });
 }
+

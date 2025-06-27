@@ -18,7 +18,6 @@ describe('Einsatz-Dashboard (dashboard.html)', () => {
   it('zeigt „Keine Daten“ wenn leer', async () => {
     await page.waitForSelector('#count-einsatz');
 
-    // statt $$eval mit Array: einzeln abfragen
     const ids = [
       'count-einsatz',
       'count-pause',
@@ -33,7 +32,6 @@ describe('Einsatz-Dashboard (dashboard.html)', () => {
         page.$eval(`#${id}`, (el) => el.textContent.trim())
       )
     );
-    // alle Zähler sollten "0" sein, Dashboard nutzt "0" statt "–"
     expect(texts).toEqual(['0','0','0','0','0','0','0']);
 
     const rowText = await page.$eval(
@@ -46,9 +44,9 @@ describe('Einsatz-Dashboard (dashboard.html)', () => {
   it('aktualisiert die Trupp-Zähler korrekt', async () => {
     await page.evaluate(() => {
       localStorage.setItem('trupps', JSON.stringify([
-        { name:'T1', status:'Streife' },
-        { name:'T2', status:'Einsatzbereit in UHS' },
-        { name:'T3', status:'Nicht Einsatzbereit' }
+        { name:'T1', status: 11 }, // Streife
+        { name:'T2', status:  2 }, // Einsatzbereit in UHS
+        { name:'T3', status:  6 }  // Nicht Einsatzbereit
       ]));
       window.dispatchEvent(new StorageEvent('storage', {
         key: 'trupps',
@@ -70,9 +68,9 @@ describe('Einsatz-Dashboard (dashboard.html)', () => {
   it('aktualisiert die Patienten-Zähler und Tabelle korrekt', async () => {
     await page.evaluate(() => {
       localStorage.setItem('patients', JSON.stringify([
-        { id:1, status:'gemeldet', location:'A', age:30, gender:'M', diagnosis:'X' },
+        { id:1, status:'gemeldet',       location:'A', age:30, gender:'M', diagnosis:'X' },
         { id:2, status:'Behandlung in UHS', location:'B', age:40, gender:'W', diagnosis:'Y' },
-        { id:3, status:'Entlassen', location:'C', age:50, gender:'D', diagnosis:'Z' },
+        { id:3, status:'Entlassen',      location:'C', age:50, gender:'D', diagnosis:'Z' },
         { id:4, status:'Transport in KH', location:'D', age:60, gender:'M', diagnosis:'W' }
       ]));
       window.dispatchEvent(new StorageEvent('storage', {

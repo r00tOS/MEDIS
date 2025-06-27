@@ -88,7 +88,144 @@
 
     <script src="./scripts/jspdf.umd.min.js"></script>
     <script>
-      document.addEventListener("DOMContentLoaded", () => {
+      // 1) Trupp-Checkboxen füllen
+function renderU18List() {
+  const container = document.getElementById('settingsU18List');
+  container.innerHTML = '';
+  // aktuelle Trupp-Liste aus localStorage
+  const trupps = JSON.parse(localStorage.getItem('trupps') || '[]');
+  // gespeicherte U18-Auswahl (Array von Namen/IDs)
+  const u18 = JSON.parse(localStorage.getItem('u18Trupps') || '[]');
+
+  trupps.forEach(t => {
+    const id = t.name; // oder t.id, je nach Deinem key
+    const cb = document.createElement('label');
+    cb.style.display = 'block';
+    cb.innerHTML = `
+      <input type="checkbox" value="${id}" ${u18.includes(id)?'checked':''}>
+      ${id}
+    `;
+    cb.querySelector('input').addEventListener('change', e => {
+      let newU18 = JSON.parse(localStorage.getItem('u18Trupps') || '[]');
+      if (e.target.checked) {
+        if (!newU18.includes(id)) newU18.push(id);
+      } else {
+        newU18 = newU18.filter(x => x !== id);
+      }
+      localStorage.setItem('u18Trupps', JSON.stringify(newU18));
+      // trupp tracker neu rendern
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'u18Trupps',
+        newValue: JSON.stringify(newU18)
+      }));
+    });
+    container.appendChild(cb);
+  });
+}
+
+// rufe initial auf, sobald modal geöffnet wird
+btnSettings.addEventListener('click', () => {
+  // … bestehende Befüllung …
+  renderU18List();
+  settingsModal.style.display = 'flex';
+});
+// 1) Liste der verfügbaren Preset-Dateien
+  window.presetFiles = [
+    "holstein.js",
+    "innenstadt.js",
+    "kiellinie.js"
+    // …weitere Presets
+  ];
+
+  // 2) Direkt das aktuell gewählte Preset laden (oder Default)
+  const initialPreset =
+    localStorage.getItem("selectedPresetFile") || window.presetFiles[0];
+  const initialScript = document.createElement("script");
+  initialScript.src = `presets/${initialPreset}`;
+  document.head.appendChild(initialScript);
+
+  document.addEventListener("DOMContentLoaded", () => {
+    // a) Alle relevanten Elemente auf einen Blick
+    const btnSettings      = document.getElementById("btnSettings");
+    const settingsModal    = document.getElementById("settingsModal");
+    const closeSettings    = document.getElementById("closeSettings");
+    const saveSettings     = document.getElementById("saveSettings");
+    const inputNextPatient = document.getElementById("settingsNextPatient");
+    const inputMaxTime     = document.getElementById("settingsMaxTime");
+    const selectPreset     = document.getElementById("settingsPreset");
+
+    // b) Preset-Dropdown füllen
+    window.presetFiles.forEach(file => {
+      const opt = document.createElement("option");
+      opt.value       = file;
+      opt.textContent = file.replace(/\.js$/, "");
+      selectPreset.appendChild(opt);
+    });
+
+    // c) Wenn ⚙️ geklickt wird, Modal öffnen und Felder befüllen
+    btnSettings.addEventListener("click", () => {
+      inputNextPatient.value = parseInt(localStorage.getItem("nextPatientNumber"), 10) || 1;
+      inputMaxTime.value     = parseInt(localStorage.getItem("nextMaxEinsatzTime"), 10) || 45;
+      selectPreset.value     = localStorage.getItem("selectedPresetFile") || window.presetFiles[0];
+      settingsModal.style.display = "flex";
+    });
+
+    // d) Modal ➝ Schließen-Button
+    closeSettings.addEventListener("click", () => {
+      settingsModal.style.display = "none";
+    });
+
+saveSettings.addEventListener("click", () => {
+      // 1) Patientennummer & MaxTime speichern
+      const np = parseInt(inputNextPatient.value, 10);
+      const mt = parseInt(inputMaxTime.value, 10);
+      if (!isNaN(np) && np > 0) {
+        localStorage.setItem("nextPatientNumber", np);
+        window.dispatchEvent(new StorageEvent("storage", {
+          key: "nextPatientNumber",
+          newValue: String(np)
+        }));
+      }
+      if (!isNaN(mt) && mt > 0) {
+        localStorage.setItem("nextMaxEinsatzTime", mt);
+        window.dispatchEvent(new StorageEvent("storage", {
+          key: "nextMaxEinsatzTime",
+          newValue: String(mt)
+        }));
+      }
+
+      // 2) Preset‐Auswahl speichern & Skript neu nachladen
+      const chosen = selectPreset.value;
+      localStorage.setItem("selectedPresetFile", chosen);
+      window.dispatchEvent(new StorageEvent("storage", {
+        key: "selectedPresetFile",
+        newValue: chosen
+      }));
+      // altes Preset-Skript entfernen
+      document.querySelectorAll('script[src^="presets/"]').forEach(s => s.remove());
+      // neues Preset nachladen
+      const s = document.createElement("script");
+      s.src = `presets/${chosen}`;
+      document.head.appendChild(s);
+
+      // 3) Trupp-Tracker-Iframe neu laden
+const truppIframe = document.querySelector('iframe[src="sites/trupp_status_tracker.html"]');
+if (truppIframe) {
+  // src neu setzen = Reload
+  truppIframe.src = truppIframe.src;
+}
+
+      // 4) Modal schließen
+      settingsModal.style.display = "none";
+      location.reload();
+    });
+
+    // f) Klick außerhalb schließt das Modal
+    settingsModal.addEventListener("click", e => {
+      if (e.target === settingsModal) settingsModal.style.display = "none";
+    });
+  });
+document.addEventListener("DOMContentLoaded", () => {
         const btnSettings = document.getElementById("btnSettings");
         const settingsModal = document.getElementById("settingsModal");
         const closeSettings = document.getElementById("closeSettings");
@@ -161,30 +298,6 @@
           settingsModal.style.display = "none";
         });
 
-        // Speichern
-        saveSettings.addEventListener("click", () => {
-          const np = parseInt(inputNextPatient.value, 10);
-          const mt = parseInt(inputMaxTime.value, 10);
-          if (!isNaN(np) && np > 0) {
-            localStorage.setItem("nextPatientNumber", np);
-            window.dispatchEvent(
-              new StorageEvent("storage", {
-                key: "nextPatientNumber",
-                newValue: String(np),
-              })
-            );
-          }
-          if (!isNaN(mt) && mt > 0) {
-            localStorage.setItem("nextMaxEinsatzTime", mt);
-            window.dispatchEvent(
-              new StorageEvent("storage", {
-                key: "nextMaxEinsatzTime",
-                newValue: String(mt),
-              })
-            );
-          }
-          settingsModal.style.display = "none";
-        });
 
         // Klick außerhalb schließt
         settingsModal.addEventListener("click", (e) => {
@@ -300,6 +413,27 @@
             "
           />
         </div>
+        <div style="margin-bottom: 12px">
+  <label for="settingsPreset" style="display: block; font-weight: 600">
+    Vorlagen-Preset
+  </label>
+  <select id="settingsPreset" style="
+      width: 100%;
+      padding: 6px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    ">
+    <!-- Optionen werden per JS befüllt -->
+  </select>
+</div>
+<div style="margin-bottom:12px">
+  <label style="display:block; font-weight:600; margin-bottom:4px">
+    U18-Hervorhebung für Trupps
+  </label>
+  <div id="settingsU18List" style="max-height:200px; overflow:auto; border:1px solid #ddd; padding:8px; border-radius:4px">
+    <!-- JS füllt hier eine Checkbox pro Trupp -->
+  </div>
+</div>
         <button
           id="saveSettings"
           style="
@@ -376,5 +510,7 @@
         setInterval(updateDateTime, 1000);
       });
     </script>
+
+
   </body>
 </html>

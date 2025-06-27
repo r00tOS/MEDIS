@@ -26,7 +26,7 @@ body {
 }
 .section div {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+ grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
   gap: 16px;
 }
 
@@ -46,6 +46,7 @@ body {
   transform: scale(0.9) translateX(100px);
   opacity: 0;
 }
+.status-select { margin-left:8px; font-size:1rem; }
 .trupp.move-in,
 .trupp.move-in-active {
   transform: none !important;
@@ -55,6 +56,41 @@ body {
 .trupp.einsatz-beendet {
   border-left: 5px solid rebeccapurple;
   background: #fff;
+}
+
+.status-dropdown { position: relative; display: inline-block; }
+.status-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  background: white;
+  border: 1px solid #ccc;
+  display: none;
+  z-index: 10;
+}
+.status-menu.open { display: block; }
+.status-menu li {
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.status-menu li.active { font-weight: bold; }
+.status-menu li:hover { background: #eee; }
+.status-code {
+  display: inline-block;
+  border: 1px solid;
+  border-radius: 3px;
+  padding: 0.1em 0.4em;
+  margin-right: 0.5em;
+  font-weight: bold;
+  color: #333;         /* Schriftfarbe */
+  /* Hintergrund‐ und Rahmenfarbe werden jetzt inline gesetzt */
+}
+.status-menu li.active .status-code {
+  /* optional: für den aktiven Eintrag eine extra Betonung */
+  box-shadow: 0 0 2px rgba(0,0,0,0.2);
 }
 
 /* 4. Statusfarben */
@@ -208,3 +244,78 @@ body {
 .button-row button {
   flex: 0 1 auto;
 }
+
+.modal {
+  position: fixed; top:0; left:0; right:0; bottom:0;
+  z-index:10000;
+}
+.modal-backdrop {
+  position:absolute; top:0; left:0; right:0; bottom:0;
+  background:rgba(0,0,0,0.5);
+}
+.modal-content {
+  position:relative;
+  background:white; padding:1em;
+  max-width:400px; margin:5% auto;
+  border-radius:4px;
+}
+#presetList {
+  list-style:none; padding:0; max-height:200px; overflow:auto;
+}
+#presetList li {
+  padding:4px 8px; cursor:pointer;
+}
+#presetList li.selected {
+  background:#007bff; color:white;
+}
+
+.end-buttons {
+  display: inline-flex;
+  gap: 8px;
+  margin-left: 8px;
+}
+.end-buttons button {
+  flex: 1;
+}
+
+.patient-summary-table {
+  width: 100%;
+  box-sizing: border-box;
+  border-collapse: collapse;
+  margin: 0.5em 0;
+  overflow-x: auto;
+}
+.patient-summary-table th,
+.patient-summary-table td {
+  border: 1px solid #ccc;
+  padding: 4px 8px;
+  text-align: left;
+  font-size: 0.9rem;
+}
+.patient-summary-table th {
+  width: 100%;              /* füllt .patient-summary aus */
+  border-collapse: collapse;
+  background-color: #f2f2f2;
+}
+.patient-summary-table caption {
+  caption-side: top;
+  font-weight: bold;
+  font-size: 1.1em;
+  text-align: left;
+  padding-bottom: 0.3em;
+}
+
+.trupp-header.u18 {
+  background-color: #fff9c4; /* helles Gelb hinter dem Header */
+}
+
+.badge-u18 {
+  display: inline-block;
+  margin-left: 0.4em;
+  padding: 0.1em 0.4em;
+  border: 1px solid #333;
+  border-radius: 3px;
+  font-size: 0.75em;
+  vertical-align: middle;
+}
+
