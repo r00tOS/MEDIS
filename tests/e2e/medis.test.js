@@ -22,6 +22,18 @@ describe('MEDIS Hauptinterface (unit tests)', () => {
     });
 
     // ────────────────────────────────────────
+    // 1.5) stub presetFiles & presetlist.js
+    // ────────────────────────────────────────
+    window.presetFiles = ['dummy.js'];
+    const presetListCode = fs.readFileSync(
+      path.resolve(__dirname, '../../presets/presetlist.js'),
+      'utf8'
+    );
+    const presetListScript = document.createElement('script');
+    presetListScript.textContent = presetListCode;
+    document.head.appendChild(presetListScript);
+
+    // ────────────────────────────────────────
     // 2) HTML laden
     // ────────────────────────────────────────
     const htmlPath = path.resolve(__dirname, '../../medis.html');
@@ -42,7 +54,10 @@ describe('MEDIS Hauptinterface (unit tests)', () => {
     // ────────────────────────────────────────
     // 4) Inline-Scripts aus HTML injizieren
     // ────────────────────────────────────────
-    for (const match of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) {
+    // matchAll for any <script>…</script>, including with attributes
+    const inlineRe = /<script\b[^>]*>([\s\S]*?)<\/script>/gi;
+    for (const match of html.matchAll(inlineRe)) {
+      if (!match[1].trim()) continue;           // skip empty
       const tag = document.createElement('script');
       tag.textContent = match[1];
       document.body.appendChild(tag);
@@ -69,8 +84,10 @@ describe('MEDIS Hauptinterface (unit tests)', () => {
     const trMock = jest.spyOn(window, 'exportTruppPDF').mockResolvedValue();
     const pMock  = jest.spyOn(window, 'exportPatientPDF').mockResolvedValue();
 
-    // Act
-    await document.getElementById('btnExportPDF').click();
+    // Act: dispatch click and allow microtasks to run
+    document.getElementById('btnExportPDF')
+      .dispatchEvent(new MouseEvent('click'));
+    await Promise.resolve();
 
     // Assert
     expect(trMock).toHaveBeenCalled();
