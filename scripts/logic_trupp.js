@@ -157,6 +157,10 @@ if (oldStatus === 11 && trupp.currentOrt && trupp.einsatzStartOrt) {
 
     // Füge den Historieneintrag für Status "disponiert" hinzu
     updatePatientData(pid, "status", "disponiert");
+      addHistoryEntry(
+    trupp.patientInput,
+    `Trupp ${trupp.name} disponiert`
+  );
   }
 
   // 9) Bei Streife → neuen Ort abfragen
@@ -272,61 +276,73 @@ function copyToClipboard(truppName) {
   const trupp = trupps.find((t) => t.name === truppName);
   if (!trupp) return;
 
-  let meldung = "";
-  let standort;
-  let alle;
+  let textToCopy = "";
 
-  switch (trupp.status) {
-    case 2:
-      meldung = `${trupp.name} einsatzbereit in UHS`;
-      break;
-    case 6:
-      meldung = `${trupp.name} nicht einsatzbereit`;
-      break;
-    case 11:
-      meldung = `${trupp.name} übernimmt Streifengebiet ${
-        trupp.currentOrt || "[Ort]"
-      }`;
-      break;
-// Status 3, 4, 7 und 8 → Patienten‐Meldung
-  case 3:
-  case 4:
-  case 7:
-  case 8:
-    const standort =
-      trupp.currentOrt ||
-      (trupp.einsatzHistorie.length
-        ? trupp.einsatzHistorie[trupp.einsatzHistorie.length - 1].ort
-        : "");
-    meldung = `Patient Nr.: ${trupp.patientInput || "[Patientennummer]"}
-Trupp: ${trupp.name}
-Standort: ${standort || ""}
-Alter:
-Geschlecht:
-Verdachtsdiagnose:
-Nachforderung:
-Bemerkung:`;
-    break;
-    case 12:
-      alle = trupps
-        .filter((t) => t.status === 12)
-        .map((t) => t.name)
-        .join(", ");
-      meldung = `${alle} Spielfeldrand erreicht`;
-      break;
-    default:
-      meldung = `${trupp.name}: ${trupp.status}`;
+  // Für alle Patienten-Status (3,4,7,8): Patientendaten holen
+  if ([3, 4, 7, 8].includes(trupp.status)) {
+    const patients = JSON.parse(localStorage.getItem("patients")) || [];
+    const patient = patients.find((p) => p.id === trupp.patientInput);
+    if (!patient) return;
+
+    const teamList = Array.isArray(patient.team)
+      ? patient.team.join(", ")
+      : "–";
+    const rtmList = Array.isArray(patient.rtm)
+      ? patient.rtm.join(", ")
+      : "–";
+    const nachf = (patient.history || [])
+      .filter((e) => /nachgefordert/.test(e))
+      .join("\n") || "–";
+    const remarks = patient.remarks || "–";
+    const historyText = (patient.history || []).join("\n") || "–";
+
+    textToCopy = `Patient Nr.: ${patient.id}
+Trupp: ${teamList}
+RTM: ${rtmList}
+Standort: ${patient.location || "–"}
+Alter: ${patient.age || "–"}
+Geschlecht: ${patient.gender || "–"}
+Verdachtsdiagnose: ${patient.diagnosis || "–"}
+Nachforderungen:
+${nachf}
+Bemerkung: ${remarks}
+
+Patienten-Historie:
+${historyText}`;
+  }
+  else {
+    switch (trupp.status) {
+      case 2:
+        textToCopy = `${trupp.name} einsatzbereit in UHS`;
+        break;
+      case 6:
+        textToCopy = `${trupp.name} nicht einsatzbereit`;
+        break;
+      case 11:
+        textToCopy = `${trupp.name} übernimmt Streifengebiet ${trupp.currentOrt || "[Ort]"}`;
+        break;
+      case 12:
+        const alle = trupps
+          .filter((t) => t.status === 12)
+          .map((t) => t.name)
+          .join(", ");
+        textToCopy = `${alle} Spielfeldrand erreicht`;
+        break;
+      default:
+        textToCopy = `${trupp.name}: ${trupp.status}`;
+    }
   }
 
   navigator.clipboard
-    .writeText(meldung)
+    .writeText(textToCopy)
     .then(() => {
-      console.log("In Zwischenablage kopiert:", meldung);
+      console.log("In Zwischenablage kopiert:", textToCopy);
     })
     .catch((err) => {
       console.error("Fehler beim Kopieren:", err);
     });
 }
+
 
 
 function addHistoryEntry(pid, entry) {
