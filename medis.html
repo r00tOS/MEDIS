@@ -87,6 +87,7 @@
     </div>
 
     <script src="./scripts/jspdf.umd.min.js"></script>
+    <script src="./presets/presetlist.js"></script>
     <script>
       // 1) Trupp-Checkboxen füllen
 function renderU18List() {
@@ -129,13 +130,6 @@ btnSettings.addEventListener('click', () => {
   renderU18List();
   settingsModal.style.display = 'flex';
 });
-// 1) Liste der verfügbaren Preset-Dateien
-  window.presetFiles = [
-    "holstein.js",
-    "innenstadt.js",
-    "kiellinie.js"
-    // …weitere Presets
-  ];
 
   // 2) Direkt das aktuell gewählte Preset laden (oder Default)
   const initialPreset =
