@@ -262,11 +262,7 @@ function updatePatientData(id, field, value) {
       patient.history.push(`${getCurrentTime()} Transport in KH: ${value}`);
     } else if (field === "additionalRequest") {
       patient.history.push(`${getCurrentTime()} ${value}`);
-    } else if (
-      !["age", "gender", "location", "team", "rtm", "remarks"].includes(field)
-    ) {
-      patient.history.push(`${getCurrentTime()} ${field} geändert: ${value}`);
-    }
+    } 
 
     // b) Feld setzen
     patient[field] = value;
