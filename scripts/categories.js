@@ -124,6 +124,8 @@ window.alarmConfig = {
         { word: "Schädel-Hirn-Trauma", resources: ["RTW", "NEF", "Trupp"] },
         { word: "Thoraxtrauma", resources: ["RTW", "NEF", "Trupp"] },
         { word: "Wirbelsäulentrauma", resources: ["RTW", "NEF", "Trupp"] },
+		{ word: "Sturz > 3 Meter", resources: ["RTW", "NEF", "Trupp"] },
+		{ word: "Sturz < 3 Meter", resources: ["Trupp"] },
         { word: "sonstiger traumatologischer Notfall", resources: ["RTW", "NEF", "Trupp"] }
       ]
     },
