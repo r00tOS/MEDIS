@@ -245,7 +245,10 @@ document.addEventListener("DOMContentLoaded", () => {
           localStorage.removeItem("trupps");
           localStorage.removeItem("nextPatientNumber");
           localStorage.removeItem("u18Trupps");
+          localStorage.removeItem("mapMarkers");
           localStorage.setItem("nextMaxEinsatzTime", 45);
+
+          location.reload();
 
           // Storage-Events feuern, damit beide Tracker sofort neu rendern
           window.dispatchEvent(

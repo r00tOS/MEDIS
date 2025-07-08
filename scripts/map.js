@@ -1,7 +1,11 @@
-    // 1) Karte initialisieren
-    const map = L.map('map').setView([51.1657, 10.4515], 6);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap-Mitwirkende'
+// 1) Karte initialisieren
+    const map = L.map('map', {
+      zoomDelta: 0.25,           // Standard ist 1, kleiner = feineres Zoomen
+      wheelPxPerZoomLevel: 120   // Standard ist 60, größer = weniger empfindlich
+    }).setView([51.1657, 10.4515], 6);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap contributors & CartoDB',
+      maxZoom: 19
     }).addTo(map);
     // Zoom/Position laden & speichern (unverändert)
     const savedZoom = localStorage.getItem('mapZoom');
@@ -151,26 +155,33 @@ searchInput.addEventListener('input', function() {
     contextMenu.style.background='#fff'; contextMenu.style.border='1px solid #ccc'; contextMenu.style.zIndex=10000;
     contextMenu.innerHTML=`<div id="rename-marker" style="padding:8px;cursor:pointer;">Name ändern</div>` +
                           `<div id="delete-marker" style="padding:8px;cursor:pointer;color:red;">Löschen</div>`;
+    contextMenu.innerHTML += `<div id="toggle-desc-marker" style="padding:8px;cursor:pointer;">Beschreibung ein-/ausblenden</div>`;
     document.body.appendChild(contextMenu);
     document.addEventListener('click',()=>{contextMenu.style.display='none';});
 
     const showMarkerDesc = () => document.getElementById('toggle-marker-desc')?.checked !== false;
 
     // Ersetze die markerHtml-Funktion wie folgt:
-    function markerHtml(iconUrl, name) {
+    function markerHtml(iconUrl, name, descVisible = true) {
       return `<div style="display:flex;flex-direction:column;align-items:center;">
-        <img src="${iconUrl}" style="width:60px;height:60px;">
-        ${showMarkerDesc() ? `<span style="background:rgba(255,255,255,0.8);padding:4px 18px;border-radius:4px;font-size:15px;margin-top:4px;min-width:90px;text-align:center;display:inline-block;white-space:nowrap;">${name}</span>` : ""}
+        <img src="${iconUrl}" style="width:100px;height:100px;margin-bottom:-2px;">
+        ${descVisible ? `<span style="background:rgba(255,255,255,0.8);border-radius:4px;font-size:15px;min-width:90px;text-align:center;display:inline-block;white-space:nowrap;margin-top:0;">${name}</span>` : ""}
       </div>`;
     }
 
     // Marker-Rendering anpassen:
+    map.eachLayer(layer => {
+      if (layer instanceof L.Marker && layer.options.icon && layer.options.icon.options.className === 'custom-marker') {
+        map.removeLayer(layer);
+      }
+    });
     placedMarkers.forEach((md, idx) => {
+      const iconWidth = 100, iconHeight = 100;
       const ic = L.divIcon({
         className: 'custom-marker',
-        html: markerHtml(md.iconUrl, md.name),
-        iconSize: [60, 75],
-        iconAnchor: [30, 30]
+        html: markerHtml(md.iconUrl, md.name, md.descVisible !== false),
+        iconSize: [iconWidth, iconHeight],
+        iconAnchor: getCenteredAnchor(iconWidth, iconHeight)
       });
       const marker = L.marker([md.lat, md.lng], { icon: ic, draggable: true }).addTo(map);
       marker.on('dragend', e => { const { lat, lng } = e.target.getLatLng(); placedMarkers[idx].lat = lat; placedMarkers[idx].lng = lng; saveMarkersToLocalStorage(placedMarkers); });
@@ -179,33 +190,21 @@ searchInput.addEventListener('input', function() {
         contextMenu.style.left = e.originalEvent.pageX + 'px';
         contextMenu.style.top = e.originalEvent.pageY + 'px';
         contextMenu.style.display = 'block';
-        contextMenu.marker = marker; contextMenu.markerObj = md; contextMenu.markerIdx = idx;
+        contextMenu.marker = marker;
+        contextMenu.markerObj = md; // oder obj beim Drop!
+        contextMenu.markerIdx = idx !== undefined ? idx : placedMarkers.length - 1;
+
+        // Nur für Personentypen anzeigen:
+        if (isPersonMarkerByIcon(contextMenu.markerObj)) {
+          changePersonTypeDiv.style.display = 'block';
+        } else {
+          changePersonTypeDiv.style.display = 'none';
+        }
       });
     });
 
     map.getContainer().addEventListener('dragover', function(e) {
       e.preventDefault();
-    });
-    map.getContainer().addEventListener('drop', function(e) {
-      e.preventDefault();
-      // Kartenpixel zu LatLng umrechnen
-      const rect = map.getContainer().getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      const latlng = map.containerPointToLatLng([x, y]);
-      const icon = JSON.parse(e.dataTransfer.getData('application/json'));
-      if (!icon) return;
-      const ic = L.divIcon({
-        className: 'custom-marker',
-        html: markerHtml(icon.url, icon.name),
-        iconSize: [60, 75],
-        iconAnchor: [30, 30]
-      });
-      const marker = L.marker([latlng.lat, latlng.lng], { icon: ic, draggable: true }).addTo(map);
-      const obj = { lat: latlng.lat, lng: latlng.lng, iconUrl: icon.url, name: icon.name };
-      placedMarkers.push(obj); saveMarkersToLocalStorage(placedMarkers);
-      marker.on('dragend', evt => { const { lat, lng } = evt.target.getLatLng(); obj.lat = lat; obj.lng = lng; saveMarkersToLocalStorage(placedMarkers); });
-      marker.on('contextmenu', evt => { evt.originalEvent.preventDefault(); contextMenu.style.left = evt.originalEvent.pageX + 'px'; contextMenu.style.top = evt.originalEvent.pageY + 'px'; contextMenu.style.display = 'block'; contextMenu.marker = marker; contextMenu.markerObj = obj; contextMenu.markerIdx = placedMarkers.length - 1; });
     });
 
     contextMenu.querySelector('#rename-marker').onclick = e => {
@@ -236,16 +235,35 @@ searchInput.addEventListener('input', function() {
             Math.abs(m.lng - layer.getLatLng().lng) < 1e-8
           );
           if (markerObj) {
+            // Nur anzeigen, wenn nicht individuell ausgeblendet
+            const show = markerObj.descVisible !== false && document.getElementById('toggle-marker-desc').checked;
             layer.setIcon(L.divIcon({
               className: 'custom-marker',
-              html: markerHtml(markerObj.iconUrl, markerObj.name),
-              iconSize: [60, 75],
-              iconAnchor: [30, 30]
+              html: markerHtml(markerObj.iconUrl, markerObj.name, show),
+              iconSize: [100, 100],
+              iconAnchor: getCenteredAnchor(100, 100)
             }));
           }
         }
       });
     });
+
+    // Kontextmenü-Option für Beschreibung ein-/ausblenden:
+    contextMenu.querySelector('#toggle-desc-marker').onclick = e => {
+      e.stopPropagation();
+      const markerObj = contextMenu.markerObj;
+      markerObj.descVisible = !markerObj.descVisible;
+      // Die Checkbox steuert nur Marker ohne individuelle Einstellung
+      const show = markerObj.descVisible !== false && document.getElementById('toggle-marker-desc').checked;
+      contextMenu.marker.setIcon(L.divIcon({
+        className: 'custom-marker',
+        html: markerHtml(markerObj.iconUrl, markerObj.name, show),
+        iconSize: [100, 100],
+        iconAnchor: getCenteredAnchor(100, 100)
+      }));
+      saveMarkersToLocalStorage(placedMarkers);
+      contextMenu.style.display = 'none';
+    };
 
     // 4) "Alle Marker löschen" Button-Funktionalität:
 document.getElementById('delete-all-markers').addEventListener('click', () => {
@@ -296,7 +314,8 @@ document.getElementById('show-trupps').addEventListener('click', function() {
       // Das Drag-Objekt wie ein Symbol aufbauen
       const icon = {
         name: trupp.name,
-        url: "../map/svg/Rettungswesen_Einheiten/Sanitätstrupp.svg"
+        url: "../map/svg/Rettungswesen_Einheiten/Sanitätstrupp.svg",
+        descVisible: true // Beschreibung AN für Trupps
       };
       e.dataTransfer.setData('application/json', JSON.stringify(icon));
       const img = new Image();
@@ -305,4 +324,274 @@ document.getElementById('show-trupps').addEventListener('click', function() {
     });
     iconsContainer.appendChild(div);
   });
+});
+
+// Hilfsfunktion für zentrierten Anchor, abhängig von der Icon-Größe
+function getCenteredAnchor(width = 100, height = 100) {
+  return [width / 2, height / 2];
+}
+
+// Nur EIN Drop-Handler für Marker!
+map.getContainer().addEventListener('drop', function(e) {
+  e.preventDefault();
+  const rect = map.getContainer().getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  const latlng = map.containerPointToLatLng([x, y]);
+  const icon = JSON.parse(e.dataTransfer.getData('application/json'));
+  if (!icon) return;
+  // Prüfe, ob descVisible gesetzt ist (Trupps), sonst false
+  const descVisible = typeof icon.descVisible === "boolean" ? icon.descVisible : false;
+  const iconWidthDrop = 60, iconHeightDrop = 75;
+  const ic = L.divIcon({
+    className: 'custom-marker',
+    html: markerHtml(icon.url, icon.name, descVisible),
+    iconSize: [iconWidthDrop, iconHeightDrop],
+    iconAnchor: getCenteredAnchor(iconWidthDrop, iconHeightDrop)
+  });
+  const obj = { lat: latlng.lat, lng: latlng.lng, iconUrl: icon.url, name: icon.name, descVisible };
+  placedMarkers.push(obj); saveMarkersToLocalStorage(placedMarkers);
+  const marker = L.marker([latlng.lat, latlng.lng], { icon: ic, draggable: true }).addTo(map);
+  marker.on('dragend', evt => { const { lat, lng } = evt.target.getLatLng(); obj.lat = lat; obj.lng = lng; saveMarkersToLocalStorage(placedMarkers); });
+  marker.on('contextmenu', evt => { evt.originalEvent.preventDefault(); contextMenu.style.left = evt.originalEvent.pageX + 'px'; contextMenu.style.top = evt.originalEvent.pageY + 'px'; contextMenu.style.display = 'block'; contextMenu.marker = marker; contextMenu.markerObj = obj; contextMenu.markerIdx = placedMarkers.length - 1; });
+});
+
+// Ergänze nach dem Kontextmenü-HTML (nach contextMenu.innerHTML += ...):
+
+// Definiere die Personengruppen und die zugehörigen Symbole
+const personTypes = [
+  { label: "Gerettete Person", icon: "../map/svg/Personen/Gerettete_Person.svg" },
+  { label: "Person", icon: "../map/svg/Personen/Person.svg" },
+  { label: "Tote Person", icon: "../map/svg/Personen/Tote_Person.svg" },
+  { label: "Transportierte Person", icon: "../map/svg/Personen/Transportierte_Person.svg" },
+  { label: "Verletzte Person", icon: "../map/svg/Personen/Verletzte_Person.svg" },
+  { label: "Vermisste Person", icon: "../map/svg/Personen/Vermisste_Person.svg" },
+  { label: "Verschüttete Person", icon: "../map/svg/Personen/Verschüttete_Person.svg" },
+  { label: "Zu Transportierende Person", icon: "../map/svg/Personen/Zu_transportierende_Person.svg" }
+];
+
+// Füge das Untermenü für Personentypen ins Kontextmenü ein
+const personMenu = document.createElement('div');
+personMenu.id = 'person-type-menu';
+personMenu.style.display = 'none';
+personMenu.style.position = 'absolute';
+personMenu.style.background = '#fff';
+personMenu.style.border = '1px solid #ccc';
+personMenu.style.zIndex = 10001;
+personMenu.style.left = '0';
+personMenu.style.top = '0';
+personMenu.innerHTML = personTypes.map(pt =>
+  `<div class="person-type-option" data-icon="${pt.icon}" data-label="${pt.label}" style="padding:8px;cursor:pointer;display:flex;align-items:center;gap:8px;">
+    <img src="${pt.icon}" style="width:24px;height:24px;">${pt.label}
+  </div>`
+).join('');
+document.body.appendChild(personMenu);
+
+// Hilfsfunktion: Prüft, ob ein Marker ein Personentyp ist (über iconUrl)
+function isPersonMarkerByIcon(markerObj) {
+  return personTypes.some(pt => pt.icon === markerObj.iconUrl);
+}
+
+// Kontextmenü erweitern: Option zum Ändern des Personentyps
+const changePersonTypeDiv = document.createElement('div');
+changePersonTypeDiv.id = 'change-person-type';
+changePersonTypeDiv.style.padding = '8px';
+changePersonTypeDiv.style.cursor = 'pointer';
+changePersonTypeDiv.textContent = 'Personen-Typ ändern';
+contextMenu.appendChild(changePersonTypeDiv);
+
+
+
+// Klick auf "Personen-Typ ändern" öffnet das Untermenü
+changePersonTypeDiv.onclick = e => {
+  e.stopPropagation();
+  // Positioniere das Untermenü neben dem Kontextmenü
+  personMenu.style.left = contextMenu.style.left;
+  personMenu.style.top = (parseInt(contextMenu.style.top) + contextMenu.offsetHeight) + 'px';
+  personMenu.style.display = 'block';
+};
+
+// Klick auf einen Personentyp im Untermenü
+personMenu.querySelectorAll('.person-type-option').forEach(opt => {
+  opt.onclick = e => {
+    e.stopPropagation();
+    const iconUrl = opt.getAttribute('data-icon');
+    // Der Name bleibt erhalten!
+    // Die Sichtbarkeit der Beschreibung bleibt ebenfalls erhalten
+    const showDesc = contextMenu.markerObj.descVisible !== false && document.getElementById('toggle-marker-desc').checked;
+    contextMenu.markerObj.iconUrl = iconUrl;
+    // Icon neu setzen, Name bleibt sichtbar wie vorher
+    contextMenu.marker.setIcon(L.divIcon({
+      className: 'custom-marker',
+      html: markerHtml(iconUrl, contextMenu.markerObj.name, showDesc),
+      iconSize: [100, 100],
+      iconAnchor: getCenteredAnchor(100, 100)
+    }));
+    saveMarkersToLocalStorage(placedMarkers);
+    personMenu.style.display = 'none';
+    contextMenu.style.display = 'none';
+  };
+});
+
+// Schließe das Untermenü, wenn außerhalb geklickt wird
+document.addEventListener('click', () => {
+  personMenu.style.display = 'none';
+});
+
+// --- Ergänzung: Kontextmenü für freie Fläche ---
+
+// Menü für freie Fläche erstellen
+const mapContextMenu = document.createElement('div');
+mapContextMenu.id = 'map-context-menu';
+mapContextMenu.style.position = 'absolute';
+mapContextMenu.style.display = 'none';
+mapContextMenu.style.background = '#fff';
+mapContextMenu.style.border = '1px solid #ccc';
+mapContextMenu.style.zIndex = 10001;
+mapContextMenu.innerHTML = `
+  <div id="create-person" style="padding:8px;cursor:pointer;">Person erstellen</div>
+  <div id="create-gefahr" style="padding:8px;cursor:pointer;">Gefahr erstellen</div>
+`;
+document.body.appendChild(mapContextMenu);
+
+// Untermenü für Personentypen (wird wiederverwendet)
+function showPersonMenu(x, y, callback) {
+  personMenu.style.left = x + 'px';
+  personMenu.style.top = y + 'px';
+  personMenu.style.display = 'block';
+  // Handler für Auswahl
+  personMenu.querySelectorAll('.person-type-option').forEach(opt => {
+    opt.onclick = e => {
+      e.stopPropagation();
+      personMenu.style.display = 'none';
+      callback(opt.getAttribute('data-icon'), opt.getAttribute('data-label'));
+    };
+  });
+}
+
+// Untermenü für Gefahren
+const gefahrTypes = Object.values(symbolLibrary["Gefahren"]["Gefahren"]);
+const gefahrMenu = document.createElement('div');
+gefahrMenu.id = 'gefahr-type-menu';
+gefahrMenu.style.position = 'absolute';
+gefahrMenu.style.display = 'none';
+gefahrMenu.style.background = '#fff';
+gefahrMenu.style.border = '1px solid #ccc';
+gefahrMenu.style.zIndex = 10001;
+// Scrollbar und feste Höhe für viele Einträge:
+gefahrMenu.style.maxHeight = '350px';
+gefahrMenu.style.overflowY = 'auto';
+gefahrMenu.style.minWidth = '260px';
+gefahrMenu.innerHTML = gefahrTypes.map(g =>
+  `<div class="gefahr-type-option" data-icon="${g.url}" data-label="${g.name}" style="padding:8px;cursor:pointer;display:flex;align-items:center;gap:8px;">
+    <img src="${g.url}" style="width:24px;height:24px;">${g.name}
+  </div>`
+).join('');
+document.body.appendChild(gefahrMenu);
+
+function showGefahrMenu(x, y, callback) {
+  gefahrMenu.style.left = x + 'px';
+  gefahrMenu.style.top = y + 'px';
+  gefahrMenu.style.display = 'block';
+  gefahrMenu.querySelectorAll('.gefahr-type-option').forEach(opt => {
+    opt.onclick = e => {
+      e.stopPropagation();
+      gefahrMenu.style.display = 'none';
+      callback(opt.getAttribute('data-icon'), opt.getAttribute('data-label'));
+    };
+  });
+}
+
+// Map-Rechtsklick-Handler (nur freie Fläche)
+map.on('contextmenu', function(e) {
+  // Prüfe, ob auf einen Marker geklickt wurde (dann kein Map-Menü)
+  let onMarker = false;
+  map.eachLayer(layer => {
+    if (layer instanceof L.Marker && layer.getLatLng().distanceTo(e.latlng) < 0.0001) {
+      onMarker = true;
+    }
+  });
+  if (onMarker) return;
+
+  mapContextMenu.style.left = e.originalEvent.pageX + 'px';
+  mapContextMenu.style.top = e.originalEvent.pageY + 'px';
+  mapContextMenu.style.display = 'block';
+  // Speichere die Position für spätere Marker-Erstellung
+  mapContextMenu._latlng = e.latlng;
+});
+
+// Person erstellen
+mapContextMenu.querySelector('#create-person').onclick = function(e) {
+  e.stopPropagation();
+  mapContextMenu.style.display = 'none';
+  showPersonMenu(parseInt(mapContextMenu.style.left), parseInt(mapContextMenu.style.top), (iconUrl, label) => {
+    // Marker an gespeicherter Position erzeugen
+    const latlng = mapContextMenu._latlng;
+    const iconWidth = 100, iconHeight = 100;
+    const ic = L.divIcon({
+      className: 'custom-marker',
+      html: markerHtml(iconUrl, label, false), // Beschreibung AUS
+      iconSize: [iconWidth, iconHeight],
+      iconAnchor: getCenteredAnchor(iconWidth, iconHeight)
+    });
+    const obj = { lat: latlng.lat, lng: latlng.lng, iconUrl: iconUrl, name: label, descVisible: false }; // Beschreibung AUS
+    placedMarkers.push(obj); saveMarkersToLocalStorage(placedMarkers);
+    const marker = L.marker([latlng.lat, latlng.lng], { icon: ic, draggable: true }).addTo(map);
+    marker.on('dragend', evt => { const { lat, lng } = evt.target.getLatLng(); obj.lat = lat; obj.lng = lng; saveMarkersToLocalStorage(placedMarkers); });
+    marker.on('contextmenu', evt => {
+      evt.originalEvent.preventDefault();
+      contextMenu.style.left = evt.originalEvent.pageX + 'px';
+      contextMenu.style.top = evt.originalEvent.pageY + 'px';
+      contextMenu.style.display = 'block';
+      contextMenu.marker = marker;
+      contextMenu.markerObj = obj;
+      contextMenu.markerIdx = placedMarkers.length - 1;
+      if (isPersonMarkerByIcon(obj)) {
+        changePersonTypeDiv.style.display = 'block';
+      } else {
+        changePersonTypeDiv.style.display = 'none';
+      }
+    });
+  });
+};
+
+// Gefahr erstellen
+mapContextMenu.querySelector('#create-gefahr').onclick = function(e) {
+  e.stopPropagation();
+  mapContextMenu.style.display = 'none';
+  showGefahrMenu(parseInt(mapContextMenu.style.left), parseInt(mapContextMenu.style.top), (iconUrl, label) => {
+    const latlng = mapContextMenu._latlng;
+    const iconWidth = 100, iconHeight = 100;
+    const ic = L.divIcon({
+      className: 'custom-marker',
+      html: markerHtml(iconUrl, label, false), // Beschreibung AUS
+      iconSize: [iconWidth, iconHeight],
+      iconAnchor: getCenteredAnchor(iconWidth, iconHeight)
+    });
+    const obj = { lat: latlng.lat, lng: latlng.lng, iconUrl: iconUrl, name: label, descVisible: false }; // Beschreibung AUS
+    placedMarkers.push(obj); saveMarkersToLocalStorage(placedMarkers);
+    const marker = L.marker([latlng.lat, latlng.lng], { icon: ic, draggable: true }).addTo(map);
+    marker.on('dragend', evt => { const { lat, lng } = evt.target.getLatLng(); obj.lat = lat; obj.lng = lng; saveMarkersToLocalStorage(placedMarkers); });
+    marker.on('contextmenu', evt => {
+      evt.originalEvent.preventDefault();
+      contextMenu.style.left = evt.originalEvent.pageX + 'px';
+      contextMenu.style.top = evt.originalEvent.pageY + 'px';
+      contextMenu.style.display = 'block';
+      contextMenu.marker = marker;
+      contextMenu.markerObj = obj;
+      contextMenu.markerIdx = placedMarkers.length - 1;
+      if (isPersonMarkerByIcon(obj)) {
+        changePersonTypeDiv.style.display = 'block';
+      } else {
+        changePersonTypeDiv.style.display = 'none';
+      }
+    });
+  });
+};
+
+// Schließe alle Menüs bei Klick außerhalb
+document.addEventListener('click', () => {
+  mapContextMenu.style.display = 'none';
+  gefahrMenu.style.display = 'none';
+  // personMenu wird bereits an anderer Stelle geschlossen
 });
