@@ -304,6 +304,13 @@ body {
   text-align: left;
   padding-bottom: 0.3em;
 }
+.patient-summary-table th:nth-child(3),
+.patient-summary-table td:nth-child(3) {
+  width: 60px;
+  min-width: 40px;
+  max-width: 80px;
+  text-align: center;
+}
 
 .trupp-header.u18 {
   background-color: #fff9c4; /* helles Gelb hinter dem Header */

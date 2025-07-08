@@ -9,29 +9,33 @@ const symbolLibrary = {};
 // 1) Ordnernamen als Buffer einlesen, dann als UTF-8-String decodieren
 const dirents = fs.readdirSync(svgRoot, { withFileTypes: true, encoding: 'buffer' });
 
+function addSvgsRecursively(baseCategory, subcatKey, folderPath, urlPrefix) {
+  const entries = fs.readdirSync(folderPath, { withFileTypes: true, encoding: 'buffer' });
+  entries.forEach(entry => {
+    const name = entry.name.toString('utf8');
+    const fullPath = path.join(folderPath, name);
+    if (entry.isDirectory()) {
+      // Unterordner als weitere Subkategorie
+      addSvgsRecursively(baseCategory, name, fullPath, urlPrefix + '/' + name);
+    } else if (entry.isFile() && name.endsWith('.svg')) {
+      if (!symbolLibrary[baseCategory]) symbolLibrary[baseCategory] = {};
+      if (!symbolLibrary[baseCategory][subcatKey]) symbolLibrary[baseCategory][subcatKey] = [];
+      symbolLibrary[baseCategory][subcatKey].push({
+        name: path.basename(name, '.svg').replace(/_/g, ' '),
+        url: `../map/svg/${urlPrefix}/${name}`
+      });
+    }
+  });
+}
+
 dirents
   .filter(d => d.isDirectory())
   .forEach(dBuf => {
-    const folder = dBuf.name.toString('utf8');             // z. B. "Führungsstelle"
+    const folder = dBuf.name.toString('utf8');
     const [category, subcategory] = folder.split('_');
     const subcatKey = subcategory || category;
-
-    if (!symbolLibrary[category]) symbolLibrary[category] = {};
-    if (!symbolLibrary[category][subcatKey]) symbolLibrary[category][subcatKey] = [];
-
     const folderPath = path.join(svgRoot, folder);
-    // 2) Dateien im Ordner ebenfalls als Buffer + UTF-8
-    const files = fs.readdirSync(folderPath, { encoding: 'buffer' })
-      .map(fBuf => fBuf.toString('utf8'))
-      .filter(f => f.endsWith('.svg'));
-
-    files.forEach(file => {
-      const name = path.basename(file, '.svg').replace(/_/g, ' ');
-      symbolLibrary[category][subcatKey].push({
-        name,
-        url: `../map/svg/${folder}/${file}`
-      });
-    });
+    addSvgsRecursively(category, subcatKey, folderPath, folder);
   });
 
 // 3) Ergebnis in eine JS-Datei mit BOM schreiben, damit Editoren und Terminals

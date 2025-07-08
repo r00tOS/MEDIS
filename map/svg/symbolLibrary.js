@@ -1626,7 +1626,516 @@
     ]
   },
   "Schadenskonten": {
-    "Schadenskonten": []
+    "gelb": [
+      {
+        "name": "Schadenskonto",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenskonto.svg"
+      },
+      {
+        "name": "Schadenskonto 1",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenskonto_1.svg"
+      },
+      {
+        "name": "Schadenskonto 10",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenskonto_10.svg"
+      },
+      {
+        "name": "Schadenskonto 11",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenskonto_11.svg"
+      },
+      {
+        "name": "Schadenskonto 12",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenskonto_12.svg"
+      },
+      {
+        "name": "Schadenskonto 13",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenskonto_13.svg"
+      },
+      {
+        "name": "Schadenskonto 14",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenskonto_14.svg"
+      },
+      {
+        "name": "Schadenskonto 15",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenskonto_15.svg"
+      },
+      {
+        "name": "Schadenskonto 16",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenskonto_16.svg"
+      },
+      {
+        "name": "Schadenskonto 17",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenskonto_17.svg"
+      },
+      {
+        "name": "Schadenskonto 18",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenskonto_18.svg"
+      },
+      {
+        "name": "Schadenskonto 19",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenskonto_19.svg"
+      },
+      {
+        "name": "Schadenskonto 2",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenskonto_2.svg"
+      },
+      {
+        "name": "Schadenskonto 20",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenskonto_20.svg"
+      },
+      {
+        "name": "Schadenskonto 3",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenskonto_3.svg"
+      },
+      {
+        "name": "Schadenskonto 4",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenskonto_4.svg"
+      },
+      {
+        "name": "Schadenskonto 5",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenskonto_5.svg"
+      },
+      {
+        "name": "Schadenskonto 6",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenskonto_6.svg"
+      },
+      {
+        "name": "Schadenskonto 7",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenskonto_7.svg"
+      },
+      {
+        "name": "Schadenskonto 8",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenskonto_8.svg"
+      },
+      {
+        "name": "Schadenskonto 9",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenskonto_9.svg"
+      },
+      {
+        "name": "Schadenstelle",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenstelle.svg"
+      },
+      {
+        "name": "Schadenstelle 1",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenstelle_1.svg"
+      },
+      {
+        "name": "Schadenstelle 10",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenstelle_10.svg"
+      },
+      {
+        "name": "Schadenstelle 11",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenstelle_11.svg"
+      },
+      {
+        "name": "Schadenstelle 12",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenstelle_12.svg"
+      },
+      {
+        "name": "Schadenstelle 13",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenstelle_13.svg"
+      },
+      {
+        "name": "Schadenstelle 14",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenstelle_14.svg"
+      },
+      {
+        "name": "Schadenstelle 15",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenstelle_15.svg"
+      },
+      {
+        "name": "Schadenstelle 16",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenstelle_16.svg"
+      },
+      {
+        "name": "Schadenstelle 17",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenstelle_17.svg"
+      },
+      {
+        "name": "Schadenstelle 18",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenstelle_18.svg"
+      },
+      {
+        "name": "Schadenstelle 19",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenstelle_19.svg"
+      },
+      {
+        "name": "Schadenstelle 2",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenstelle_2.svg"
+      },
+      {
+        "name": "Schadenstelle 20",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenstelle_20.svg"
+      },
+      {
+        "name": "Schadenstelle 3",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenstelle_3.svg"
+      },
+      {
+        "name": "Schadenstelle 4",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenstelle_4.svg"
+      },
+      {
+        "name": "Schadenstelle 5",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenstelle_5.svg"
+      },
+      {
+        "name": "Schadenstelle 6",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenstelle_6.svg"
+      },
+      {
+        "name": "Schadenstelle 7",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenstelle_7.svg"
+      },
+      {
+        "name": "Schadenstelle 8",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenstelle_8.svg"
+      },
+      {
+        "name": "Schadenstelle 9",
+        "url": "../map/svg/Schadenskonten/gelb/Schadenstelle_9.svg"
+      }
+    ],
+    "rot": [
+      {
+        "name": "Schadenskonto",
+        "url": "../map/svg/Schadenskonten/rot/Schadenskonto.svg"
+      },
+      {
+        "name": "Schadenskonto 1",
+        "url": "../map/svg/Schadenskonten/rot/Schadenskonto_1.svg"
+      },
+      {
+        "name": "Schadenskonto 10",
+        "url": "../map/svg/Schadenskonten/rot/Schadenskonto_10.svg"
+      },
+      {
+        "name": "Schadenskonto 11",
+        "url": "../map/svg/Schadenskonten/rot/Schadenskonto_11.svg"
+      },
+      {
+        "name": "Schadenskonto 12",
+        "url": "../map/svg/Schadenskonten/rot/Schadenskonto_12.svg"
+      },
+      {
+        "name": "Schadenskonto 13",
+        "url": "../map/svg/Schadenskonten/rot/Schadenskonto_13.svg"
+      },
+      {
+        "name": "Schadenskonto 14",
+        "url": "../map/svg/Schadenskonten/rot/Schadenskonto_14.svg"
+      },
+      {
+        "name": "Schadenskonto 15",
+        "url": "../map/svg/Schadenskonten/rot/Schadenskonto_15.svg"
+      },
+      {
+        "name": "Schadenskonto 16",
+        "url": "../map/svg/Schadenskonten/rot/Schadenskonto_16.svg"
+      },
+      {
+        "name": "Schadenskonto 17",
+        "url": "../map/svg/Schadenskonten/rot/Schadenskonto_17.svg"
+      },
+      {
+        "name": "Schadenskonto 18",
+        "url": "../map/svg/Schadenskonten/rot/Schadenskonto_18.svg"
+      },
+      {
+        "name": "Schadenskonto 19",
+        "url": "../map/svg/Schadenskonten/rot/Schadenskonto_19.svg"
+      },
+      {
+        "name": "Schadenskonto 2",
+        "url": "../map/svg/Schadenskonten/rot/Schadenskonto_2.svg"
+      },
+      {
+        "name": "Schadenskonto 20",
+        "url": "../map/svg/Schadenskonten/rot/Schadenskonto_20.svg"
+      },
+      {
+        "name": "Schadenskonto 3",
+        "url": "../map/svg/Schadenskonten/rot/Schadenskonto_3.svg"
+      },
+      {
+        "name": "Schadenskonto 4",
+        "url": "../map/svg/Schadenskonten/rot/Schadenskonto_4.svg"
+      },
+      {
+        "name": "Schadenskonto 5",
+        "url": "../map/svg/Schadenskonten/rot/Schadenskonto_5.svg"
+      },
+      {
+        "name": "Schadenskonto 6",
+        "url": "../map/svg/Schadenskonten/rot/Schadenskonto_6.svg"
+      },
+      {
+        "name": "Schadenskonto 7",
+        "url": "../map/svg/Schadenskonten/rot/Schadenskonto_7.svg"
+      },
+      {
+        "name": "Schadenskonto 8",
+        "url": "../map/svg/Schadenskonten/rot/Schadenskonto_8.svg"
+      },
+      {
+        "name": "Schadenskonto 9",
+        "url": "../map/svg/Schadenskonten/rot/Schadenskonto_9.svg"
+      },
+      {
+        "name": "Schadenstelle",
+        "url": "../map/svg/Schadenskonten/rot/Schadenstelle.svg"
+      },
+      {
+        "name": "Schadenstelle 1",
+        "url": "../map/svg/Schadenskonten/rot/Schadenstelle_1.svg"
+      },
+      {
+        "name": "Schadenstelle 10",
+        "url": "../map/svg/Schadenskonten/rot/Schadenstelle_10.svg"
+      },
+      {
+        "name": "Schadenstelle 11",
+        "url": "../map/svg/Schadenskonten/rot/Schadenstelle_11.svg"
+      },
+      {
+        "name": "Schadenstelle 12",
+        "url": "../map/svg/Schadenskonten/rot/Schadenstelle_12.svg"
+      },
+      {
+        "name": "Schadenstelle 13",
+        "url": "../map/svg/Schadenskonten/rot/Schadenstelle_13.svg"
+      },
+      {
+        "name": "Schadenstelle 14",
+        "url": "../map/svg/Schadenskonten/rot/Schadenstelle_14.svg"
+      },
+      {
+        "name": "Schadenstelle 15",
+        "url": "../map/svg/Schadenskonten/rot/Schadenstelle_15.svg"
+      },
+      {
+        "name": "Schadenstelle 16",
+        "url": "../map/svg/Schadenskonten/rot/Schadenstelle_16.svg"
+      },
+      {
+        "name": "Schadenstelle 17",
+        "url": "../map/svg/Schadenskonten/rot/Schadenstelle_17.svg"
+      },
+      {
+        "name": "Schadenstelle 18",
+        "url": "../map/svg/Schadenskonten/rot/Schadenstelle_18.svg"
+      },
+      {
+        "name": "Schadenstelle 19",
+        "url": "../map/svg/Schadenskonten/rot/Schadenstelle_19.svg"
+      },
+      {
+        "name": "Schadenstelle 2",
+        "url": "../map/svg/Schadenskonten/rot/Schadenstelle_2.svg"
+      },
+      {
+        "name": "Schadenstelle 20",
+        "url": "../map/svg/Schadenskonten/rot/Schadenstelle_20.svg"
+      },
+      {
+        "name": "Schadenstelle 3",
+        "url": "../map/svg/Schadenskonten/rot/Schadenstelle_3.svg"
+      },
+      {
+        "name": "Schadenstelle 4",
+        "url": "../map/svg/Schadenskonten/rot/Schadenstelle_4.svg"
+      },
+      {
+        "name": "Schadenstelle 5",
+        "url": "../map/svg/Schadenskonten/rot/Schadenstelle_5.svg"
+      },
+      {
+        "name": "Schadenstelle 6",
+        "url": "../map/svg/Schadenskonten/rot/Schadenstelle_6.svg"
+      },
+      {
+        "name": "Schadenstelle 7",
+        "url": "../map/svg/Schadenskonten/rot/Schadenstelle_7.svg"
+      },
+      {
+        "name": "Schadenstelle 8",
+        "url": "../map/svg/Schadenskonten/rot/Schadenstelle_8.svg"
+      },
+      {
+        "name": "Schadenstelle 9",
+        "url": "../map/svg/Schadenskonten/rot/Schadenstelle_9.svg"
+      }
+    ],
+    "weiß": [
+      {
+        "name": "Schadenskonto",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenskonto.svg"
+      },
+      {
+        "name": "Schadenskonto 1",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenskonto_1.svg"
+      },
+      {
+        "name": "Schadenskonto 10",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenskonto_10.svg"
+      },
+      {
+        "name": "Schadenskonto 11",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenskonto_11.svg"
+      },
+      {
+        "name": "Schadenskonto 12",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenskonto_12.svg"
+      },
+      {
+        "name": "Schadenskonto 13",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenskonto_13.svg"
+      },
+      {
+        "name": "Schadenskonto 14",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenskonto_14.svg"
+      },
+      {
+        "name": "Schadenskonto 15",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenskonto_15.svg"
+      },
+      {
+        "name": "Schadenskonto 16",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenskonto_16.svg"
+      },
+      {
+        "name": "Schadenskonto 17",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenskonto_17.svg"
+      },
+      {
+        "name": "Schadenskonto 18",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenskonto_18.svg"
+      },
+      {
+        "name": "Schadenskonto 19",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenskonto_19.svg"
+      },
+      {
+        "name": "Schadenskonto 2",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenskonto_2.svg"
+      },
+      {
+        "name": "Schadenskonto 20",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenskonto_20.svg"
+      },
+      {
+        "name": "Schadenskonto 3",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenskonto_3.svg"
+      },
+      {
+        "name": "Schadenskonto 4",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenskonto_4.svg"
+      },
+      {
+        "name": "Schadenskonto 5",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenskonto_5.svg"
+      },
+      {
+        "name": "Schadenskonto 6",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenskonto_6.svg"
+      },
+      {
+        "name": "Schadenskonto 7",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenskonto_7.svg"
+      },
+      {
+        "name": "Schadenskonto 8",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenskonto_8.svg"
+      },
+      {
+        "name": "Schadenskonto 9",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenskonto_9.svg"
+      },
+      {
+        "name": "Schadenstelle",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenstelle.svg"
+      },
+      {
+        "name": "Schadenstelle 1",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenstelle_1.svg"
+      },
+      {
+        "name": "Schadenstelle 10",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenstelle_10.svg"
+      },
+      {
+        "name": "Schadenstelle 11",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenstelle_11.svg"
+      },
+      {
+        "name": "Schadenstelle 12",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenstelle_12.svg"
+      },
+      {
+        "name": "Schadenstelle 13",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenstelle_13.svg"
+      },
+      {
+        "name": "Schadenstelle 14",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenstelle_14.svg"
+      },
+      {
+        "name": "Schadenstelle 15",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenstelle_15.svg"
+      },
+      {
+        "name": "Schadenstelle 16",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenstelle_16.svg"
+      },
+      {
+        "name": "Schadenstelle 17",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenstelle_17.svg"
+      },
+      {
+        "name": "Schadenstelle 18",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenstelle_18.svg"
+      },
+      {
+        "name": "Schadenstelle 19",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenstelle_19.svg"
+      },
+      {
+        "name": "Schadenstelle 2",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenstelle_2.svg"
+      },
+      {
+        "name": "Schadenstelle 20",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenstelle_20.svg"
+      },
+      {
+        "name": "Schadenstelle 3",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenstelle_3.svg"
+      },
+      {
+        "name": "Schadenstelle 4",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenstelle_4.svg"
+      },
+      {
+        "name": "Schadenstelle 5",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenstelle_5.svg"
+      },
+      {
+        "name": "Schadenstelle 6",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenstelle_6.svg"
+      },
+      {
+        "name": "Schadenstelle 7",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenstelle_7.svg"
+      },
+      {
+        "name": "Schadenstelle 8",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenstelle_8.svg"
+      },
+      {
+        "name": "Schadenstelle 9",
+        "url": "../map/svg/Schadenskonten/weiß/Schadenstelle_9.svg"
+      }
+    ]
   },
   "Schäden": {
     "Schäden": [

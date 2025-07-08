@@ -222,7 +222,7 @@ ${(() => {
       <tr>
         <th>Diagnose</th>
         <th>Alter</th>
-        <th>Geschlecht</th>
+        <th>Geschl.</th>
       </tr>
     </thead>
     <tbody>
