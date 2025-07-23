@@ -173,8 +173,50 @@ if (status === 11) {
 
   // 12) Speichern & neu rendern
   saveTrupps();
+  
+  // Wenn ein Trupp einem Patienten zugewiesen wurde, Disposition-Status aktualisieren
+  if (status === 3 && trupp.patientInput) {
+    updatePatientDispositionStatus(trupp.patientInput);
+  }
+  
   renderTrupps();
   window.scrollTo(0, scrollY);
+}
+
+// Neue Hilfsfunktion für die Aktualisierung der Disposition-Status
+function updatePatientDispositionStatus(patientId) {
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  const patient = patients.find(p => p.id === patientId);
+  
+  if (!patient || !patient.suggestedResources) return;
+  
+  if (!patient.dispositionStatus) {
+    patient.dispositionStatus = {};
+  }
+  
+  // Alle Trupps finden, die diesem Patienten zugeordnet sind
+  const assignedTrupps = trupps.filter(t => t.patientInput === patientId && [3, 4, 7, 8].includes(t.status));
+  
+  // Trupp-Symbol auf dispatched setzen wenn mindestens ein Trupp zugeordnet
+  if (assignedTrupps.length > 0 && patient.suggestedResources.includes('Trupp')) {
+    patient.dispositionStatus['Trupp'] = 'dispatched';
+  }
+  
+  // First Responder auf dispatched setzen wenn mehr als ein Trupp zugeordnet
+  if (assignedTrupps.length > 1 && patient.suggestedResources.includes('First Responder')) {
+    patient.dispositionStatus['First Responder'] = 'dispatched';
+  }
+  
+  // Patienten-Daten zurück speichern
+  localStorage.setItem("patients", JSON.stringify(patients));
+  
+  // Event für Aktualisierung auslösen
+  window.dispatchEvent(
+    new StorageEvent("storage", {
+      key: "patients",
+      newValue: JSON.stringify(patients),
+    })
+  );
 }
 
 function saveTrupps() {

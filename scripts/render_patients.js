@@ -235,18 +235,12 @@ ${historyHTML}
 <thead>
 <tr>
 <th>Verdachtsdiagnose</th>
-<th>Dispositionsvorschlag</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>
 ${patient.diagnosis || "–"}
-</td>
-<td>
-<ul style="margin:0; padding-left:1.2em;">
-  ${(patient.suggestedResources || []).map((r) => `<li>${r}</li>`).join("")}
-</ul>
 </td>
 </tr>
 </tbody>
