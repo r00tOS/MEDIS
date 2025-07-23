@@ -1,8 +1,11 @@
 // 1) Karte initialisieren
     const map = L.map('map', {
-      zoomDelta: 0.25,           // Standard ist 1, kleiner = feineres Zoomen
-      wheelPxPerZoomLevel: 120   // Standard ist 60, größer = weniger empfindlich
+      zoomDelta: 1,           // Standard ist 1, Buttons funktionieren nur damit korrekt
+      zoomControl: false      // Erst deaktivieren, unten wieder hinzufügen
     }).setView([51.1657, 10.4515], 6);
+
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; OpenStreetMap contributors & CartoDB',
       maxZoom: 19
@@ -356,8 +359,6 @@ map.getContainer().addEventListener('drop', function(e) {
   marker.on('contextmenu', evt => { evt.originalEvent.preventDefault(); contextMenu.style.left = evt.originalEvent.pageX + 'px'; contextMenu.style.top = evt.originalEvent.pageY + 'px'; contextMenu.style.display = 'block'; contextMenu.marker = marker; contextMenu.markerObj = obj; contextMenu.markerIdx = placedMarkers.length - 1; });
 });
 
-// Ergänze nach dem Kontextmenü-HTML (nach contextMenu.innerHTML += ...):
-
 // Definiere die Personengruppen und die zugehörigen Symbole
 const personTypes = [
   { label: "Gerettete Person", icon: "../map/svg/Personen/Gerettete_Person.svg" },
@@ -370,27 +371,39 @@ const personTypes = [
   { label: "Zu Transportierende Person", icon: "../map/svg/Personen/Zu_transportierende_Person.svg" }
 ];
 
-// Füge das Untermenü für Personentypen ins Kontextmenü ein
-const personMenu = document.createElement('div');
-personMenu.id = 'person-type-menu';
-personMenu.style.display = 'none';
-personMenu.style.position = 'absolute';
-personMenu.style.background = '#fff';
-personMenu.style.border = '1px solid #ccc';
-personMenu.style.zIndex = 10001;
-personMenu.style.left = '0';
-personMenu.style.top = '0';
-personMenu.innerHTML = personTypes.map(pt =>
+// --- Menü für Personentyp-Änderung (Kontextmenü) ---
+const personTypeMenu = document.createElement('div');
+personTypeMenu.id = 'person-type-menu';
+personTypeMenu.style.display = 'none';
+personTypeMenu.style.position = 'absolute';
+personTypeMenu.style.background = '#fff';
+personTypeMenu.style.border = '1px solid #ccc';
+personTypeMenu.style.zIndex = 10001;
+personTypeMenu.style.left = '0';
+personTypeMenu.style.top = '0';
+personTypeMenu.innerHTML = personTypes.map(pt =>
   `<div class="person-type-option" data-icon="${pt.icon}" data-label="${pt.label}" style="padding:8px;cursor:pointer;display:flex;align-items:center;gap:8px;">
     <img src="${pt.icon}" style="width:24px;height:24px;">${pt.label}
   </div>`
 ).join('');
-document.body.appendChild(personMenu);
+document.body.appendChild(personTypeMenu);
 
-// Hilfsfunktion: Prüft, ob ein Marker ein Personentyp ist (über iconUrl)
-function isPersonMarkerByIcon(markerObj) {
-  return personTypes.some(pt => pt.icon === markerObj.iconUrl);
-}
+// --- Menü für Personentyp-Auswahl (Marker erstellen) ---
+const personCreateMenu = document.createElement('div');
+personCreateMenu.id = 'person-create-menu';
+personCreateMenu.style.display = 'none';
+personCreateMenu.style.position = 'absolute';
+personCreateMenu.style.background = '#fff';
+personCreateMenu.style.border = '1px solid #ccc';
+personCreateMenu.style.zIndex = 10001;
+personCreateMenu.style.left = '0';
+personCreateMenu.style.top = '0';
+personCreateMenu.innerHTML = personTypes.map(pt =>
+  `<div class="person-create-option" data-icon="${pt.icon}" data-label="${pt.label}" style="padding:8px;cursor:pointer;display:flex;align-items:center;gap:8px;">
+    <img src="${pt.icon}" style="width:24px;height:24px;">${pt.label}
+  </div>`
+).join('');
+document.body.appendChild(personCreateMenu);
 
 // Kontextmenü erweitern: Option zum Ändern des Personentyps
 const changePersonTypeDiv = document.createElement('div');
@@ -400,28 +413,26 @@ changePersonTypeDiv.style.cursor = 'pointer';
 changePersonTypeDiv.textContent = 'Personen-Typ ändern';
 contextMenu.appendChild(changePersonTypeDiv);
 
-
-
 // Klick auf "Personen-Typ ändern" öffnet das Untermenü
 changePersonTypeDiv.onclick = e => {
   e.stopPropagation();
   // Positioniere das Untermenü neben dem Kontextmenü
-  personMenu.style.left = contextMenu.style.left;
-  personMenu.style.top = (parseInt(contextMenu.style.top) + contextMenu.offsetHeight) + 'px';
-  personMenu.style.display = 'block';
+  personTypeMenu.style.left = contextMenu.style.left;
+  personTypeMenu.style.top = (parseInt(contextMenu.style.top) + contextMenu.offsetHeight) + 'px';
+  personTypeMenu.style.display = 'block';
 };
 
 // --- Kontextmenü: Handler EINMAL setzen ---
-personMenu.querySelectorAll('.person-type-option').forEach(opt => {
-  // Entferne vorherige Handler, falls vorhanden
+personTypeMenu.querySelectorAll('.person-type-option').forEach(opt => {
   opt.onclick = null;
   opt._contextTypeHandler = function contextTypeChange(e) {
-    // Nur ausführen, wenn das Kontextmenü sichtbar ist!
-    if (personMenu.style.display === 'block' && contextMenu.style.display === 'block') {
+    if (personTypeMenu.style.display === 'block' && contextMenu.style.display === 'block') {
       e.stopPropagation();
       const iconUrl = opt.getAttribute('data-icon');
-      const showDesc = contextMenu.markerObj.descVisible !== false && document.getElementById('toggle-marker-desc').checked;
+      const label = opt.getAttribute('data-label');
       contextMenu.markerObj.iconUrl = iconUrl;
+      contextMenu.markerObj.name = label;
+      const showDesc = contextMenu.markerObj.descVisible !== false && document.getElementById('toggle-marker-desc').checked;
       contextMenu.marker.setIcon(L.divIcon({
         className: 'custom-marker',
         html: markerHtml(iconUrl, contextMenu.markerObj.name, showDesc),
@@ -429,7 +440,7 @@ personMenu.querySelectorAll('.person-type-option').forEach(opt => {
         iconAnchor: getCenteredAnchor(100, 100)
       }));
       saveMarkersToLocalStorage(placedMarkers);
-      personMenu.style.display = 'none';
+      personTypeMenu.style.display = 'none';
       contextMenu.style.display = 'none';
     }
   };
@@ -438,27 +449,25 @@ personMenu.querySelectorAll('.person-type-option').forEach(opt => {
 
 // --- Freie Fläche: Handler dynamisch und sauber setzen ---
 function showPersonMenu(x, y, callback) {
-  personMenu.style.left = x + 'px';
-  personMenu.style.top = y + 'px';
-  personMenu.style.display = 'block';
-  // Entferne nur die dynamischen Handler für dieses Menü!
-  personMenu.querySelectorAll('.person-type-option').forEach(opt => {
-    // Entferne NUR den dynamischen Handler, nicht den Kontextmenü-Handler!
+  personCreateMenu.style.left = x + 'px';
+  personCreateMenu.style.top = y + 'px';
+  personCreateMenu.style.display = 'block';
+  personCreateMenu.querySelectorAll('.person-create-option').forEach(opt => {
     if (opt._personCreateHandler) {
       opt.removeEventListener('click', opt._personCreateHandler);
       delete opt._personCreateHandler;
     }
-    // Füge die neuen Handler für diesen Aufruf hinzu
     const handler = function(e) {
       e.stopPropagation();
-      personMenu.style.display = 'none';
+      personCreateMenu.style.display = 'none';
       callback(opt.getAttribute('data-icon'), opt.getAttribute('data-label'));
-      opt.removeEventListener('click', handler); // Handler wieder entfernen!
+      opt.removeEventListener('click', handler);
     };
     opt._personCreateHandler = handler;
     opt.addEventListener('click', handler);
   });
 }
+
 // --- Ergänzung: Kontextmenü für freie Fläche ---
 
 // Menü für freie Fläche erstellen
@@ -575,9 +584,15 @@ mapContextMenu.querySelector('#create-gefahr').onclick = function(e) {
       iconAnchor: getCenteredAnchor(iconWidth, iconHeight)
     });
     const obj = { lat: latlng.lat, lng: latlng.lng, iconUrl: iconUrl, name: label, descVisible: false }; // Beschreibung AUS
-    placedMarkers.push(obj); saveMarkersToLocalStorage(placedMarkers);
+    placedMarkers.push(obj);
+    saveMarkersToLocalStorage(placedMarkers);
     const marker = L.marker([latlng.lat, latlng.lng], { icon: ic, draggable: true }).addTo(map);
-    marker.on('dragend', evt => { const { lat, lng } = evt.target.getLatLng(); obj.lat = lat; obj.lng = lng; saveMarkersToLocalStorage(placedMarkers); });
+    marker.on('dragend', evt => {
+      const { lat, lng } = evt.target.getLatLng();
+      obj.lat = lat;
+      obj.lng = lng;
+      saveMarkersToLocalStorage(placedMarkers);
+    });
     marker.on('contextmenu', evt => {
       evt.originalEvent.preventDefault();
       contextMenu.style.left = evt.originalEvent.pageX + 'px';
@@ -597,11 +612,24 @@ mapContextMenu.querySelector('#create-gefahr').onclick = function(e) {
 
 // Schließe alle Menüs bei Klick außerhalb
 document.addEventListener('click', (e) => {
-  // Schließe das Personenauswahlfenster, wenn NICHT auf das Menü selbst geklickt wurde
-  if (!personMenu.contains(e.target) && personMenu.style.display === 'block') {
-    personMenu.style.display = 'none';
+  // Personentyp-Änderungsmenü schließen
+  if (personTypeMenu.style.display === 'block' && !personTypeMenu.contains(e.target)) {
+    personTypeMenu.style.display = 'none';
   }
-  // Bestehende Menüs schließen
-  mapContextMenu.style.display = 'none';
-  gefahrMenu.style.display = 'none';
+  // Personen-Erstellmenü schließen
+  if (personCreateMenu.style.display === 'block' && !personCreateMenu.contains(e.target)) {
+    personCreateMenu.style.display = 'none';
+  }
+  // Gefahrentyp-Menü schließen
+  if (gefahrMenu.style.display === 'block' && !gefahrMenu.contains(e.target)) {
+    gefahrMenu.style.display = 'none';
+  }
+  // Kontextmenü für freie Fläche schließen
+  if (mapContextMenu.style.display === 'block' && !mapContextMenu.contains(e.target)) {
+    mapContextMenu.style.display = 'none';
+  }
+  // Kontextmenü für Marker schließen (optional, falls nicht schon oben)
+  if (contextMenu.style.display === 'block' && !contextMenu.contains(e.target)) {
+    contextMenu.style.display = 'none';
+  }
 });
