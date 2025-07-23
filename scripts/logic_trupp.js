@@ -139,28 +139,10 @@ if (oldStatus === 11 && trupp.currentOrt && trupp.einsatzStartOrt) {
   trupp.currentOrt = trupp.einsatzStartOrt = null;
 }
 
-  // 8) Wechsel auf Patient → neuen Patienten anlegen
+  // 8) Wechsel auf Patient → Modal für Zuordnung öffnen
   if (oldStatus !== 3 && status === 3) {
-    const letzteOrt =
-      trupp.currentOrt || trupp.einsatzHistorie.at(-1)?.ort || "";
-
-    // neue zentrale Funktion erzeugt Patient und erhöht ID
-    const pid = newPatient({
-      team: [trupp.name],
-      location: letzteOrt,
-      initialStatus: "disponiert",
-    });
-
-    trupp.patientInput = pid;
-    trupp.patientStart = Date.now();
-    openEditModal(pid);
-
-    // Füge den Historieneintrag für Status "disponiert" hinzu
-    updatePatientData(pid, "status", "disponiert");
-      addHistoryEntry(
-    trupp.patientInput,
-    `Trupp ${trupp.name} disponiert`
-  );
+    openPatientAssignmentModal(index);
+    return; // Früher Ausstieg, da die weitere Logik im Modal-Callback passiert
   }
 
   // 9) Bei Streife → neuen Ort abfragen
@@ -191,8 +173,50 @@ if (status === 11) {
 
   // 12) Speichern & neu rendern
   saveTrupps();
+  
+  // Wenn ein Trupp einem Patienten zugewiesen wurde, Disposition-Status aktualisieren
+  if (status === 3 && trupp.patientInput) {
+    updatePatientDispositionStatus(trupp.patientInput);
+  }
+  
   renderTrupps();
   window.scrollTo(0, scrollY);
+}
+
+// Neue Hilfsfunktion für die Aktualisierung der Disposition-Status
+function updatePatientDispositionStatus(patientId) {
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  const patient = patients.find(p => p.id === patientId);
+  
+  if (!patient || !patient.suggestedResources) return;
+  
+  if (!patient.dispositionStatus) {
+    patient.dispositionStatus = {};
+  }
+  
+  // Alle Trupps finden, die diesem Patienten zugeordnet sind
+  const assignedTrupps = trupps.filter(t => t.patientInput === patientId && [3, 4, 7, 8].includes(t.status));
+  
+  // Trupp-Symbol auf dispatched setzen wenn mindestens ein Trupp zugeordnet
+  if (assignedTrupps.length > 0 && patient.suggestedResources.includes('Trupp')) {
+    patient.dispositionStatus['Trupp'] = 'dispatched';
+  }
+  
+  // First Responder auf dispatched setzen wenn mehr als ein Trupp zugeordnet
+  if (assignedTrupps.length > 1 && patient.suggestedResources.includes('First Responder')) {
+    patient.dispositionStatus['First Responder'] = 'dispatched';
+  }
+  
+  // Patienten-Daten zurück speichern
+  localStorage.setItem("patients", JSON.stringify(patients));
+  
+  // Event für Aktualisierung auslösen
+  window.dispatchEvent(
+    new StorageEvent("storage", {
+      key: "patients",
+      newValue: JSON.stringify(patients),
+    })
+  );
 }
 
 function saveTrupps() {
@@ -379,6 +403,24 @@ function addHistoryEntry(pid, entry) {
 }
 
 
+function toggleStatusDropdown(truppId) {
+  const prev = localStorage.getItem('openTruppId');
+  const next = prev === truppId ? null : truppId;
+  localStorage.setItem('openTruppId', next);
+  renderTrupps();
+}
+
+function closeStatusDropdown() {
+  localStorage.removeItem('openTruppId');
+  renderTrupps();
+}
+
+// Wird von jedem <li> aufgerufen, nachdem updateTrupp() ausgeführt wurde:
+function onStatusSelected(i, status, truppId) {
+  updateTrupp(i, status);
+  // schließe das Dropdown
+  closeStatusDropdown();
+}
 function toggleStatusDropdown(truppId) {
   const prev = localStorage.getItem('openTruppId');
   const next = prev === truppId ? null : truppId;
