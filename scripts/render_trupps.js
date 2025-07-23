@@ -212,8 +212,21 @@ ${(() => {
       'Info an ASL': 'ASL',
       'Ordnungsdienst hinzuziehen': 'OD',
       'Polizei hinzuziehen': 'POL',
-      'Ggf. Ordnungsdienst hinzuziehen': 'OD?'
+      'Ggf. Ordnungsdienst hinzuziehen': 'OD?',
+      'Ggf. Polizei hinzuziehen': 'POL?'
     };
+    
+    // Für alle anderen "Ggf. ..." Ressourcen automatisch behandeln
+    if (resource.startsWith('Ggf. ') && !abbreviations[resource]) {
+      const baseResource = resource.replace('Ggf. ', '');
+      const baseAbbrev = abbreviations[baseResource];
+      if (baseAbbrev) {
+        return baseAbbrev + '?';
+      }
+      // Fallback: erste 3 Zeichen + ?
+      return baseResource.substring(0, 3).toUpperCase() + '?';
+    }
+    
     return abbreviations[resource] || resource.substring(0, 3).toUpperCase();
   };
 
