@@ -411,33 +411,54 @@ changePersonTypeDiv.onclick = e => {
   personMenu.style.display = 'block';
 };
 
-// Klick auf einen Personentyp im Untermenü
+// --- Kontextmenü: Handler EINMAL setzen ---
 personMenu.querySelectorAll('.person-type-option').forEach(opt => {
-  opt.onclick = e => {
-    e.stopPropagation();
-    const iconUrl = opt.getAttribute('data-icon');
-    // Der Name bleibt erhalten!
-    // Die Sichtbarkeit der Beschreibung bleibt ebenfalls erhalten
-    const showDesc = contextMenu.markerObj.descVisible !== false && document.getElementById('toggle-marker-desc').checked;
-    contextMenu.markerObj.iconUrl = iconUrl;
-    // Icon neu setzen, Name bleibt sichtbar wie vorher
-    contextMenu.marker.setIcon(L.divIcon({
-      className: 'custom-marker',
-      html: markerHtml(iconUrl, contextMenu.markerObj.name, showDesc),
-      iconSize: [100, 100],
-      iconAnchor: getCenteredAnchor(100, 100)
-    }));
-    saveMarkersToLocalStorage(placedMarkers);
-    personMenu.style.display = 'none';
-    contextMenu.style.display = 'none';
+  // Entferne vorherige Handler, falls vorhanden
+  opt.onclick = null;
+  opt._contextTypeHandler = function contextTypeChange(e) {
+    // Nur ausführen, wenn das Kontextmenü sichtbar ist!
+    if (personMenu.style.display === 'block' && contextMenu.style.display === 'block') {
+      e.stopPropagation();
+      const iconUrl = opt.getAttribute('data-icon');
+      const showDesc = contextMenu.markerObj.descVisible !== false && document.getElementById('toggle-marker-desc').checked;
+      contextMenu.markerObj.iconUrl = iconUrl;
+      contextMenu.marker.setIcon(L.divIcon({
+        className: 'custom-marker',
+        html: markerHtml(iconUrl, contextMenu.markerObj.name, showDesc),
+        iconSize: [100, 100],
+        iconAnchor: getCenteredAnchor(100, 100)
+      }));
+      saveMarkersToLocalStorage(placedMarkers);
+      personMenu.style.display = 'none';
+      contextMenu.style.display = 'none';
+    }
   };
+  opt.addEventListener('click', opt._contextTypeHandler);
 });
 
-// Schließe das Untermenü, wenn außerhalb geklickt wird
-document.addEventListener('click', () => {
-  personMenu.style.display = 'none';
-});
-
+// --- Freie Fläche: Handler dynamisch und sauber setzen ---
+function showPersonMenu(x, y, callback) {
+  personMenu.style.left = x + 'px';
+  personMenu.style.top = y + 'px';
+  personMenu.style.display = 'block';
+  // Entferne nur die dynamischen Handler für dieses Menü!
+  personMenu.querySelectorAll('.person-type-option').forEach(opt => {
+    // Entferne NUR den dynamischen Handler, nicht den Kontextmenü-Handler!
+    if (opt._personCreateHandler) {
+      opt.removeEventListener('click', opt._personCreateHandler);
+      delete opt._personCreateHandler;
+    }
+    // Füge die neuen Handler für diesen Aufruf hinzu
+    const handler = function(e) {
+      e.stopPropagation();
+      personMenu.style.display = 'none';
+      callback(opt.getAttribute('data-icon'), opt.getAttribute('data-label'));
+      opt.removeEventListener('click', handler); // Handler wieder entfernen!
+    };
+    opt._personCreateHandler = handler;
+    opt.addEventListener('click', handler);
+  });
+}
 // --- Ergänzung: Kontextmenü für freie Fläche ---
 
 // Menü für freie Fläche erstellen
@@ -454,22 +475,7 @@ mapContextMenu.innerHTML = `
 `;
 document.body.appendChild(mapContextMenu);
 
-// Untermenü für Personentypen (wird wiederverwendet)
-function showPersonMenu(x, y, callback) {
-  personMenu.style.left = x + 'px';
-  personMenu.style.top = y + 'px';
-  personMenu.style.display = 'block';
-  // Handler für Auswahl
-  personMenu.querySelectorAll('.person-type-option').forEach(opt => {
-    opt.onclick = e => {
-      e.stopPropagation();
-      personMenu.style.display = 'none';
-      callback(opt.getAttribute('data-icon'), opt.getAttribute('data-label'));
-    };
-  });
-}
-
-// Untermenü für Gefahren
+// Untermenü für Gefahrentypen (wird wiederverwendet)
 const gefahrTypes = Object.values(symbolLibrary["Gefahren"]["Gefahren"]);
 const gefahrMenu = document.createElement('div');
 gefahrMenu.id = 'gefahr-type-menu';
@@ -590,8 +596,12 @@ mapContextMenu.querySelector('#create-gefahr').onclick = function(e) {
 };
 
 // Schließe alle Menüs bei Klick außerhalb
-document.addEventListener('click', () => {
+document.addEventListener('click', (e) => {
+  // Schließe das Personenauswahlfenster, wenn NICHT auf das Menü selbst geklickt wurde
+  if (!personMenu.contains(e.target) && personMenu.style.display === 'block') {
+    personMenu.style.display = 'none';
+  }
+  // Bestehende Menüs schließen
   mapContextMenu.style.display = 'none';
   gefahrMenu.style.display = 'none';
-  // personMenu wird bereits an anderer Stelle geschlossen
 });
