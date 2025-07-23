@@ -201,17 +201,59 @@ ${(() => {
   const patient  = patients.find(p => p.id === trupp.patientInput);
   if (!patient) return "";
 
-  // jetzt das Markup mit <table> drumherum plus Bearbeiten-Button
-  return `
-<div class="patient-summary">
-${(() => {
-  // nur für Patient-Status 3, 4, 7, 8
-  if (![3,4,7,8].includes(trupp.status)) return "";
+  // Hilfsfunktion für Ressourcen-Kürzel
+  const getResourceAbbreviation = (resource) => {
+    const abbreviations = {
+      'Trupp': 'T',
+      'RTW': 'RTW',
+      'UHS-Notarzt oder NEF': 'NA',
+      'NEF': 'NEF',
+      'First Responder': 'FR',
+      'Info an ASL': 'ASL',
+      'Ordnungsdienst hinzuziehen': 'OD',
+      'Polizei hinzuziehen': 'POL',
+      'Ggf. Ordnungsdienst hinzuziehen': 'OD?'
+    };
+    return abbreviations[resource] || resource.substring(0, 3).toUpperCase();
+  };
 
-  // passenden Patient holen
-  const patients = JSON.parse(localStorage.getItem("patients")) || [];
-  const patient  = patients.find(p => p.id === trupp.patientInput);
-  if (!patient) return "";
+  // Dispositionssymbole generieren
+  const dispositionSymbols = patient.suggestedResources ?
+    '<div class="disposition-symbols" style="display: flex; flex-direction: column; gap: 4px; margin: 8px 0;">' +
+      '<span style="font-weight: bold; margin-bottom: 4px;">Dispositionsvorschlag:</span>' +
+      '<div style="display: flex; flex-wrap: wrap; gap: 4px;">' +
+        patient.suggestedResources.map(resource => {
+          const abbrev = getResourceAbbreviation(resource);
+          const resourceKey = 'disposition_' + patient.id + '_' + resource.replace(/[^a-zA-Z0-9]/g, '_');
+          
+          // Prüfen ob ein Trupp diesem Patienten zugeordnet ist
+          const assignedTrupp = trupps.find(t => t.patientInput === patient.id && [3, 4, 7, 8].includes(t.status));
+          
+          // Wenn ein Trupp zugeordnet ist und es sich um "Trupp" handelt, automatisch auf verfügbar setzen
+          if (assignedTrupp && resource === 'Trupp') {
+            localStorage.setItem(resourceKey, 'available');
+          }
+          
+          // Prüfen ob mehrere Einsatzmittel der gleichen Art zugeordnet sind → First Responder aktivieren
+          if (resource === 'First Responder') {
+            const truppCount = (patient.team || []).length;
+            const rtmCount = (patient.rtm || []).length;
+            
+            // Wenn mehr als ein Trupp oder RTM zugeordnet ist, First Responder automatisch verfügbar machen
+            if (truppCount > 1 || rtmCount > 1) {
+              localStorage.setItem(resourceKey, 'available');
+            }
+          }
+          
+          const isAvailable = localStorage.getItem(resourceKey) === 'available';
+          return '<span class="disposition-symbol ' + (isAvailable ? 'available' : 'unavailable') +
+                 '" style="display: inline-block; padding: 2px 6px; margin: 0; border: 1px solid #ccc; border-radius: 3px; cursor: pointer; white-space: nowrap;"' +
+                 ' onclick="toggleDispositionStatus(' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')" title="' + resource + '">' +
+                 abbrev + '</span>';
+        }).join('') +
+      '</div>' +
+    '</div>'
+    : '';
 
   // jetzt das Markup mit <table> und <caption>
   return `
@@ -237,9 +279,7 @@ ${(() => {
       </tr>
     </tbody>
   </table>
-</div>
-  `;
-})()}
+  ${dispositionSymbols}
 
   <button
     class="meldung-btn edit-info-btn"
@@ -397,4 +437,28 @@ cards.forEach(el => {
 function formatTime(ms) {
   const d = new Date(ms);
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+/**
+ * Schaltet den Status einer Disposition (verfügbar/nicht verfügbar) um
+ * @param {number} patientId - ID des Patienten
+ * @param {string} resource - Name der Ressource
+ */
+function toggleDispositionStatus(patientId, resource) {
+  // Eindeutigen Key für diese Ressource beim Patienten erstellen
+  const resourceKey = 'disposition_' + patientId + '_' + resource.replace(/[^a-zA-Z0-9]/g, '_');
+  
+  // Aktuellen Status abrufen (standardmäßig nicht verfügbar)
+  const currentStatus = localStorage.getItem(resourceKey);
+  const isCurrentlyAvailable = currentStatus === 'available';
+  
+  // Status umschalten
+  if (isCurrentlyAvailable) {
+    localStorage.removeItem(resourceKey); // 'unavailable' ist der Standard
+  } else {
+    localStorage.setItem(resourceKey, 'available');
+  }
+  
+  // Trupp-Karten neu rendern
+  renderTrupps();
 }

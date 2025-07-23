@@ -139,28 +139,10 @@ if (oldStatus === 11 && trupp.currentOrt && trupp.einsatzStartOrt) {
   trupp.currentOrt = trupp.einsatzStartOrt = null;
 }
 
-  // 8) Wechsel auf Patient → neuen Patienten anlegen
+  // 8) Wechsel auf Patient → Modal für Zuordnung öffnen
   if (oldStatus !== 3 && status === 3) {
-    const letzteOrt =
-      trupp.currentOrt || trupp.einsatzHistorie.at(-1)?.ort || "";
-
-    // neue zentrale Funktion erzeugt Patient und erhöht ID
-    const pid = newPatient({
-      team: [trupp.name],
-      location: letzteOrt,
-      initialStatus: "disponiert",
-    });
-
-    trupp.patientInput = pid;
-    trupp.patientStart = Date.now();
-    openEditModal(pid);
-
-    // Füge den Historieneintrag für Status "disponiert" hinzu
-    updatePatientData(pid, "status", "disponiert");
-      addHistoryEntry(
-    trupp.patientInput,
-    `Trupp ${trupp.name} disponiert`
-  );
+    openPatientAssignmentModal(index);
+    return; // Früher Ausstieg, da die weitere Logik im Modal-Callback passiert
   }
 
   // 9) Bei Streife → neuen Ort abfragen
@@ -379,6 +361,24 @@ function addHistoryEntry(pid, entry) {
 }
 
 
+function toggleStatusDropdown(truppId) {
+  const prev = localStorage.getItem('openTruppId');
+  const next = prev === truppId ? null : truppId;
+  localStorage.setItem('openTruppId', next);
+  renderTrupps();
+}
+
+function closeStatusDropdown() {
+  localStorage.removeItem('openTruppId');
+  renderTrupps();
+}
+
+// Wird von jedem <li> aufgerufen, nachdem updateTrupp() ausgeführt wurde:
+function onStatusSelected(i, status, truppId) {
+  updateTrupp(i, status);
+  // schließe das Dropdown
+  closeStatusDropdown();
+}
 function toggleStatusDropdown(truppId) {
   const prev = localStorage.getItem('openTruppId');
   const next = prev === truppId ? null : truppId;

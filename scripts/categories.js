@@ -1,164 +1,802 @@
 window.alarmConfig = {
-  categories: [
+  "categories": [
     {
-      name: "Kreislauf",
-      keywords: [
-        { word: "Kreislauferkrankung, allgemein", resources: ["Trupp"] },
-        { word: "Exsikkose", resources: ["Trupp"] },
-        { word: "Kreislaufprobleme", resources: ["Trupp"] },
-        { word: "Hypertensive Entgleisung", resources: ["RTW", "Trupp"] },
-        { word: "Hypotone Entgleisung", resources: ["RTW", "Trupp"] },
-        { word: "Kardiale Notfälle, allgemein", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Akuter Thoraxschmerz", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Akutes Koronarsyndrom", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Herzinsuffizienz", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Herzrhythmusstörung, allgemein", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Herzrhythmusstörung, Bradykardie", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Herzrhythmusstörung, Tachykardie", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Reanimation", resources: ["Trupp", "RTW", "NEF", "Info an ASL"] },
-        { word: "Allergische Reaktion, allgemein", resources: ["Trupp"] },
-        { word: "Allergische Reaktion, Insektengifte", resources: ["RTW", "Trupp"] },
-        { word: "Allergische Reaktion, Lebensmittel", resources: ["RTW", "Trupp"] },
-        { word: "Allergische Reaktion, Medikamente", resources: ["RTW", "Trupp"] },
-        { word: "Anaphylaktischer Schock", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Thermische Notfälle, allgemein", resources: ["Trupp"] },
-        { word: "Erfrierung", resources: ["Trupp"] },
-        { word: "Sonnenstich", resources: ["Trupp"] },
-        { word: "Unterkühlung", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Verbrennung", resources: ["RTW", "Trupp"] },
-        { word: "Verbrühung", resources: ["RTW", "Trupp"] },
-        { word: "sonstiger kardiologischer Notfall", resources: ["RTW", "NEF", "Trupp"] }
+      "name": "Patientenzustand",
+      "keywords": [
+        {
+          "word": "Bewusstlos",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF",
+            "First Responder",
+            "Info an ASL"
+          ]
+        },
+        {
+          "word": "Somnolent",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        },
+        {
+          "word": "Hilflose Person",
+          "resources": [
+            "Trupp"
+          ]
+        },
+        {
+          "word": "Akute Atemnot",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF"
+          ]
+        },
+        {
+          "word": "Reanimation",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF",
+            "NEF",
+            "First Responder",
+            "Info an ASL",
+            "Ordnungsdienst hinzuziehen"
+          ]
+        },
+        {
+          "word": "Kindesmisshandlung",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "Info an ASL",
+            "Polizei hinzuziehen"
+          ]
+        }
       ]
     },
     {
-      name: "Atmung",
-      keywords: [
-        { word: "Atemnot, allgemein", resources: ["Trupp"] },
-        { word: "Aspiration / Bolusgeschehen", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Asthma bronchiale", resources: ["Trupp"] },
-        { word: "Atemnot, akut", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "COPD", resources: ["RTW", "Trupp"] },
-        { word: "Ertrinken", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Hyperventilation", resources: ["Trupp"] },
-        { word: "Lungenembolie", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Lungenödem", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Pneumonie", resources: ["RTW", "Trupp"] },
-        { word: "Pneumothorax / Spannungspneumothorax", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "sonstiger respiratorischer Notfall", resources: ["RTW", "NEF", "Trupp"] }
+      "name": "Situationsbeschreibung",
+      "keywords": [
+        {
+          "word": "Arbeitsunfall",
+          "resources": [
+            "Trupp",
+            "Info an ASL"
+          ]
+        },
+        {
+          "word": "Erhängen",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF",
+            "First Responder",
+            "Info an ASL",
+            "Polizei hinzuziehen"
+          ]
+        },
+        {
+          "word": "Schussverletzung",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF",
+            "Info an ASL",
+            "Polizei hinzuziehen"
+          ]
+        },
+        {
+          "word": "Stich- / Schnittverletzung",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "Info an ASL",
+            "Ggf. Polizei hinzuziehen"
+          ]
+        },
+        {
+          "word": "Sturz < 3m Höhe",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF",
+            "Info an ASL"
+          ]
+        },
+        {
+          "word": "Sturz > 3m Höhe",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF",
+            "NEF",
+            "Info an ASL"
+          ]
+        },
+        {
+          "word": "Unfall eingeklemmte Person",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF",
+            "Info an ASL",
+            "Feuerwehr hinzuziehen"
+          ]
+        },
+        {
+          "word": "Verkehrsunfall",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "Info an ASL"
+          ]
+        },
+        {
+          "word": "Reitunfall",
+          "resources": [
+            "Trupp"
+          ]
+        },
+        {
+          "word": "Treppensturz",
+          "resources": [
+            "Trupp"
+          ]
+        },
+        {
+          "word": "Tierbissverletzung",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "Info an ASL",
+            "Ggf. Polizei hinzuziehen"
+          ]
+        },
+        {
+          "word": "Körperverletzung",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "Info an ASL",
+            "Polizei hinzuziehen"
+          ]
+        },
+        {
+          "word": "unklarer Einsatzgrund",
+          "resources": [
+            "Trupp",
+            "Info an ASL"
+          ]
+        }
       ]
     },
     {
-      name: "Neurologie / Bewusstsein",
-      keywords: [
-        { word: "Bewusstseinsstörung, allgemein", resources: ["Trupp"] },
-        { word: "Apoplex / TIA / PRIND", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Hyperglykämie", resources: ["Trupp"] },
-        { word: "Hypoglykämie", resources: ["Trupp"] },
-        { word: "Krampfanfall", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Person bedingt ansprechbar", resources: ["Trupp"] },
-        { word: "Unklare Bewusstlosigkeit", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Kollabierte Person, ansprechbar", resources: ["Trupp"] },
-        { word: "Kollabierte Person, nicht ansprechbar", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "sonstiger neurologischer Notfall", resources: ["RTW", "NEF", "Trupp"] }
+      "name": "Verletzungen / Unfälle",
+      "keywords": [
+        {
+          "word": "Trauma allgemein",
+          "resources": [
+            "Trupp"
+          ]
+        },
+        {
+          "word": "Trauma schwer",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        },
+        {
+          "word": "Blutung leicht",
+          "resources": [
+            "Trupp"
+          ]
+        },
+        {
+          "word": "Blutung stark",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF",
+            "First Responder"
+          ]
+        },
+        {
+          "word": "Polytrauma",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF",
+            "First Responder",
+            "Info an ASL"
+          ]
+        },
+        {
+          "word": "Mehrfachverletzung sonstige",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF",
+            "Info an ASL"
+          ]
+        },
+        {
+          "word": "SHT",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        },
+        {
+          "word": "Gesichtsverletzung / Kopfverletzung / Augenverletzung",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        },
+        {
+          "word": "Thoraxtrauma leicht",
+          "resources": [
+            "Trupp"
+          ]
+        },
+        {
+          "word": "Thoraxtrauma schwer",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF"
+          ]
+        },
+        {
+          "word": "Abdomen leicht",
+          "resources": [
+            "Trupp"
+          ]
+        },
+        {
+          "word": "Abdomen schwer",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF"
+          ]
+        },
+        {
+          "word": "Wirbels. mit neurol. Ausfällen",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF",
+            "First Responder"
+          ]
+        },
+        {
+          "word": "Wirbels. ohne neurol. Ausfälle",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        },
+        {
+          "word": "Becken leicht",
+          "resources": [
+            "Trupp"
+          ]
+        },
+        {
+          "word": "Becken schwer",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF"
+          ]
+        },
+        {
+          "word": "Fußverletzung",
+          "resources": [
+            "Trupp"
+          ]
+        },
+        {
+          "word": "Extremitäten offen",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        },
+        {
+          "word": "Extremitäten geschlossen",
+          "resources": [
+            "Trupp"
+          ]
+        },
+        {
+          "word": "Hüft-/Schenkelhalsfraktur",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        },
+        {
+          "word": "Verletzung der Extremitäten mit Gefäß-/Nervenverletzung",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        },
+        {
+          "word": "Handverletzung",
+          "resources": [
+            "Trupp"
+          ]
+        },
+        {
+          "word": "Fingeramputation",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "Info an ASL"
+          ]
+        },
+        {
+          "word": "Hand-/Extremitätenamputation",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "Info an ASL"
+          ]
+        },
+        {
+          "word": "Armverletzung",
+          "resources": [
+            "Trupp"
+          ]
+        },
+        {
+          "word": "Beinverletzung",
+          "resources": [
+            "Trupp"
+          ]
+        },
+        {
+          "word": "Verbrennung / Verbrühung / Verätzung",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF",
+            "Info an ASL"
+          ]
+        },
+        {
+          "word": "Stromunfall",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF",
+            "Info an ASL",
+            "Ggf. Feuerwehr hinzuziehen"
+          ]
+        },
+        {
+          "word": "Hitzeerschöpfung / Hitzschlag / Sonnenstich",
+          "resources": [
+            "Trupp"
+          ]
+        },
+        {
+          "word": "Unterkühlung / Erfrierung",
+          "resources": [
+            "Trupp"
+          ]
+        },
+        {
+          "word": "(Beinahe-)Ertrinken / Badeunfall",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF",
+            "Info an ASL"
+          ]
+        },
+        {
+          "word": "Inhalationstrauma",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF",
+            "Info an ASL"
+          ]
+        }
       ]
     },
     {
-      name: "Abdomen",
-      keywords: [
-        { word: "Abdomen, akut", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Abdomen, unklar", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Blinddarmentzündung", resources: ["RTW", "Trupp"] },
-        { word: "Harnverhalt", resources: ["RTW", "Trupp"] },
-        { word: "Ileus nft", resources: ["RTW", "Trupp"] },
-        { word: "Magenblutung / Darmblutung", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Nierenkolik / Gallenkolik", resources: ["Trupp"] },
-        { word: "sonstiger abdomineller Notfall", resources: ["RTW", "Trupp"] }
+      "name": "Erkrankungen",
+      "keywords": [
+        {
+          "word": "Atemnot (unklar)/Atembeschwerden/ARI",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        },
+        {
+          "word": "Obstruktion (Asthma / COPD)",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        },
+        {
+          "word": "(Bolus-) Aspiration / gefärdeter Atemweg",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF",
+            "NEF"
+          ]
+        },
+        {
+          "word": "Hyperventilation",
+          "resources": [
+            "Trupp"
+          ]
+        },
+        {
+          "word": "Anaphylaxie / Unverträglichkeitsreaktion",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        },
+        {
+          "word": "Synkope/Kollaps",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        },
+        {
+          "word": "Thrombose",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        },
+        {
+          "word": "Exsikkose",
+          "resources": [
+            "Trupp"
+          ]
+        },
+        {
+          "word": "anaphylaktischer Schock",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF",
+            "NEF",
+            "First Responder"
+          ]
+        },
+        {
+          "word": "sonstige internistische Notfälle (Kreislaufprobleme, Unwohlsein, Fieber, etc)",
+          "resources": [
+            "Trupp"
+          ]
+        },
+        {
+          "word": "Brust-/Thoraxschmerz",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF"
+          ]
+        },
+        {
+          "word": "Arrhythmie",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF"
+          ]
+        },
+        {
+          "word": "Bradykardie",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF"
+          ]
+        },
+        {
+          "word": "Tachykardie",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF"
+          ]
+        },
+        {
+          "word": "Hypertensiver Notfall/Krise",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        },
+        {
+          "word": "Kardiogener Schock",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF"
+          ]
+        },
+        {
+          "word": "Herzinsuffizienz",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        },
+        {
+          "word": "Lungenembolie",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        },
+        {
+          "word": "GI-Blutung",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        },
+        {
+          "word": "Bauchschmerz",
+          "resources": [
+            "Trupp"
+          ]
+        },
+        {
+          "word": "sonstige gastroenterologische Notfälle (Durchfall, Erbrechen, etc)",
+          "resources": [
+            "Trupp"
+          ]
+        },
+        {
+          "word": "sonstige Intoxikationen",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        },
+        {
+          "word": "Alkoholintoxikation",
+          "resources": [
+            "Trupp"
+          ]
+        },
+        {
+          "word": "Drogen / Rauschgift",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        },
+        {
+          "word": "Mischintoxikation Alkohol/Drogen/Medikament",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF"
+          ]
+        },
+        {
+          "word": "Rauchgas / Reizgas",
+          "resources": [
+            "Trupp",
+            "Info an ASL"
+          ]
+        },
+        {
+          "word": "Hyperglykämie",
+          "resources": [
+            "Trupp"
+          ]
+        },
+        {
+          "word": "Hypoglykämie",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        }
       ]
     },
     {
-      name: "Allgemeine Erkrankungen",
-      keywords: [
-        { word: "Erkrankung allgemein", resources: ["Trupp"] },
-        { word: "Abusus C2H5OH", resources: ["Trupp"] },
-        { word: "Thrombose / Gefäßverschluss", resources: ["RTW", "Trupp"] },
-        { word: "Bandscheibenprolaps / Lumbago", resources: ["Trupp"] },
-        { word: "Infekt – fieberhaft", resources: ["Trupp"] },
-        { word: "Hilflose Person", resources: ["RTW", "Trupp"] },
-        { word: "HNO", resources: ["Trupp"] },
-        { word: "Nasenbluten, unstillbar", resources: ["RTW", "Trupp"] },
-        { word: "Psychischer Ausnahmezustand", resources: ["Trupp"] },
-        { word: "Schlechter AZ", resources: ["Trupp"] },
-        { word: "Schmerzzustand", resources: ["Trupp"] },
-        { word: "Tumorleiden", resources: ["Trupp"] },
-        { word: "sonstiger Notfall", resources: ["Trupp"] }
+      "name": "spezielle Erkrankung/Verletzung",
+      "keywords": [
+        {
+          "word": "Epileptischer Anfall / Krampfanfall",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF"
+          ]
+        },
+        {
+          "word": "Schwindel",
+          "resources": [
+            "Trupp"
+          ]
+        },
+        {
+          "word": "neurologischer Notfall, sonstiger",
+          "resources": [
+            "Trupp"
+          ]
+        },
+        {
+          "word": "Schlaganfall / Blutung",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        },
+        {
+          "word": "Suizid, angedroht",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF",
+            "Info an ASL",
+            "Ggf. Ordnungsdienst hinzuziehen",
+            "Polizei hinzuziehen"
+          ]
+        },
+        {
+          "word": "Akute Verwirrtheit / Delir",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        },
+        {
+          "word": "psychischer Ausnahmezustand",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "Ggf. Ordnungsdienst hinzuziehen"
+          ]
+        },
+        {
+          "word": "pädiatrisch - Atemnot",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF",
+            "NEF"
+          ]
+        },
+        {
+          "word": "schwerer Husten (Pseudokrupp)",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF",
+            "NEF"
+          ]
+        },
+        {
+          "word": "pädiatrisch - Fieberkrampf",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF"
+          ]
+        },
+        {
+          "word": "sonstiger pädiatrischer Notfall",
+          "resources": [
+            "Trupp"
+          ]
+        }
       ]
     },
     {
-      name: "Intoxikation",
-      keywords: [
-        { word: "Intoxikation, allgemein", resources: ["Trupp"] },
-        { word: "Intoxikation, Alkohol", resources: ["Trupp"] },
-        { word: "Intoxikation, Atemgifte / Rauchgase", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Intoxikation, Drogen / Rauschgifte", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Intoxikation, Medikamente", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Intoxikation, Mischintoxikation", resources: ["RTW", "NEF", "Trupp"] }
+      "name": "Gynäkologie",
+      "keywords": [
+        {
+          "word": "Geburt / Wehen",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF",
+            "NEF",
+            "Info an ASL"
+          ]
+        },
+        {
+          "word": "Notfälle in der Schwangerschaft",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        },
+        {
+          "word": "Sexualdelikt",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "Info an ASL",
+            "Ggf. Polizei hinzuziehen"
+          ]
+        },
+        {
+          "word": "sonstiger gynäkologischer Notfall (vaginale Blutung, Fruchtwasserabgang)",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        }
       ]
     },
     {
-      name: "Suizid",
-      keywords: [
-        { word: "Suizid, allgemein", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Suizid, Androhung", resources: ["RTW", "Trupp"] }
-      ]
-    },
-    {
-      name: "Trauma",
-      keywords: [
-        { word: "Trauma, allgemein", resources: ["Trupp"] },
-        { word: "Trauma, schwer", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Abdominaltrauma", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Extremitätentrauma", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Gesichtsschädeltrauma", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Inhalationstrauma", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Polytrauma", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Schädel-Hirn-Trauma", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Thoraxtrauma", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Wirbelsäulentrauma", resources: ["RTW", "NEF", "Trupp"] },
-		{ word: "Sturz > 3 Meter", resources: ["RTW", "NEF", "Trupp"] },
-		{ word: "Sturz < 3 Meter", resources: ["Trupp"] },
-        { word: "sonstiger traumatologischer Notfall", resources: ["RTW", "NEF", "Trupp"] }
-      ]
-    },
-    {
-      name: "Extremitäten",
-      keywords: [
-        { word: "Amputationsverletzung", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Armverletzung", resources: ["Trupp"] },
-        { word: "Augenverletzung", resources: ["Trupp"] },
-        { word: "Beckenverletzung", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Beinverletzung", resources: ["Trupp"] },
-        { word: "Blutung, leicht", resources: ["Trupp"] },
-        { word: "Blutung, stark", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Fußverletzung", resources: ["Trupp"] },
-        { word: "Gesichtsverletzung", resources: ["Trupp"] },
-        { word: "Handverletzung", resources: ["Trupp"] },
-        { word: "Kopfverletzung", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Knieverletzung", resources: ["Trupp"] },
-        { word: "Oberarmverletzung", resources: ["Trupp"] },
-        { word: "Oberschenkelhalsverletzung", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Oberschenkelverletzung", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Pfählungsverletzung", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Rippenverletzung", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Schnittverletzung", resources: ["Trupp"] },
-        { word: "Schussverletzung", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Sprunggelenksverletzung", resources: ["Trupp"] },
-        { word: "Stichverletzung", resources: ["Trupp"] },
-        { word: "Teilamputationsverletzung", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Tierbissverletzung", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Unterarmverletzung", resources: ["Trupp"] },
-        { word: "Unterschenkelverletzung", resources: ["Trupp"] },
-        { word: "Verätzung Säuren / Laugen", resources: ["RTW", "NEF", "Trupp"] },
-        { word: "Volumenmangelschock", resources: ["RTW", "NEF", "Trupp"] }
+      "name": "Erkrankungen",
+      "keywords": [
+        {
+          "word": "urologische Erkrankung leicht",
+          "resources": [
+            "Trupp"
+          ]
+        },
+        {
+          "word": "urologische Erkrankung schwer",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        },
+        {
+          "word": "sonstige urologische Notfälle (Katherprobleme, Hämaturie etc)",
+          "resources": [
+            "Trupp"
+          ]
+        },
+        {
+          "word": "Notfall, Augen, sonstiger",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        },
+        {
+          "word": "Nasenbluten (Epistaxis) unstillbar",
+          "resources": [
+            "Trupp",
+            "RTW"
+          ]
+        },
+        {
+          "word": "(Nach)Blutung, HNO, akut",
+          "resources": [
+            "Trupp",
+            "RTW",
+            "UHS-Notarzt oder NEF",
+            "NEF"
+          ]
+        },
+        {
+          "word": "sonstige HNO Notfälle",
+          "resources": [
+            "Trupp"
+          ]
+        }
       ]
     }
   ]
