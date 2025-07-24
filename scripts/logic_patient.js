@@ -51,52 +51,12 @@ function clearAssignments(patientId, finalStatus) {
     }
   });
 
-  // 3) RTM-Tracker updaten: alle RTMs, die patientInput === patientId haben,
-  //    bekommen ihren Einsatz beendet
-  const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
-  rtms.forEach((r) => {
-    if (r.patientInput === patientId) {
-      // a) Patienteneinsatz abschließen
-      if (r.patientStart) {
-        r.patientHistorie = r.patientHistorie || [];
-        r.patientHistorie.push({
-          nummer: patientId,
-          von: r.patientStart,
-          bis: now,
-        });
-      }
-      // b) Input­Felder zurücksetzen
-      r.patientInput = null;
-      r.patientStart = null;
-
-      // c) Status auf 0 setzen
-      r.status = 0;
-
-      // d) RTM-Historie ergänzen
-      if (!r.history) r.history = [];
-      const timeStr = new Date(now).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-      r.history.push(`${timeStr} Status: 0`);
-    }
-  });
-
-  // 4) Speichern & Storage‐Events feuern
+  // 3) Speichern & Storage‐Event feuern
   localStorage.setItem("trupps", JSON.stringify(trupps));
-  localStorage.setItem("rtms", JSON.stringify(rtms));
-  
   window.dispatchEvent(
     new StorageEvent("storage", {
       key: "trupps",
       newValue: JSON.stringify(trupps),
-    })
-  );
-  
-  window.dispatchEvent(
-    new StorageEvent("storage", {
-      key: "rtms",
-      newValue: JSON.stringify(rtms),
     })
   );
 }
@@ -483,7 +443,7 @@ function assignResource(id, type) {
   if (type === "team") {
     if (!Array.isArray(patient.team)) patient.team = [];
     patient.team.push(value.trim());
-  } else if (type === "rtm") {  // Hier war der Fehler - es wurde nach "else" statt "else if (type === 'rtm')" geprüft
+  } else {
     if (!Array.isArray(patient.rtm)) patient.rtm = [];
     patient.rtm.push(value.trim());
   }
@@ -491,7 +451,7 @@ function assignResource(id, type) {
   // 3) Sofort speichern
   localStorage.setItem("patients", JSON.stringify(patients));
 
-  // 4) Nur wenn vorher gemeldet → Status auf „disponiert" setzen
+  // 4) Nur wenn vorher gemeldet → Status auf „disponiert“ setzen
   if (patient.status === "gemeldet") {
     updatePatientData(id, "status", "disponiert");
   }
@@ -503,15 +463,6 @@ function assignResource(id, type) {
     p2.history = p2.history || [];
     p2.history.push(`${getCurrentTime()} ${label} ${value.trim()} disponiert`);
     localStorage.setItem("patients", JSON.stringify(updated));
-    
-    // Storage-Event auslösen
-    window.dispatchEvent(
-      new StorageEvent("storage", {
-        key: "patients",
-        newValue: JSON.stringify(updated),
-      })
-    );
-    
     loadPatients(id);
   }
 }
@@ -871,84 +822,3 @@ function updateLiveTimers() {
     }
   });
 }
-
-function newPatient(options = {}) {
-  let nextPatientNumber = parseInt(localStorage.getItem("nextPatientNumber"), 10) || 1;
-  
-  const patient = {
-    id: nextPatientNumber,
-    age: options.age || "",
-    gender: options.gender || "",
-    location: options.location || "",
-    diagnosis: options.diagnosis || "",
-    status: options.initialStatus || "gemeldet",
-    team: options.team || [],          // Kann sowohl Trupps als auch RTMs enthalten
-    rtm: options.rtm || [],            // RTM-spezifisches Array
-    remarks: options.remarks || "",
-    createdAt: Date.now(),
-    history: [],
-    statusTimestamps: {},
-    durations: {
-      einsatzdauer: "",
-      dispositionsdauer: "",
-      ausrueckdauer: "",
-      behandlungsdauer: "",
-      verlegedauerUHS: "",
-    },
-    disposed: {},
-    suggestedResources: options.suggestedResources || [],
-    dispositionStatus: options.dispositionStatus || {}
-  };
-
-  // Anfangs-Historie-Eintrag
-  const timeStr = new Date().toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  patient.history.push(`${timeStr} Patient erstellt`);
-  
-  if (options.initialStatus && options.initialStatus !== "gemeldet") {
-    patient.history.push(`${timeStr} Status: ${options.initialStatus}`);
-  }
-
-  // RTM-Historie-Einträge hinzufügen, wenn RTMs zugeordnet wurden
-  if (options.rtm && options.rtm.length > 0) {
-    options.rtm.forEach(rtmName => {
-      patient.history.push(`${timeStr} RTM ${rtmName} disponiert`);
-    });
-  }
-
-  // Team-Historie-Einträge hinzufügen, wenn Teams zugeordnet wurden
-  if (options.team && options.team.length > 0) {
-    options.team.forEach(teamName => {
-      patient.history.push(`${timeStr} Trupp ${teamName} disponiert`);
-    });
-  }
-
-  // Speichern
-  const patients = JSON.parse(localStorage.getItem("patients")) || [];
-  patients.push(patient);
-  localStorage.setItem("patients", JSON.stringify(patients));
-  
-  // Nächste Patientennummer erhöhen
-  nextPatientNumber++;
-  localStorage.setItem("nextPatientNumber", nextPatientNumber);
-  
-  // Storage-Events auslösen
-  window.dispatchEvent(
-    new StorageEvent("storage", {
-      key: "patients",
-      newValue: JSON.stringify(patients),
-    })
-  );
-  
-  window.dispatchEvent(
-    new StorageEvent("storage", {
-      key: "nextPatientNumber",
-      newValue: nextPatientNumber.toString(),
-    })
-  );
-
-  return nextPatientNumber - 1; // ID des erstellten Patienten zurückgeben
-}
-

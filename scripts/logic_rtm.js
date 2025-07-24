@@ -134,44 +134,116 @@ function updateRTMPreview() {
 
 function confirmRTMCreation() {
   const prefix = document.getElementById('rtmPrefix').value;
-  const prefixTexts = {
-    'florian': 'Florian Kiel',
-    'sama': 'Sama Kiel',
-    'johannes': 'Johannes Kiel', 
-    'akkon': 'Akkon Kiel',
-    'rotkreuz': 'Rotkreuz Kiel',
-    'pelikan': 'Pelikan Kiel',
-    'christoph': 'Christoph',
-    'sar': 'SAR'
-  };
+  const isSpecial = ['christoph', 'sar'].includes(prefix);
   
-  const isSpecial = prefix === 'christoph' || prefix === 'sar';
-  let rtmName, rtmType;
+  let rtmName;
+  let rtmType = null;
   
   if (isSpecial) {
     const specialPart = document.getElementById('rtmSpecialPart').value.trim();
     if (!specialPart) {
-      alert('Bitte Kennung eingeben.');
+      alert('Bitte Kennung eingeben');
       return;
     }
-    rtmName = `${prefixTexts[prefix]} ${specialPart}`;
-    rtmType = 'RTH'; // Rettungstransporthubschrauber
+    const prefixText = prefix === 'christoph' ? 'Christoph' : 'SAR';
+    rtmName = `${prefixText} ${specialPart}`;
+    // Für Christoph und SAR können wir spezielle RTM-Typen setzen
+    rtmType = prefix === 'christoph' ? 'RTH' : 'SAR';
   } else {
-    const part1 = document.getElementById('rtmPart1').value;
-    const part2 = document.getElementById('rtmPart2').value;
-    const part3 = document.getElementById('rtmPart3').value;
+    const part1 = document.getElementById('rtmPart1').value.padStart(2, '0');
+    const part2 = document.getElementById('rtmPart2').value.padStart(2, '0');
+    const part3 = document.getElementById('rtmPart3').value.padStart(2, '0');
     
     if (!part1 || !part2 || !part3) {
-      alert('Bitte alle drei Felder ausfüllen.');
+      alert('Bitte alle Felder ausfüllen');
       return;
     }
     
-    rtmName = `${prefixTexts[prefix]} ${part1.padStart(2, '0')}-${part2.padStart(2, '0')}-${part3.padStart(2, '0')}`;
+    const prefixMap = {
+      'florian': 'Florian Kiel',
+      'sama': 'Sama Kiel',
+      'johannes': 'Johannes Kiel',
+      'akkon': 'Akkon Kiel',
+      'rotkreuz': 'Rotkreuz Kiel',
+      'pelikan': 'Pelikan Kiel'
+    };
+    
+    const prefixText = prefixMap[prefix];
+    rtmName = `${prefixText} ${part1}-${part2}-${part3}`;
+    
+    // RTM-Typ aus der mittleren Nummer extrahieren
     rtmType = parseInt(part2, 10);
   }
   
-  addRTM(rtmName, rtmType);
+  // Check if editing existing RTM
+  if (window.editingRTMMode && typeof window.editingRTMIndex === 'number') {
+    const rtm = rtms[window.editingRTMIndex];
+    if (rtm) {
+      const oldName = rtm.name;
+      rtm.name = rtmName;
+      rtm.rtmType = rtmType; // RTM-Typ auch beim Umbenennen aktualisieren
+      
+      // Update patients that reference this RTM
+      const patients = JSON.parse(localStorage.getItem("patients") || "[]");
+      let patientsUpdated = false;
+      
+      patients.forEach(patient => {
+        if (Array.isArray(patient.rtm)) {
+          const index = patient.rtm.indexOf(oldName);
+          if (index !== -1) {
+            patient.rtm[index] = rtmName;
+            if (!patient.history) patient.history = [];
+            const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            patient.history.push(`${timeStr} RTM umbenannt: ${oldName} → ${rtmName}`);
+            patientsUpdated = true;
+          }
+        }
+      });
+      
+      if (patientsUpdated) {
+        localStorage.setItem("patients", JSON.stringify(patients));
+        window.dispatchEvent(new StorageEvent("storage", {
+          key: "patients",
+          newValue: JSON.stringify(patients),
+        }));
+      }
+      
+      saveRTMs();
+      renderRTMs();
+    }
+    
+    // Clear editing mode
+    window.editingRTMMode = false;
+    window.editingRTMIndex = undefined;
+  } else {
+    // Check if RTM already exists
+    if (rtms.find(r => r.name === rtmName)) {
+      alert('RTM mit diesem Namen existiert bereits');
+      return;
+    }
+    
+    // Create new RTM with correct rtmType
+    addRTM(rtmName, rtmType);
+  }
+  
   closeRTMCreationModal();
+}
+
+function closeRTMCreationModal() {
+  document.getElementById('rtmCreationModal').style.display = 'none';
+  
+  // Clear editing mode
+  window.editingRTMMode = false;
+  window.editingRTMIndex = undefined;
+  
+  // Reset form
+  document.getElementById('rtmPrefix').value = 'florian';
+  document.getElementById('rtmPart1').value = '';
+  document.getElementById('rtmPart2').value = '';
+  document.getElementById('rtmPart3').value = '';
+  document.getElementById('rtmSpecialPart').value = '';
+  handlePrefixChange();
+  updateRTMPreview();
 }
 
 // === DOM Ready Event Listeners ===
@@ -386,9 +458,20 @@ function addRTM(name = null, rtmType = null) {
   const input = name || document.getElementById("newRTMName")?.value.trim();
   if (!input) return;
   
+  // RTM-Typ aus dem Namen extrahieren, falls nicht direkt übergeben
+  let extractedRtmType = rtmType;
+  if (!extractedRtmType) {
+    // Versuche RTM-Typ aus dem Namen zu extrahieren
+    const match = input.match(/(\d{2})-(\d{2})-(\d{2})/);
+    if (match) {
+      const middleNumber = parseInt(match[2], 10);
+      extractedRtmType = middleNumber;
+    }
+  }
+  
   rtms.push({
     name: input,
-    rtmType: rtmType || null, // RTM-Typ aus der mittleren Nummer
+    rtmType: extractedRtmType || null, // RTM-Typ aus der mittleren Nummer
     status: 6,
     lastStatusChange: Date.now(),
     currentPauseStart: Date.now(),
@@ -520,4 +603,9 @@ function updateRTMPatientDispositionStatus(patientId) {
       newValue: JSON.stringify(patients),
     })
   );
+  
+  // Sofortige lokale Aktualisierung der RTM-Karten
+  if (typeof updateTruppCardDisposition === 'function') {
+    updateTruppCardDisposition(patientId);
+  }
 }

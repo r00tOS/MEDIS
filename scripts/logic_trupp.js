@@ -183,8 +183,38 @@ if (status === 11) {
   window.scrollTo(0, scrollY);
 }
 
-// Neue Hilfsfunktion für die Aktualisierung der Disposition-Status
-function updatePatientDispositionStatus(patientId) {
+// EventListener für automatische Disposition-Updates
+window.addEventListener('storage', (e) => {
+  if (e.key === 'patients') {
+    // Prüfe ob trupps verfügbar ist, bevor wir Disposition-Updates durchführen
+    if (typeof trupps === 'undefined' || !Array.isArray(trupps)) {
+      return;
+    }
+    
+    // Prüfe ob Disposition-relevante Änderungen vorliegen
+    const updatedPatients = JSON.parse(e.newValue || '[]');
+    
+    // Für jeden Patienten mit Dispositionsvorschlägen prüfen
+    updatedPatients.forEach(patient => {
+      if (patient.suggestedResources && patient.suggestedResources.length > 0) {
+        updatePatientDispositionStatusSilent(patient.id);
+      }
+    });
+    
+    // Trupp-Karten neu rendern nach Disposition-Updates (nur wenn renderTrupps verfügbar)
+    if (typeof renderTrupps === 'function') {
+      renderTrupps();
+    }
+  }
+});
+
+// Neue Hilfsfunktion für die Aktualisierung der Disposition-Status (ohne Re-Render)
+function updatePatientDispositionStatusSilent(patientId) {
+  // Sicherheitsprüfung für trupps Variable
+  if (typeof trupps === 'undefined' || !Array.isArray(trupps)) {
+    return;
+  }
+  
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
   const patient = patients.find(p => p.id === patientId);
   
@@ -207,16 +237,13 @@ function updatePatientDispositionStatus(patientId) {
     patient.dispositionStatus['First Responder'] = 'dispatched';
   }
   
-  // Patienten-Daten zurück speichern
+  // Patienten-Daten zurück speichern (ohne Event auszulösen)
   localStorage.setItem("patients", JSON.stringify(patients));
-  
-  // Event für Aktualisierung auslösen
-  window.dispatchEvent(
-    new StorageEvent("storage", {
-      key: "patients",
-      newValue: JSON.stringify(patients),
-    })
-  );
+}
+
+// Vereinfachte Disposition-Update-Funktion (wird nur noch bei Trupp-Zuordnung verwendet)
+function updatePatientDispositionStatus(patientId) {
+  updatePatientDispositionStatusSilent(patientId);
 }
 
 function saveTrupps() {
@@ -403,24 +430,6 @@ function addHistoryEntry(pid, entry) {
 }
 
 
-function toggleStatusDropdown(truppId) {
-  const prev = localStorage.getItem('openTruppId');
-  const next = prev === truppId ? null : truppId;
-  localStorage.setItem('openTruppId', next);
-  renderTrupps();
-}
-
-function closeStatusDropdown() {
-  localStorage.removeItem('openTruppId');
-  renderTrupps();
-}
-
-// Wird von jedem <li> aufgerufen, nachdem updateTrupp() ausgeführt wurde:
-function onStatusSelected(i, status, truppId) {
-  updateTrupp(i, status);
-  // schließe das Dropdown
-  closeStatusDropdown();
-}
 function toggleStatusDropdown(truppId) {
   const prev = localStorage.getItem('openTruppId');
   const next = prev === truppId ? null : truppId;

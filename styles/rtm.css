@@ -386,3 +386,58 @@ body {
   51%, 100% { opacity: 0.3; }
 }
 
+/* Kontextmenü Styles */
+.context-menu {
+  position: fixed;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  z-index: 10000;
+  min-width: 200px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  display: none;
+}
+
+.context-menu li {
+  padding: 0;
+  margin: 0;
+  border-bottom: 1px solid #eee;
+}
+
+.context-menu li:last-child {
+  border-bottom: none;
+}
+
+.context-menu li button {
+  width: 100%;
+  padding: 10px 15px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+  border-radius: 0;
+}
+
+.context-menu li button:hover {
+  background: #f5f5f5;
+}
+
+.context-menu li button:first-child {
+  border-radius: 4px 4px 0 0;
+}
+
+.context-menu li:last-child button {
+  border-radius: 0 0 4px 4px;
+}
+
+.context-menu-separator {
+  height: 1px;
+  background: #ddd;
+  margin: 5px 0;
+}
+

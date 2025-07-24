@@ -68,3 +68,68 @@ function getCurrentTime() {
     minute: "2-digit",
   });
 }
+
+
+      // Disposition status functions
+      function toggleDispositionStatus(patientId, resource) {
+        const patients = JSON.parse(localStorage.getItem("patients") || "[]");
+        const patient = patients.find(p => p.id === patientId);
+        if (!patient) return;
+
+        if (!patient.dispositionStatus) {
+          patient.dispositionStatus = {};
+        }
+
+        // Toggle between dispatched and required
+        if (patient.dispositionStatus[resource] === 'dispatched') {
+          delete patient.dispositionStatus[resource];
+        } else {
+          patient.dispositionStatus[resource] = 'dispatched';
+        }
+
+        localStorage.setItem("patients", JSON.stringify(patients));
+        window.dispatchEvent(new StorageEvent("storage", {
+          key: "patients",
+          newValue: JSON.stringify(patients),
+        }));
+
+        // Call appropriate render function based on what's available
+        if (typeof renderRTMs === 'function') {
+          renderRTMs();
+        } else if (typeof renderTrupps === 'function') {
+          renderTrupps();
+        } else if (typeof loadPatients === 'function') {
+          loadPatients();
+        }
+      }
+
+      function toggleDispositionIgnore(event, patientId, resource) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const patients = JSON.parse(localStorage.getItem("patients") || "[]");
+        const patient = patients.find(p => p.id === patientId);
+        if (!patient) return;
+
+        if (!patient.dispositionStatus) {
+          patient.dispositionStatus = {};
+        }
+
+        const ignoreKey = resource + '_ignored';
+        patient.dispositionStatus[ignoreKey] = !patient.dispositionStatus[ignoreKey];
+
+        localStorage.setItem("patients", JSON.stringify(patients));
+        window.dispatchEvent(new StorageEvent("storage", {
+          key: "patients",
+          newValue: JSON.stringify(patients),
+        }));
+
+        // Call appropriate render function based on what's available
+        if (typeof renderRTMs === 'function') {
+          renderRTMs();
+        } else if (typeof renderTrupps === 'function') {
+          renderTrupps();
+        } else if (typeof loadPatients === 'function') {
+          loadPatients();
+        }
+      }

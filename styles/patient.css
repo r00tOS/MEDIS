@@ -367,3 +367,34 @@ h2 {
   padding: 2px 0; /* kleiner vertikaler Abstand zwischen Einträgen */
   word-wrap: break-word;
 }
+
+/* Trupp-Disposition-Button Styles */
+.disposition-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 10px;
+}
+
+.disposition-label {
+  font-weight: bold;
+  min-width: 60px;
+}
+
+.disposition-controls {
+  flex: 1;
+}
+
+.disposition-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.disposition-btn:hover {
+  background: #0056b3;
+}

@@ -31,6 +31,15 @@ function renderRTMs() {
     div.className = "rtm";
     div.dataset.key = rtm.name;
     div.dataset.rtmId = rtm.id;
+    div.dataset.rtmIndex = i; // Für Kontextmenü
+    
+    // Rechtsklick-Event für Kontextmenü hinzufügen
+    div.addEventListener('contextmenu', (event) => {
+      event.preventDefault();
+      // Kontextmenü immer anzeigen, nicht nur bei Patient-Status
+      showRTMContextMenu(event, i, rtm.patientInput);
+    });
+    
     // wenn diese ID die gespeicherte offene ist, öffnen wir sie gleich
     const isOpen = rtm.id === openId;
     if (isOpen) div.classList.add('show-status-buttons');
@@ -151,20 +160,6 @@ div.innerHTML = `
     </button>
     ${[3,4,7,8].includes(rtm.status)
     ? `
-      <div class="end-buttons" style="display:inline-flex; gap:8px; margin-left:8px;">
-      <button
-        class="status-transport-in-kh"
-        onclick="transportPatient(${rtm.patientInput})"
-      >
-        Transport in KH
-      </button>
-      <button
-        class="status-entlassen"
-        onclick="dischargePatient(${rtm.patientInput})"
-      >
-        Entlassen
-      </button>
-      </div>
     `
     : ``
     }
@@ -183,7 +178,10 @@ div.innerHTML = `
     }
 ${(() => {
   // nur für Patient-Status 3, 4, 7, 8
-  if (![3, 4, 7, 8].includes(rtm.status)) return "";
+  if (![3, 4, 7, 8].includes(rtm.status)) {
+    console.log("RTM", rtm.name, "hat keinen Patientenstatus:", rtm.status);
+    return "";
+  }
 
   // Check if rtm.patientInput exists
   if (!rtm.patientInput) {
@@ -199,11 +197,22 @@ ${(() => {
     return '<div style="margin: 8px 0; color: #f00; font-style: italic;">Patient nicht gefunden (ID: ' + rtm.patientInput + ')</div>';
   }
 
+  console.log("RTM", rtm.name, "Patient gefunden:", patient.id, "suggestedResources:", patient.suggestedResources);
+
+  // Debug: RTM-Zuordnungen prüfen
+  console.log("Debug RTM-Zuordnungen für Patient", patient.id);
+  console.log("- patient.rtm Array:", patient.rtm);
+  console.log("- Aktuelles RTM:", rtm.name, "rtmType:", rtm.rtmType);
+  console.log("- RTM Status:", rtm.status);
+  console.log("- RTM patientInput:", rtm.patientInput);
+
   // Disposition-Status aktualisieren (zentrale Funktion aus render_patients.js)
   const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
   const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
   if (typeof updatePatientDispositionStatus === 'function') {
+    console.log("Calling updatePatientDispositionStatus...");
     updatePatientDispositionStatus(patient, trupps, rtms);
+    console.log("Disposition status after update:", patient.dispositionStatus);
   }
 
   // Hilfsfunktion für Ressourcen-Kürzel
@@ -295,13 +304,6 @@ ${(() => {
     </tbody>
   </table>
   ${dispositionSymbols}
-
-  <button
-    class="meldung-btn edit-info-btn"
-    onclick="openEditModal(${patient.id})"
-  >
-    ✏️ Patientendaten bearbeiten
-  </button>
 </div>
   `;
 })()}
@@ -449,94 +451,196 @@ cards.forEach(el => {
 });
 }
 
-function formatTime(ms) {
-  const d = new Date(ms);
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+// Kontextmenü anzeigen
+function showRTMContextMenu(event, rtmIndex, patientId) {
+  const existingMenu = document.getElementById('rtmContextMenu');
+  if (existingMenu) {
+    existingMenu.remove();
+  }
+
+  const menu = document.createElement('ul');
+  menu.id = 'rtmContextMenu';
+  menu.className = 'context-menu';
+  
+  // Patientenspezifische Optionen nur anzeigen wenn Patient zugewiesen
+  const hasPatient = patientId && [3, 4, 7, 8].includes(rtms[rtmIndex].status);
+  
+  let menuHTML = '';
+  
+  if (hasPatient) {
+    menuHTML += `
+      <li><button onclick="transportPatient(${patientId}); hideRTMContextMenu()">Transport in KH</button></li>
+      <li><button onclick="dischargePatient(${patientId}); hideRTMContextMenu()">Entlassen</button></li>
+      <li class="context-menu-separator"></li>
+      <li><button onclick="promptAddEntry(${patientId}); hideRTMContextMenu()">Eintrag hinzufügen</button></li>
+      <li><button onclick="openEditModal(${patientId}); hideRTMContextMenu()">Patientendaten bearbeiten</button></li>
+      <li class="context-menu-separator"></li>
+      <li><button onclick="openTruppAssignmentModalForRTM(${patientId}); hideRTMContextMenu()">Trupp disponieren</button></li>
+      <li><button onclick="openRtmModal(${patientId}); hideRTMContextMenu()">RTM disponieren</button></li>
+      <li class="context-menu-separator"></li>`;
+  }
+  
+  // Name ändern immer verfügbar
+  menuHTML += `<li><button onclick="openRTMNameChangeModal(${rtmIndex}); hideRTMContextMenu()">Name ändern</button></li>`;
+  
+  menu.innerHTML = menuHTML;
+
+  // Position berechnen
+  const x = event.clientX;
+  const y = event.clientY;
+  
+  document.body.appendChild(menu);
+  
+  // Menü positionieren
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+  menu.style.display = 'block';
+
+  // Sicherstellen, dass das Menü im Viewport bleibt
+  const rect = menu.getBoundingClientRect();
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  if (rect.right > viewportWidth) {
+    menu.style.left = (x - rect.width) + 'px';
+  }
+  if (rect.bottom > viewportHeight) {
+    menu.style.top = (y - rect.height) + 'px';
+  }
+
+  // Klick außerhalb schließt das Menü
+  setTimeout(() => {
+    document.addEventListener('click', hideRTMContextMenu, { once: true });
+  }, 10);
 }
 
-/**
- * Schaltet den Status einer Disposition (dispatched/required) um
- * @param {number} patientId - ID des Patienten
- * @param {string} resource - Name der Ressource
- */
-function toggleDispositionStatus(patientId, resource) {
-  // Alle Patienten aus localStorage abrufen
+function hideRTMContextMenu() {
+  const menu = document.getElementById('rtmContextMenu');
+  if (menu) {
+    menu.remove();
+  }
+}
+
+function openTruppAssignmentModalForRTM(patientId) {
+  // Hier könntest du eine spezielle Modal für Trupp-Zuordnung öffnen
+  // Für jetzt verwenden wir die Patient-Seiten-Funktionalität
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
-  
-  // Den entsprechenden Patienten finden
   const patient = patients.find(p => p.id === patientId);
   if (!patient) return;
   
-  // Disposition Status initialisieren falls nicht vorhanden
-  if (!patient.dispositionStatus) {
-    patient.dispositionStatus = {};
+  const truppName = prompt("Trupp disponieren:");
+  if (!truppName || !truppName.trim()) return;
+  
+  // Trupp hinzufügen
+  if (!Array.isArray(patient.team)) patient.team = [];
+  patient.team.push(truppName.trim());
+  
+  // Patient-Historie aktualisieren
+  if (!patient.history) patient.history = [];
+  const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  patient.history.push(`${timeStr} Trupp ${truppName.trim()} disponiert`);
+  
+  // Status auf disponiert setzen falls noch gemeldet
+  if (patient.status === "gemeldet") {
+    patient.status = "disponiert";
+    patient.history.push(`${timeStr} Status: disponiert`);
   }
   
-  // Status umschalten
-  const isCurrentlyDispatched = patient.dispositionStatus[resource] === 'dispatched';
-  if (isCurrentlyDispatched) {
-    delete patient.dispositionStatus[resource]; // 'required' ist der Standard
-  } else {
-    patient.dispositionStatus[resource] = 'dispatched';
-  }
-  
-  // Patienten-Daten zurück in localStorage speichern
   localStorage.setItem("patients", JSON.stringify(patients));
   
-  // Event für Aktualisierung auslösen
-  window.dispatchEvent(
-    new StorageEvent("storage", {
-      key: "patients",
-      newValue: JSON.stringify(patients),
-    })
-  );
-
-  // RTM-Karten neu rendern
-  renderRTMs();
+  // Storage-Event auslösen
+  window.dispatchEvent(new StorageEvent("storage", {
+    key: "patients",
+    newValue: JSON.stringify(patients),
+  }));
+  
+  // Trupp-Tracker aktualisieren
+  const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+  const trupp = trupps.find(t => t.name === truppName.trim());
+  if (trupp) {
+    const now = Date.now();
+    trupp.status = 3;
+    trupp.patientInput = patientId;
+    trupp.patientStart = now;
+    trupp.currentEinsatzStart = now;
+    trupp.currentPauseStart = null;
+    
+    if (!trupp.history) trupp.history = [];
+    trupp.history.push(`${timeStr} Status: 3`);
+    
+    localStorage.setItem("trupps", JSON.stringify(trupps));
+    window.dispatchEvent(new StorageEvent("storage", {
+      key: "trupps",
+      newValue: JSON.stringify(trupps),
+    }));
+  }
 }
 
-/**
- * Schaltet die Ignorierung einer Disposition um (gelber Hintergrund)
- * @param {Event} event - Das Kontextmenü-Event
- * @param {number} patientId - ID des Patienten
- * @param {string} resource - Name der Ressource
- */
-function toggleDispositionIgnore(event, patientId, resource) {
-  event.preventDefault(); // Verhindert das Kontextmenü
+// Add after openTruppAssignmentModalForRTM function
+function openRTMNameChangeModal(rtmIndex) {
+  const rtm = rtms[rtmIndex];
+  if (!rtm) return;
   
-  // Alle Patienten aus localStorage abrufen
-  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  // Store the RTM index for editing
+  window.editingRTMIndex = rtmIndex;
+  window.editingRTMMode = true;
   
-  // Den entsprechenden Patienten finden
-  const patient = patients.find(p => p.id === patientId);
-  if (!patient) return;
+  // Parse current name to populate the modal
+  const currentName = rtm.name;
   
-  // Disposition Status initialisieren falls nicht vorhanden
-  if (!patient.dispositionStatus) {
-    patient.dispositionStatus = {};
+  // Try to parse the current name to extract components
+  const match = currentName.match(/^(.*?)\s+(\d{2})-(\d{2})-(\d{2})$/) || 
+                currentName.match(/^(.*?)\s+(.+)$/);
+  
+  if (match && match.length >= 4) {
+    // Standard format with three numbers
+    const prefix = match[1].trim();
+    const part1 = match[2];
+    const part2 = match[3];
+    const part3 = match[4];
+    
+    // Set prefix
+    const prefixSelect = document.getElementById('rtmPrefix');
+    const prefixMap = {
+      'Florian Kiel': 'florian',
+      'Sama Kiel': 'sama',
+      'Johannes Kiel': 'johannes',
+      'Akkon Kiel': 'akkon',
+      'Rotkreuz Kiel': 'rotkreuz',
+      'Pelikan Kiel': 'pelikan',
+      'Christoph': 'christoph',
+      'SAR': 'sar'
+    };
+    
+    const prefixValue = prefixMap[prefix] || 'florian';
+    prefixSelect.value = prefixValue;
+    
+    // Handle prefix change to show correct input fields
+    handlePrefixChange();
+    
+    // Set the number parts
+    document.getElementById('rtmPart1').value = part1;
+    document.getElementById('rtmPart2').value = part2;
+    document.getElementById('rtmPart3').value = part3;
+  } else if (match && match.length >= 2) {
+    // Special format (Christoph/SAR)
+    const prefix = match[1].trim();
+    const specialPart = match[2];
+    
+    const prefixMap = {
+      'Christoph': 'christoph',
+      'SAR': 'sar'
+    };
+    
+    const prefixValue = prefixMap[prefix] || 'christoph';
+    document.getElementById('rtmPrefix').value = prefixValue;
+    
+    handlePrefixChange();
+    
+    document.getElementById('rtmSpecialPart').value = specialPart;
   }
   
-  // Ignore-Status umschalten
-  const ignoreKey = resource + '_ignored';
-  const isCurrentlyIgnored = patient.dispositionStatus[ignoreKey] === true;
-  
-  if (isCurrentlyIgnored) {
-    delete patient.dispositionStatus[ignoreKey];
-  } else {
-    patient.dispositionStatus[ignoreKey] = true;
-  }
-  
-  // Patienten-Daten zurück in localStorage speichern
-  localStorage.setItem("patients", JSON.stringify(patients));
-  
-  // Event für Aktualisierung auslösen
-  window.dispatchEvent(
-    new StorageEvent("storage", {
-      key: "patients",
-      newValue: JSON.stringify(patients),
-    })
-  );
-
-  // RTM-Karten neu rendern
-  renderRTMs();
+  updateRTMPreview();
+  document.getElementById('rtmCreationModal').style.display = 'flex';
 }
+

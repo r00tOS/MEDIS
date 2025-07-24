@@ -39,6 +39,9 @@ function getResourceAbbreviation(resource) {
 function updatePatientDispositionStatus(patient, trupps, rtms) {
   if (!patient.suggestedResources || !Array.isArray(patient.suggestedResources)) return;
   
+  console.log("DEBUG: updatePatientDispositionStatus für Patient", patient.id);
+  console.log("- suggestedResources:", patient.suggestedResources);
+  
   if (!patient.dispositionStatus) {
     patient.dispositionStatus = {};
   }
@@ -47,34 +50,57 @@ function updatePatientDispositionStatus(patient, trupps, rtms) {
   const assignedTrupps = trupps.filter(t => t.patientInput === patient.id && [3, 4, 7, 8].includes(t.status));
   const assignedRTMs = rtms.filter(r => (r.patientInput === patient.id || r.patientInput === String(patient.id)) && [3, 4, 7, 8].includes(r.status));
 
+  // ZUSÄTZLICH: RTMs auch aus patient.rtm Array berücksichtigen
+  const patientRTMNames = Array.isArray(patient.rtm) ? patient.rtm : [];
+  const additionalRTMs = rtms.filter(r => patientRTMNames.includes(r.name) && [3, 4, 7, 8].includes(r.status));
+  
+  // Kombiniere beide RTM-Listen
+  const allAssignedRTMs = [...assignedRTMs];
+  additionalRTMs.forEach(rtm => {
+    if (!allAssignedRTMs.find(r => r.name === rtm.name)) {
+      allAssignedRTMs.push(rtm);
+    }
+  });
+
+  console.log("- assignedTrupps:", assignedTrupps.map(t => t.name));
+  console.log("- assignedRTMs:", assignedRTMs.map(r => `${r.name} (Type: ${r.rtmType}, Status: ${r.status})`));
+  console.log("- patientRTMNames:", patientRTMNames);
+  console.log("- additionalRTMs:", additionalRTMs.map(r => `${r.name} (Type: ${r.rtmType}, Status: ${r.status})`));
+  console.log("- allAssignedRTMs:", allAssignedRTMs.map(r => `${r.name} (Type: ${r.rtmType}, Status: ${r.status})`));
+
   // Prüfe NA/NEF-Konstellation vorab
   const hasNA = patient.suggestedResources.includes('UHS-Notarzt oder NEF');
   const hasNEF = patient.suggestedResources.includes('NEF');
-  const nefRTMs = assignedRTMs.filter(rtm => rtm.rtmType === 82 || rtm.rtmType === 'RTH');
+  const nefRTMs = allAssignedRTMs.filter(rtm => rtm.rtmType === 82 || rtm.rtmType === 'RTH');
 
   // Für jede Ressource prüfen
   patient.suggestedResources.forEach(resource => {
+    console.log(`- Prüfe Ressource: ${resource}`);
     let shouldDispatch = false;
 
     // 1. Trupp-Logik
     if (resource === 'Trupp' && assignedTrupps.length > 0) {
       shouldDispatch = true;
+      console.log(`  -> Trupp dispatched (${assignedTrupps.length} Trupps)`);
     }
 
-    // 2. RTM-Logik
-    if (resource === 'RTM' && assignedRTMs.length > 0) {
+    // 2. RTM-Logik (erweitert)
+    if (resource === 'RTM' && allAssignedRTMs.length > 0) {
       shouldDispatch = true;
+      console.log(`  -> RTM dispatched (${allAssignedRTMs.length} RTMs)`);
     }
 
     // 3. RTM-Type-spezifische Disposition-Status-Setzung
     // ALLE RTMs durchgehen, nicht nur das erste
-    assignedRTMs.forEach(assignedRTM => {
+    allAssignedRTMs.forEach(assignedRTM => {
       if (assignedRTM.rtmType) {
         const rtmType = assignedRTM.rtmType;
+        console.log(`  -> Prüfe RTM ${assignedRTM.name} mit Type ${rtmType} für Ressource ${resource}`);
         
         // RTW und NEF für Typ 80 und 81
         if ((rtmType === 80 || rtmType === 81) && (resource === 'RTW' || resource === 'NEF' || resource === 'UHS-Notarzt oder NEF')) {
           shouldDispatch = true;
+          console.log(`    -> RTM Type ${rtmType} erfüllt ${resource}`);
         }
         // Nur NEF für Typ 82 - ABER spezielle NA/NEF-Behandlung
         if (rtmType === 82) {
@@ -82,23 +108,27 @@ function updatePatientDispositionStatus(patient, trupps, rtms) {
             // Beide vorhanden: nur NEF dispatched, NA nicht
             if (resource === 'NEF') {
               shouldDispatch = true;
+              console.log(`    -> RTM Type 82 erfüllt NEF (beide NA+NEF vorhanden)`);
             }
             // NA explizit NICHT dispatched setzen
           } else if (hasNA && !hasNEF) {
             // Nur NA vorhanden: NA dispatched
             if (resource === 'UHS-Notarzt oder NEF') {
               shouldDispatch = true;
+              console.log(`    -> RTM Type 82 erfüllt UHS-Notarzt oder NEF (nur NA vorhanden)`);
             }
           } else if (!hasNA && hasNEF) {
             // Nur NEF vorhanden: NEF dispatched
             if (resource === 'NEF') {
               shouldDispatch = true;
+              console.log(`    -> RTM Type 82 erfüllt NEF (nur NEF vorhanden)`);
             }
           }
         }
         // Nur RTW für Typ 83 und 89
         if ((rtmType === 83 || rtmType === 89) && resource === 'RTW') {
           shouldDispatch = true;
+          console.log(`    -> RTM Type ${rtmType} erfüllt RTW`);
         }
         // NEF für RTH - ABER spezielle NA/NEF-Behandlung
         if (rtmType === 'RTH') {
@@ -106,58 +136,37 @@ function updatePatientDispositionStatus(patient, trupps, rtms) {
             // Beide vorhanden: nur NEF dispatched, NA nicht
             if (resource === 'NEF') {
               shouldDispatch = true;
+              console.log(`    -> RTH erfüllt NEF (beide NA+NEF vorhanden)`);
             }
           } else if (hasNA && !hasNEF) {
             // Nur NA vorhanden: NA dispatched
             if (resource === 'UHS-Notarzt oder NEF') {
               shouldDispatch = true;
+              console.log(`    -> RTH erfüllt UHS-Notarzt oder NEF (nur NA vorhanden)`);
             }
           } else if (!hasNA && hasNEF) {
             // Nur NEF vorhanden: NEF dispatched
             if (resource === 'NEF') {
               shouldDispatch = true;
+              console.log(`    -> RTH erfüllt NEF (nur NEF vorhanden)`);
             }
           }
         }
+      } else {
+        console.log(`  -> RTM ${assignedRTM.name} hat keinen rtmType`);
       }
     });
-
-    // 4. "Ggf."-Ressourcen-Logik
-    // Wenn die Ressource mit "Ggf. " beginnt, prüfe ob die entsprechende Basisressource erfüllt ist
-    if (resource.startsWith('Ggf. ')) {
-      const baseResource = resource.replace('Ggf. ', '');
-      
-      // Prüfe ob die Basisressource durch RTM-Typen erfüllt wird
-      assignedRTMs.forEach(assignedRTM => {
-        if (assignedRTM.rtmType) {
-          const rtmType = assignedRTM.rtmType;
-          
-          // RTW durch Typ 80, 81, 83, 89
-          if (baseResource === 'RTW' && [80, 81, 83, 89].includes(rtmType)) {
-            shouldDispatch = true;
-          }
-          // NEF durch Typ 80, 81, 82, RTH
-          if (baseResource === 'NEF' && [80, 81, 82, 'RTH'].includes(rtmType)) {
-            shouldDispatch = true;
-          }
-          // UHS-Notarzt oder NEF durch Typ 80, 81, 82, RTH
-          if (baseResource === 'UHS-Notarzt oder NEF' && [80, 81, 82, 'RTH'].includes(rtmType)) {
-            shouldDispatch = true;
-          }
-        }
-      });
-      
-      // Auch Trupp für "Ggf. Trupp" prüfen
-      if (baseResource === 'Trupp' && assignedTrupps.length > 0) {
-        shouldDispatch = true;
-      }
-    }
 
     // Status setzen
     if (shouldDispatch) {
       patient.dispositionStatus[resource] = 'dispatched';
+      console.log(`  -> ${resource} auf 'dispatched' gesetzt`);
+    } else {
+      console.log(`  -> ${resource} bleibt 'required'`);
     }
   });
+
+  console.log("Final disposition status:", patient.dispositionStatus);
 }
 
 /**
@@ -483,8 +492,11 @@ ${patient.remarks || "–"}
           }</span>`
       )
       .join("<br>") || "–"
-  }<br>
-  ${truppSelect}
+  }
+  <br>
+  <button class="meldung-btn" onclick="openTruppDispositionModal(${patient.id})" ${isFinal ? "disabled" : ""}>
+    Trupp disponieren
+  </button>
 </div>
 
 <div style="min-width:200px;">
@@ -501,51 +513,15 @@ ${patient.remarks || "–"}
       )
       .join("<br>") || "–"
   }<br>
-  <button class="meldung-btn" onclick="assignResource(${patient.id}, 'rtm')" ${
+  <button class="meldung-btn" onclick="openRtmModal(${patient.id})" ${
       isFinal ? "disabled" : ""
     }>
     RTM disponieren
   </button>
 </div>
 
-<div style="min-width:240px;">
-<strong>Nachforderung:</strong>
-<div style="display:flex; gap:8px; align-items:flex-start; margin-top:4px;">
-${!["Entlassen", "Transport in KH"].includes(patient.status) ? `
-  <div style="flex:1;">
-    ${requestBox}
-  </div>
-` : ''}
-<div>
-${dispoButtons}
-</div>
-</div>
-</div>
 
-<!-- Dispositionssymbole generieren - vereinfacht für Debugging -->
-<div class="disposition-symbols" style="display: flex; flex-direction: column; gap: 4px; margin: 8px 0;">
-  <span style="font-weight: bold; margin-bottom: 4px;">Dispositionsvorschlag:</span>
-  <div style="display: flex; flex-wrap: wrap; gap: 4px;">
-    ${
-      patient.suggestedResources && Array.isArray(patient.suggestedResources) && patient.suggestedResources.length > 0
-        ? patient.suggestedResources
-            .map((resource) => {
-              const abbrev = getResourceAbbreviation(resource);
-              const isDispatched = patient.dispositionStatus[resource] === 'dispatched';
-              const isIgnored = patient.dispositionStatus[resource + '_ignored'] === true;
-              
-              return `<span class="disposition-symbol ${isDispatched ? 'dispatched' : 'required'} ${isIgnored ? 'ignored' : ''}"
-                       style="display: inline-block; padding: 2px 6px; margin: 0; border: 1px solid #ccc; border-radius: 3px; cursor: pointer; white-space: nowrap;
-                       ${isDispatched || isIgnored ? '' : ' animation: blink 1.5s infinite;'}"
-                       onclick="toggleDispositionStatus(${patient.id}, '${resource.replace(/'/g, "\\'")}')"
-                       oncontextmenu="toggleDispositionIgnore(event, ${patient.id}, '${resource.replace(/'/g, "\\'")}')"
-                       title="${resource}">
-                       ${abbrev}</span>`;
-            })
-            .join("")
-        : '<div style="margin: 8px 0; color: #666; font-style: italic;">Keine Dispositionsvorschläge verfügbar</div>'
-    }
-  </div>
+</div>
 </div>
 
 `;
@@ -581,3 +557,46 @@ ${dispoButtons}
   });
   window.scrollTo(0, scrollY); 
 }
+
+/**
+ * Aktualisiert die Live-Timer (Einsatzdauer etc.) auf allen Patientenkarten.
+ * Diese Funktion wird regelmäßig per setInterval aufgerufen.
+ */
+function updateLiveTimers() {
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  patients.forEach(patient => {
+    const card = document.querySelector(`.patient-card[data-id="${patient.id}"]`);
+    if (!card) return;
+
+    // Einsatzdauer
+    const einsatzdauerEl = card.querySelector('.timer.einsatzdauer');
+    if (einsatzdauerEl && patient.createdAt) {
+      const ms = Date.now() - patient.createdAt;
+      einsatzdauerEl.textContent = formatMS(ms);
+    }
+
+    // Dispositionsdauer
+    const dispoEl = card.querySelector('.timer.dispositionsdauer');
+    if (dispoEl && patient.statusTimestamps && patient.statusTimestamps.disponiert) {
+      const ms = Date.now() - patient.statusTimestamps.disponiert;
+      dispoEl.textContent = formatMS(ms);
+    }
+
+    // Behandlungsdauer
+    const behdlEl = card.querySelector('.timer.behandlungsdauer');
+    if (behdlEl && patient.statusTimestamps && patient.statusTimestamps['in Behandlung']) {
+      const ms = Date.now() - patient.statusTimestamps['in Behandlung'];
+      behdlEl.textContent = formatMS(ms);
+    }
+
+    // Verlegedauer UHS
+    const verlegeEl = card.querySelector('.timer.verlegedauerUHS');
+    if (verlegeEl && patient.statusTimestamps && patient.statusTimestamps['verlegt in UHS']) {
+      const ms = Date.now() - patient.statusTimestamps['verlegt in UHS'];
+      verlegeEl.textContent = formatMS(ms);
+    }
+  });
+}
+
+// Stelle sicher, dass die Timer-Funktion aufgerufen wird
+setInterval(updateLiveTimers, 60000); // Update jede Minute
