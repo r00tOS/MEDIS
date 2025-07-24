@@ -810,12 +810,25 @@ function populateExistingPatients() {
   
   activePatients.forEach(patient => {
     const assignedTrupps = Array.isArray(patient.team) ? patient.team.join(", ") : "–";
+    const assignedRTMs = Array.isArray(patient.rtm) ? patient.rtm.join(", ") : "–";
     const diagnosis = patient.diagnosis || "–";
     const location = patient.location || "–";
     
+    // Kombinierte Anzeige: Trupps und RTMs
+    let resourcesText = "";
+    if (assignedTrupps !== "–" && assignedRTMs !== "–") {
+      resourcesText = `${assignedTrupps} | ${assignedRTMs}`;
+    } else if (assignedTrupps !== "–") {
+      resourcesText = assignedTrupps;
+    } else if (assignedRTMs !== "–") {
+      resourcesText = assignedRTMs;
+    } else {
+      resourcesText = "–";
+    }
+    
     const option = document.createElement('option');
     option.value = patient.id;
-    option.textContent = `Patient ${patient.id} - ${assignedTrupps} - ${diagnosis} - ${location}`;
+    option.textContent = `Patient ${patient.id} - ${resourcesText} - ${diagnosis} - ${location}`;
     select.appendChild(option);
   });
 }
@@ -823,11 +836,18 @@ function populateExistingPatients() {
 // Zuordnung bestätigen
 function confirmPatientAssignment() {
   const assignmentType = document.querySelector('input[name="assignmentType"]:checked').value;
-  const trupp = trupps[_pendingTruppIndexForPatient];
+  
+  // Prüfen ob wir mit Trupps oder RTMs arbeiten
+  const isRTMMode = typeof rtms !== 'undefined';
+  const isTruppMode = typeof trupps !== 'undefined';
   
   if (assignmentType === 'new') {
     // Neuen Patienten erstellen (bisherige Logik)
-    createNewPatientForTrupp(_pendingTruppIndexForPatient);
+    if (isRTMMode) {
+      createNewPatientForRTM(_pendingTruppIndexForPatient);
+    } else if (isTruppMode) {
+      createNewPatientForTrupp(_pendingTruppIndexForPatient);
+    }
   } else {
     // Bestehendem Patienten zuordnen
     const selectedPatientId = parseInt(document.getElementById('existingPatientSelect').value);
@@ -836,13 +856,133 @@ function confirmPatientAssignment() {
       return;
     }
     
-    assignTruppToExistingPatient(_pendingTruppIndexForPatient, selectedPatientId);
+    if (isRTMMode) {
+      assignRTMToExistingPatient(_pendingTruppIndexForPatient, selectedPatientId);
+    } else if (isTruppMode) {
+      assignTruppToExistingPatient(_pendingTruppIndexForPatient, selectedPatientId);
+    }
   }
   
   closePatientAssignmentModal();
 }
 
-// Neue Funktion: Trupp einem bestehenden Patienten zuordnen
+// Neue Funktion: RTM einem bestehenden Patienten zuordnen
+function assignRTMToExistingPatient(rtmIndex, patientId) {
+  const rtm = rtms[rtmIndex];
+  const now = Date.now();
+  const timeStr = new Date(now).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  // 1) RTM-Status und -Daten setzen
+  rtm.status = 3;
+  rtm.patientInput = patientId;
+  rtm.patientStart = now;
+  rtm.currentEinsatzStart = now;
+  rtm.currentPauseStart = null;
+  rtm.lastStatusChange = now;
+
+  // 2) RTM-Historie ergänzen
+  if (!rtm.history) rtm.history = [];
+  rtm.history.push(`${timeStr} Status: 3`);
+
+  // 3) Patient-Daten aktualisieren
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  const patient = patients.find(p => p.id === patientId);
+  
+  if (patient) {
+    // RTM nur zum RTM-Array hinzufügen, NICHT zum Team-Array
+    if (!Array.isArray(patient.rtm)) patient.rtm = [];
+    patient.rtm.push(rtm.name);   // Nur RTM-spezifische Zuordnung
+    
+    // Patient-Historie ergänzen
+    if (!patient.history) patient.history = [];
+    patient.history.push(`${timeStr} RTM ${rtm.name} zugeordnet`);
+    
+    // Status auf "disponiert" setzen, falls noch "gemeldet"
+    if (patient.status === "gemeldet") {
+      patient.status = "disponiert";
+      patient.history.push(`${timeStr} Status: disponiert`);
+    }
+    
+    localStorage.setItem("patients", JSON.stringify(patients));
+    
+    // Storage-Event für Patient-UI
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "patients",
+        newValue: JSON.stringify(patients),
+      })
+    );
+  }
+
+  // 4) RTM-Daten speichern und UI aktualisieren
+  saveRTMs();
+  renderRTMs();
+}
+
+// Neue Funktion: Neuen Patienten für RTM erstellen
+function createNewPatientForRTM(rtmIndex) {
+  const rtm = rtms[rtmIndex];
+  const letzteOrt = rtm.currentOrt || rtm.einsatzHistorie.at(-1)?.ort || "";
+  const now = Date.now();
+  const timeStr = new Date(now).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  // Erst den Patienten erstellen OHNE RTM-Zuordnung
+  const pid = newPatient({
+    location: letzteOrt,
+    initialStatus: "disponiert",
+  });
+
+  // Dann RTM-Daten setzen (wie bei bestehender Zuordnung)
+  rtm.status = 3;
+  rtm.patientInput = pid;
+  rtm.patientStart = now;
+  rtm.currentEinsatzStart = now;
+  rtm.currentPauseStart = null;
+  rtm.lastStatusChange = now;
+
+  // RTM-Historie ergänzen
+  if (!rtm.history) rtm.history = [];
+  rtm.history.push(`${timeStr} Status: 3`);
+
+  // Jetzt den Patienten aktualisieren (wie beim "RTM disponieren" Button)
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  const patient = patients.find(p => p.id === pid);
+  
+  if (patient) {
+    // RTM zum RTM-Array hinzufügen
+    if (!Array.isArray(patient.rtm)) patient.rtm = [];
+    patient.rtm.push(rtm.name);
+    
+    // Patient-Historie ergänzen
+    if (!patient.history) patient.history = [];
+    patient.history.push(`${timeStr} RTM ${rtm.name} disponiert`);
+    
+    // Patientendaten speichern
+    localStorage.setItem("patients", JSON.stringify(patients));
+    
+    // Storage-Event für Patient-UI
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "patients",
+        newValue: JSON.stringify(patients),
+      })
+    );
+  }
+
+  // RTM-Daten speichern
+  saveRTMs();
+  renderRTMs();
+
+  // Edit-Modal für neuen Patienten öffnen
+  openEditModal(pid);
+}
+
 function assignTruppToExistingPatient(truppIndex, patientId) {
   const trupp = trupps[truppIndex];
   const now = Date.now();
@@ -868,7 +1008,7 @@ function assignTruppToExistingPatient(truppIndex, patientId) {
   const patient = patients.find(p => p.id === patientId);
   
   if (patient) {
-    // Trupp zum Team hinzufügen
+    // Trupp zum Team-Array hinzufügen
     if (!Array.isArray(patient.team)) patient.team = [];
     patient.team.push(trupp.name);
     
@@ -898,24 +1038,22 @@ function assignTruppToExistingPatient(truppIndex, patientId) {
   renderTrupps();
 }
 
-// Neue Funktion: Neuen Patienten für Trupp erstellen (bisherige Logik)
 function createNewPatientForTrupp(truppIndex) {
   const trupp = trupps[truppIndex];
-  const letzteOrt = trupp.currentOrt || trupp.einsatzHistorie.at(-1)?.ort || "";
+  const letzteOrt = trupp.currentOrt || (trupp.einsatzHistorie && trupp.einsatzHistorie.length > 0 ? trupp.einsatzHistorie.at(-1).ort : "") || "";
   const now = Date.now();
   const timeStr = new Date(now).toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
   });
 
-  // Neuen Patienten erstellen
+  // Erst den Patienten erstellen OHNE Trupp-Zuordnung
   const pid = newPatient({
-    team: [trupp.name],
     location: letzteOrt,
     initialStatus: "disponiert",
   });
 
-  // Trupp-Daten setzen
+  // Dann Trupp-Daten setzen (wie bei bestehender Zuordnung)
   trupp.status = 3;
   trupp.patientInput = pid;
   trupp.patientStart = now;
@@ -927,10 +1065,32 @@ function createNewPatientForTrupp(truppIndex) {
   if (!trupp.history) trupp.history = [];
   trupp.history.push(`${timeStr} Status: 3`);
 
-  // Patient-Historie ergänzen
-  addHistoryEntry(pid, `Trupp ${trupp.name} disponiert`);
+  // Jetzt den Patienten aktualisieren (wie beim "Trupp disponieren" Button)
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  const patient = patients.find(p => p.id === pid);
 
-  // Speichern und UI aktualisieren
+  if (patient) {
+    // Trupp zum Team-Array hinzufügen
+    if (!Array.isArray(patient.team)) patient.team = [];
+    patient.team.push(trupp.name);
+
+    // Patient-Historie ergänzen
+    if (!patient.history) patient.history = [];
+    patient.history.push(`${timeStr} Trupp ${trupp.name} disponiert`);
+
+    // Patientendaten speichern
+    localStorage.setItem("patients", JSON.stringify(patients));
+
+    // Storage-Event für Patient-UI
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "patients",
+        newValue: JSON.stringify(patients),
+      })
+    );
+  }
+
+  // Trupp-Daten speichern
   saveTrupps();
   renderTrupps();
 

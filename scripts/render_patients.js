@@ -1,4 +1,166 @@
 /**
+ * Hilfsfunktion für Ressourcen-Kürzel
+ */
+function getResourceAbbreviation(resource) {
+  const abbreviations = {
+    Trupp: "T",
+    RTW: "RTW",
+    RTM: "RTM",
+    "UHS-Notarzt oder NEF": "NA",
+    NEF: "NEF",
+    "First Responder": "FR",
+    "Info an ASL": "ASL",
+    "Ordnungsdienst hinzuziehen": "OD",
+    "Polizei hinzuziehen": "POL",
+    "Ggf. Ordnungsdienst hinzuziehen": "OD?",
+    "Ggf. Polizei hinzuziehen": "POL?",
+  };
+
+  // Für alle anderen "Ggf. ..." Ressourcen automatisch behandeln
+  if (resource.startsWith("Ggf. ") && !abbreviations[resource]) {
+    const baseResource = resource.replace("Ggf. ", "");
+    const baseAbbrev = abbreviations[baseResource];
+    if (baseAbbrev) {
+      return baseAbbrev + "?";
+    }
+    // Fallback: erste 3 Zeichen + ?
+    return baseResource.substring(0, 3).toUpperCase() + "?";
+  }
+
+  return abbreviations[resource] || resource.substring(0, 3).toUpperCase();
+}
+
+/**
+ * Zentrale Funktion zur Aktualisierung der Disposition-Status für einen Patienten
+ * @param {Object} patient - Der Patientenobject
+ * @param {Array} trupps - Array aller Trupps
+ * @param {Array} rtms - Array aller RTMs
+ */
+function updatePatientDispositionStatus(patient, trupps, rtms) {
+  if (!patient.suggestedResources || !Array.isArray(patient.suggestedResources)) return;
+  
+  if (!patient.dispositionStatus) {
+    patient.dispositionStatus = {};
+  }
+
+  // Einmal alle relevanten Daten sammeln
+  const assignedTrupps = trupps.filter(t => t.patientInput === patient.id && [3, 4, 7, 8].includes(t.status));
+  const assignedRTMs = rtms.filter(r => (r.patientInput === patient.id || r.patientInput === String(patient.id)) && [3, 4, 7, 8].includes(r.status));
+
+  // Prüfe NA/NEF-Konstellation vorab
+  const hasNA = patient.suggestedResources.includes('UHS-Notarzt oder NEF');
+  const hasNEF = patient.suggestedResources.includes('NEF');
+  const nefRTMs = assignedRTMs.filter(rtm => rtm.rtmType === 82 || rtm.rtmType === 'RTH');
+
+  // Für jede Ressource prüfen
+  patient.suggestedResources.forEach(resource => {
+    let shouldDispatch = false;
+
+    // 1. Trupp-Logik
+    if (resource === 'Trupp' && assignedTrupps.length > 0) {
+      shouldDispatch = true;
+    }
+
+    // 2. RTM-Logik
+    if (resource === 'RTM' && assignedRTMs.length > 0) {
+      shouldDispatch = true;
+    }
+
+    // 3. RTM-Type-spezifische Disposition-Status-Setzung
+    // ALLE RTMs durchgehen, nicht nur das erste
+    assignedRTMs.forEach(assignedRTM => {
+      if (assignedRTM.rtmType) {
+        const rtmType = assignedRTM.rtmType;
+        
+        // RTW und NEF für Typ 80 und 81
+        if ((rtmType === 80 || rtmType === 81) && (resource === 'RTW' || resource === 'NEF' || resource === 'UHS-Notarzt oder NEF')) {
+          shouldDispatch = true;
+        }
+        // Nur NEF für Typ 82 - ABER spezielle NA/NEF-Behandlung
+        if (rtmType === 82) {
+          if (hasNA && hasNEF) {
+            // Beide vorhanden: nur NEF dispatched, NA nicht
+            if (resource === 'NEF') {
+              shouldDispatch = true;
+            }
+            // NA explizit NICHT dispatched setzen
+          } else if (hasNA && !hasNEF) {
+            // Nur NA vorhanden: NA dispatched
+            if (resource === 'UHS-Notarzt oder NEF') {
+              shouldDispatch = true;
+            }
+          } else if (!hasNA && hasNEF) {
+            // Nur NEF vorhanden: NEF dispatched
+            if (resource === 'NEF') {
+              shouldDispatch = true;
+            }
+          }
+        }
+        // Nur RTW für Typ 83 und 89
+        if ((rtmType === 83 || rtmType === 89) && resource === 'RTW') {
+          shouldDispatch = true;
+        }
+        // NEF für RTH - ABER spezielle NA/NEF-Behandlung
+        if (rtmType === 'RTH') {
+          if (hasNA && hasNEF) {
+            // Beide vorhanden: nur NEF dispatched, NA nicht
+            if (resource === 'NEF') {
+              shouldDispatch = true;
+            }
+          } else if (hasNA && !hasNEF) {
+            // Nur NA vorhanden: NA dispatched
+            if (resource === 'UHS-Notarzt oder NEF') {
+              shouldDispatch = true;
+            }
+          } else if (!hasNA && hasNEF) {
+            // Nur NEF vorhanden: NEF dispatched
+            if (resource === 'NEF') {
+              shouldDispatch = true;
+            }
+          }
+        }
+      }
+    });
+
+    // 4. "Ggf."-Ressourcen-Logik
+    // Wenn die Ressource mit "Ggf. " beginnt, prüfe ob die entsprechende Basisressource erfüllt ist
+    if (resource.startsWith('Ggf. ')) {
+      const baseResource = resource.replace('Ggf. ', '');
+      
+      // Prüfe ob die Basisressource durch RTM-Typen erfüllt wird
+      assignedRTMs.forEach(assignedRTM => {
+        if (assignedRTM.rtmType) {
+          const rtmType = assignedRTM.rtmType;
+          
+          // RTW durch Typ 80, 81, 83, 89
+          if (baseResource === 'RTW' && [80, 81, 83, 89].includes(rtmType)) {
+            shouldDispatch = true;
+          }
+          // NEF durch Typ 80, 81, 82, RTH
+          if (baseResource === 'NEF' && [80, 81, 82, 'RTH'].includes(rtmType)) {
+            shouldDispatch = true;
+          }
+          // UHS-Notarzt oder NEF durch Typ 80, 81, 82, RTH
+          if (baseResource === 'UHS-Notarzt oder NEF' && [80, 81, 82, 'RTH'].includes(rtmType)) {
+            shouldDispatch = true;
+          }
+        }
+      });
+      
+      // Auch Trupp für "Ggf. Trupp" prüfen
+      if (baseResource === 'Trupp' && assignedTrupps.length > 0) {
+        shouldDispatch = true;
+      }
+    }
+
+    // Status setzen
+    if (shouldDispatch) {
+      patient.dispositionStatus[resource] = 'dispatched';
+    }
+  });
+}
+
+/**
  * Renders and updates the patient cards UI based on the current patient and team data
  * stored in localStorage. Patients are sorted and displayed in different sections
  * according to their status. The function also ensures data consistency, initializes
@@ -10,7 +172,13 @@ function loadPatients(highlightId) {
   if (!document.getElementById("activePatients")) return;
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
   const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+  const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
   const scrollY = window.scrollY;
+
+  // Disposition-Status für alle Patienten aktualisieren
+  patients.forEach(patient => {
+    updatePatientDispositionStatus(patient, trupps, rtms);
+  });
 
   patients.forEach((p) => {
     // 1) createdAt sicher als Zahl
@@ -352,6 +520,32 @@ ${!["Entlassen", "Transport in KH"].includes(patient.status) ? `
 ${dispoButtons}
 </div>
 </div>
+</div>
+
+<!-- Dispositionssymbole generieren - vereinfacht für Debugging -->
+<div class="disposition-symbols" style="display: flex; flex-direction: column; gap: 4px; margin: 8px 0;">
+  <span style="font-weight: bold; margin-bottom: 4px;">Dispositionsvorschlag:</span>
+  <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+    ${
+      patient.suggestedResources && Array.isArray(patient.suggestedResources) && patient.suggestedResources.length > 0
+        ? patient.suggestedResources
+            .map((resource) => {
+              const abbrev = getResourceAbbreviation(resource);
+              const isDispatched = patient.dispositionStatus[resource] === 'dispatched';
+              const isIgnored = patient.dispositionStatus[resource + '_ignored'] === true;
+              
+              return `<span class="disposition-symbol ${isDispatched ? 'dispatched' : 'required'} ${isIgnored ? 'ignored' : ''}"
+                       style="display: inline-block; padding: 2px 6px; margin: 0; border: 1px solid #ccc; border-radius: 3px; cursor: pointer; white-space: nowrap;
+                       ${isDispatched || isIgnored ? '' : ' animation: blink 1.5s infinite;'}"
+                       onclick="toggleDispositionStatus(${patient.id}, '${resource.replace(/'/g, "\\'")}')"
+                       oncontextmenu="toggleDispositionIgnore(event, ${patient.id}, '${resource.replace(/'/g, "\\'")}')"
+                       title="${resource}">
+                       ${abbrev}</span>`;
+            })
+            .join("")
+        : '<div style="margin: 8px 0; color: #666; font-style: italic;">Keine Dispositionsvorschläge verfügbar</div>'
+    }
+  </div>
 </div>
 
 `;

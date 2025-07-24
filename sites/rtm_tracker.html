@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RTM-Überwachung</title>
+    <link rel="stylesheet" href="../styles/main.css" />
+    <link rel="stylesheet" href="../styles/rtm.css" />
+    <link rel="stylesheet" href="../styles/patient.css" />
+    <script src="../scripts/categories.js"></script>
+    <script src="../scripts/logic_patient.js"></script>
+    <script src="../scripts/logic_rtm.js"></script>
+    <script src="../scripts/logic_trupp.js"></script>
+    <script src="../scripts/render_trupps.js"></script>
+    <script src="../scripts/render_rtm.js"></script>
+    <script src="../scripts/render_patients.js"></script>
+    <script src="../scripts/status_options.js"></script>
+    <style>
+      /* RTM Input Felder: Spinner-Pfeile entfernen */
+      #rtmPart1, #rtmPart2, #rtmPart3 {
+        appearance: textfield;
+        -moz-appearance: textfield; /* Firefox */
+      }
+      
+      #rtmPart1::-webkit-outer-spin-button,
+      #rtmPart1::-webkit-inner-spin-button,
+      #rtmPart2::-webkit-outer-spin-button,
+      #rtmPart2::-webkit-inner-spin-button,
+      #rtmPart3::-webkit-outer-spin-button,
+      #rtmPart3::-webkit-inner-spin-button {
+        -webkit-appearance: none; /* Chrome, Safari, Edge */
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="../scripts/main.js"></script>
+    <script src="../scripts/keyword_modal.js"></script>
+    <div class="max-einsatz-time">
+      <label for="maxEinsatzTime">Maximale Einsatzzeit (Min.)</label>
+      <input
+        type="number"
+        id="maxEinsatzTime"
+        onchange="updateMaxEinsatzTime()"
+      />
+    </div>
+
+    <div class="button-row">
+      <button onclick="openRTMCreationModal()">RTM hinzufügen</button>
+    </div>
+
+    <div class="section">
+      <h2>Im Einsatz</h2>
+      <div id="einsatzContainer"></div>
+    </div>
+    <div class="section">
+      <h2>In Pause</h2>
+      <div id="pauseContainer"></div>
+    </div>
+    <div class="section">
+      <h2>Nicht Einsatzbereit</h2>
+      <div id="nichtContainer"></div>
+    </div>
+    <!-- RTM Creation Modal -->
+    <div id="rtmCreationModal" class="modal" style="display:none; z-index:2000">
+      <div class="modal-content">
+        <span class="close" onclick="closeRTMCreationModal()">&times;</span>
+        <h2>Neues RTM erstellen</h2>
+        
+        <!-- Präfix-Auswahl -->
+        <div style="margin: 20px 0;">
+          <label for="rtmPrefix">Präfix auswählen:</label>
+          <select id="rtmPrefix" onchange="handlePrefixChange()" style="width: 100%; padding: 8px; margin-top: 5px;">
+            <option value="florian">Florian Kiel</option>
+            <option value="sama">Sama Kiel</option>
+            <option value="johannes">Johannes Kiel</option>
+            <option value="akkon">Akkon Kiel</option>
+            <option value="rotkreuz">Rotkreuz Kiel</option>
+            <option value="pelikan">Pelikan Kiel</option>
+            <option value="christoph">Christoph</option>
+            <option value="sar">SAR</option>
+          </select>
+        </div>
+
+        <!-- Standard RTM Eingabe (3 Felder) -->
+        <div id="rtmStandardInput" class="rtm-input-row" style="display: flex; gap: 10px; align-items: center; margin: 20px 0;">
+          <input 
+            type="number" 
+            id="rtmPart1" 
+            min="0" 
+            max="99" 
+            placeholder="00"
+            style="width: 60px; text-align: center; font-size: 16px; padding: 8px;"
+            onkeypress="return isNumberKey(event)"
+            oninput="formatTwoDigit(this)"
+            onkeydown="handleRTMTabNavigation(event, 1)"
+          />
+          <span style="font-size: 18px; font-weight: bold;">-</span>
+          <input 
+            type="number" 
+            id="rtmPart2" 
+            min="0" 
+            max="99" 
+            placeholder="00"
+            style="width: 60px; text-align: center; font-size: 16px; padding: 8px;"
+            onkeypress="return isNumberKey(event)"
+            oninput="formatTwoDigit(this)"
+            onkeydown="handleRTMTabNavigation(event, 2)"
+          />
+          <span style="font-size: 18px; font-weight: bold;">-</span>
+          <input 
+            type="number" 
+            id="rtmPart3" 
+            min="0" 
+            max="99" 
+            placeholder="00"
+            style="width: 60px; text-align: center; font-size: 16px; padding: 8px;"
+            onkeypress="return isNumberKey(event)"
+            oninput="formatTwoDigit(this)"
+            onkeydown="handleRTMTabNavigation(event, 3)"
+          />
+        </div>
+
+        <!-- Spezial RTM Eingabe (1 Feld für Christoph/SAR) -->
+        <div id="rtmSpecialInput" style="display: none; margin: 20px 0;">
+          <input 
+            type="text" 
+            id="rtmSpecialPart" 
+            placeholder="Kennung eingeben..."
+            style="width: 200px; text-align: center; font-size: 16px; padding: 8px;"
+            oninput="updateRTMPreview()"
+            onkeydown="handleSpecialRTMNavigation(event)"
+          />
+        </div>
+
+        <div class="rtm-preview" style="text-align: center; margin: 15px 0; font-weight: bold; font-size: 18px;" id="rtmPreview">
+          Florian Kiel 00-00-00
+        </div>
+        <div style="text-align: right; margin-top: 20px;">
+          <button onclick="closeRTMCreationModal()">Abbrechen</button>
+          <button class="confirm-btn" onclick="confirmRTMCreation()">RTM erstellen</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function(){
+        // Nimm das im LocalStorage gespeicherte Preset, oder Default
+        const preset = localStorage.getItem('selectedPresetFile') || 'holstein.js';
+        const s = document.createElement('script');
+        s.src = `../presets/${preset}`;
+        document.head.appendChild(s);
+      })();
+
+      // === Initialize variables ===
+      let nextPatientNumber = parseInt(localStorage.getItem("nextPatientNumber"), 10) || 1;
+      let nextMaxEinsatzTime = parseInt(localStorage.getItem("nextMaxEinsatzTime"), 10) || 45;
+      
+      // Set max time input value when DOM is ready
+      document.addEventListener("DOMContentLoaded", () => {
+        const maxEinsatzTimeInput = document.getElementById("maxEinsatzTime");
+        if (maxEinsatzTimeInput) {
+          maxEinsatzTimeInput.value = nextMaxEinsatzTime;
+        }
+
+        // Initial render and start intervals
+        renderRTMs();
+        setInterval(renderRTMs, 30000);
+
+        // Update time counters every 10 seconds
+        setInterval(() => {
+          const now = Date.now();
+          const prev = JSON.stringify(rtms);
+
+          const pauseStatuses = [2, 1, 61];
+          const einsatzStatuses = [11, 3, 12, 0, 4, 7, 8];
+
+          rtms.forEach((rtm) => {
+            if (pauseStatuses.includes(rtm.status)) {
+              if (rtm.currentPauseStart) {
+                const diff = now - rtm.currentPauseStart;
+                rtm.pausenzeit = (rtm.pausenzeit || 0) + diff;
+                rtm.totalPauseTime = (rtm.totalPauseTime || 0) + diff;
+                rtm.currentPauseStart = now;
+              }
+            } else if (einsatzStatuses.includes(rtm.status)) {
+              if (rtm.currentEinsatzStart) {
+                const diff = now - rtm.currentEinsatzStart;
+                rtm.einsatzzeit = (rtm.einsatzzeit || 0) + diff;
+                rtm.currentEinsatzStart = now;
+              }
+            }
+          });
+
+          if (JSON.stringify(rtms) !== prev) {
+            saveRTMs();
+            renderRTMs();
+          }
+        }, 10000);
+      });
+
+      function updateMaxEinsatzTime() {
+        nextMaxEinsatzTime = parseInt(document.getElementById("maxEinsatzTime").value, 10) || 45;
+        localStorage.setItem("nextMaxEinsatzTime", nextMaxEinsatzTime);
+        renderRTMs();
+      }
+
+      // storage-Event
+      window.addEventListener("storage", (e) => {
+        if (e.key === "nextPatientNumber") {
+          nextPatientNumber = parseInt(e.newValue, 10) || 1;
+        }
+        if (e.key === "nextMaxEinsatzTime") {
+          nextMaxEinsatzTime = parseInt(e.newValue, 10) || 45;
+          renderRTMs();
+        }
+        if (e.key === "rtms") {
+          const latest = JSON.parse(e.newValue || "[]");
+          handleRemoteStatusChanges(rtms, latest);
+          rtms = latest;
+          renderRTMs();
+        }
+        // Auch bei Patient-Änderungen RTMs neu rendern (für Patient-Info Updates)
+        if (e.key === "patients") {
+          renderRTMs();
+        }
+      });
+
+      // === Event Listeners ===
+      
+      // Polling-Fallback alle 2s für Patient-Nummer
+      setInterval(() => {
+        const v = parseInt(localStorage.getItem("nextPatientNumber"), 10) || 1;
+        if (v !== nextPatientNumber) {
+          nextPatientNumber = v;
+        }
+      }, 2000);
+
+      // Polling-Fallback alle 5s für RTM-Daten
+      setInterval(() => {
+        const latest = JSON.parse(localStorage.getItem("rtms") || "[]");
+        if (JSON.stringify(latest) !== JSON.stringify(rtms)) {
+          handleRemoteStatusChanges(rtms, latest);
+          rtms = latest;
+          renderRTMs();
+        }
+      }, 5000);
+
+      // Zusätzlicher Polling für Patient-Daten (für Patient-Info in RTM-Karten)
+      setInterval(() => {
+        renderRTMs();
+      }, 10000);
+
+      // Helper für Statuswechsel
+      function handleRemoteStatusChanges(oldList, newList) {
+        newList.forEach((tNew) => {
+          const tOld = oldList.find((t) => t.name === tNew.name);
+          if (tOld && tOld.status !== tNew.status) {
+            if ([11, 3, 12].includes(tNew.status)) {
+              tNew.currentEinsatzStart = Date.now();
+              tNew.einsatzStartOrt = tNew.currentOrt;
+              tNew.currentPauseStart = null;
+            } else if ([2, 1, 61].includes(tNew.status)) {
+              tNew.currentPauseStart = Date.now();
+            }
+          }
+        });
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,388 @@
+/* === css/trupp.css === */
+
+/* 1. Max-Einsatzzeit-Widget ausblenden (nur patienten-Widget bleibt) */
+
+html, body {
+  /* deaktiviert Scroll Anchoring im gesamten Dokument */
+  overflow-anchor: none;
+}
+
+.max-einsatz-time {
+  display: none !important;
+}
+
+body {
+  overflow-anchor: none;
+}
+
+/* 2. Sektionen im Trupp-Tracker */
+.section {
+  margin-top: 40px;
+}
+.section h2 {
+  border-bottom: 2px solid #ccc;
+  padding-bottom: 5px;
+  color: #444;
+}
+.section div {
+  display: grid;
+ grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 16px;
+}
+
+/* 3. RTM-Cards */
+.rtm {
+  border: 2px solid #ccc;
+  padding: 10px;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  background: #fff;
+  transition: transform 0.4s ease, opacity 0.4s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.rtm.move-out {
+  transform: scale(0.9) translateX(100px);
+  opacity: 0;
+}
+.status-select { margin-left:8px; font-size:1rem; }
+.rtm.move-in,
+.rtm.move-in-active {
+  transform: none !important;
+  opacity: 1 !important;
+  transition: none !important;
+}
+.rtm.einsatz-beendet {
+  border-left: 5px solid rebeccapurple;
+  background: #fff;
+}
+
+.status-dropdown { position: relative; display: inline-block; }
+.status-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  background: white;
+  border: 1px solid #ccc;
+  display: none;
+  z-index: 10;
+}
+.status-menu.open { display: block; }
+.status-menu li {
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.status-menu li.active { font-weight: bold; }
+.status-menu li:hover { background: #eee; }
+.status-code {
+  display: inline-block;
+  border: 1px solid;
+  border-radius: 3px;
+  padding: 0.1em 0.4em;
+  margin-right: 0.5em;
+  font-weight: bold;
+  color: #333;         /* Schriftfarbe */
+  /* Hintergrund‐ und Rahmenfarbe werden jetzt inline gesetzt */
+}
+.status-menu li.active .status-code {
+  /* optional: für den aktiven Eintrag eine extra Betonung */
+  box-shadow: 0 0 2px rgba(0,0,0,0.2);
+}
+
+/* 4. Statusfarben */
+.einsatz {
+  border-left: 5px solid #28a745;
+  background: #d4edda;
+}
+.pause {
+  border-left: 5px solid #007bff;
+  background: #d6eaff;
+}
+.nicht-einsatzbereit {
+  border-left: 5px solid #6c757d;
+  background: #e2e3e5;
+}
+.ueberzogen {
+  border: 2px solid red;
+}
+.rueckhaltung {
+  border: 2px solid gold;
+  background: #fff9e6;
+  opacity: 0.6;
+}
+.patient {
+  border: 2px solid red;
+  background: #ff9999;
+}
+.spielfeldrand {
+  border: 2px solid orange;
+  background: #ffe8cc;
+}
+
+/* 5. RTM-Header */
+.rtm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 10px;
+  border-bottom: 2px solid #ccc;
+  font-size: 1rem;
+  font-weight: bold;
+  color: #333;
+  background: #fff;
+  border-radius: 8px 8px 0 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* 6. Texteingaben */
+.rtm input[type="text"] {
+  margin-top: 5px;
+  width: 100%;
+}
+
+/* 7. Meldung-Buttons */
+.meldung-btn {
+  background: #e6f0ff;
+  border: 1px solid #3399ff;
+  color: #003366;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  border-radius: 5px;
+}
+
+/* 8. Status-Control Buttons */
+.status-buttons {
+  display: none;
+  margin-top: 5px;
+  flex-direction: column;
+  gap: 4px;
+}
+.rtm.show-status-buttons .status-buttons {
+  display: flex;
+}
+.status-display {
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 5px;
+  font-weight: bold;
+  font-size: 1.1rem;
+  background: #fff;
+  border: 1px solid #ccc;
+}
+.rtm.show-status-buttons .status-display {
+  background: #007bff;
+  color: #fff;
+  border-color: #0056b3;
+}
+
+/* 9. Action-Buttons */
+.btn-nicht-einsatzbereit {
+  background: #6c757d;
+  color: #fff;
+}
+.btn-pause {
+  background: #007bff;
+  color: #fff;
+}
+.btn-einsatz {
+  background: #28a745;
+  color: #fff;
+}
+.btn-patient {
+  background: #ffc107;
+  color: #000;
+}
+.btn-spielfeldrand {
+  background: #fd7e14;
+  color: #fff;
+}
+
+/* 10. Delete-Knopf */
+.delete-btn {
+  background: #dc3545;
+  color: #fff;
+  border: none;
+  padding: 2px 4px;
+  font-size: 0.7rem;
+  border-radius: 3px;
+  cursor: pointer;
+  align-self: flex-end;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+/* ✂️ Zeilenumbruch nach „RTM hinzufügen“ */
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+/* 1) nach dem 2. Kind (RTM hinzufügen) eine volle Zeilenbreite „hinten anhängen“ → Zeilenumbruch */
+.button-row > *:nth-child(2)::after {
+  content: "";
+  flex-basis: 100%;
+  height: 0;
+}
+
+/* 2) Input nur fest 140px breit und 2em hoch */
+.button-row input {
+  flex: 0 0 140px;
+  height: 2em;
+}
+
+/* 3) Buttons so schmal wie ihr Inhalt */
+.button-row button {
+  flex: 0 1 auto;
+}
+
+.modal {
+  position: fixed; top:0; left:0; right:0; bottom:0;
+  z-index:10000;
+}
+.modal-backdrop {
+  position:absolute; top:0; left:0; right:0; bottom:0;
+  background:rgba(0,0,0,0.5);
+}
+.modal-content {
+  position:relative;
+  background:white; padding:1em;
+  max-width:400px; margin:5% auto;
+  border-radius:4px;
+}
+#presetList {
+  list-style:none; padding:0; max-height:200px; overflow:auto;
+}
+#presetList li {
+  padding:4px 8px; cursor:pointer;
+}
+#presetList li.selected {
+  background:#007bff; color:white;
+}
+
+.end-buttons {
+  display: inline-flex;
+  gap: 8px;
+  margin-left: 8px;
+}
+.end-buttons button {
+  flex: 1;
+}
+
+.patient-summary-table {
+  width: 100%;
+  box-sizing: border-box;
+  border-collapse: collapse;
+  margin: 0.5em 0;
+  overflow-x: auto;
+}
+.patient-summary-table th,
+.patient-summary-table td {
+  border: 1px solid #ccc;
+  padding: 4px 8px;
+  text-align: left;
+  font-size: 0.9rem;
+}
+.patient-summary-table th {
+  width: 100%;              /* füllt .patient-summary aus */
+  border-collapse: collapse;
+  background-color: #f2f2f2;
+}
+.patient-summary-table caption {
+  caption-side: top;
+  font-weight: bold;
+  font-size: 1.1em;
+  text-align: left;
+  padding-bottom: 0.3em;
+}
+.patient-summary-table th:nth-child(3),
+.patient-summary-table td:nth-child(3) {
+  width: 60px;
+  min-width: 40px;
+  max-width: 80px;
+  text-align: center;
+}
+
+/* Dispositionssymbole */
+.disposition-symbols {
+  margin-top: 4px;
+  padding: 3px;
+  background-color: #f8f9fa;
+  border-radius: 3px;
+  border: 1px solid #dee2e6;
+  line-height: 1;
+  overflow: hidden; /* clearfix für floats */
+}
+
+.disposition-symbols::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+.disposition-symbol {
+  float: left;
+  width: auto;
+  min-width: 32px;
+  height: 32px;
+  margin-right: 2px;
+  margin-bottom: 2px;
+  padding: 1px 6px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  border: 1px solid #ddd;
+  box-sizing: border-box;
+  text-align: center;
+  line-height: 28px;
+}
+
+.disposition-symbol:last-child {
+  margin-right: 0;
+}
+
+.disposition-symbol.dispatched {
+  background-color: #d4edda;
+  color: #155724;
+  border-color: #c3e6cb;
+}
+
+.disposition-symbol.required {
+  background-color: #f8d7da;
+  color: #721c24;
+  border-color: #f5c6cb;
+  animation: blink 1.5s infinite;
+}
+
+.disposition-symbol.ignored {
+  background-color: #fff3cd !important;
+  color: #856404 !important;
+  border-color: #ffeaa7 !important;
+  animation: none !important;
+}
+
+.disposition-symbol:hover {
+  transform: scale(1.15);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  z-index: 2;
+  position: relative;
+  overflow: visible;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0.3; }
+}
+
