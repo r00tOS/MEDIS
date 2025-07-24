@@ -366,6 +366,13 @@ body {
   animation: blink 1.5s infinite;
 }
 
+.disposition-symbol.ignored {
+  background-color: #fff3cd !important;
+  color: #856404 !important;
+  border-color: #ffeaa7 !important;
+  animation: none !important;
+}
+
 .disposition-symbol:hover {
   transform: scale(1.15);
   box-shadow: 0 1px 3px rgba(0,0,0,0.2);

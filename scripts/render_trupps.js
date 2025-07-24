@@ -279,12 +279,16 @@ ${(() => {
       }
       
       const isDispatched = patient.dispositionStatus[resource] === 'dispatched';
+      const isIgnored = patient.dispositionStatus[resource + '_ignored'] === true;
       console.log(`Resource ${resource}: ${isDispatched ? 'dispatched' : 'required'}`);
       
-      dispositionSymbols += '<span class="disposition-symbol ' + (isDispatched ? 'dispatched' : 'required') +
+      dispositionSymbols += '<span class="disposition-symbol ' + (isDispatched ? 'dispatched' : 'required') + 
+             (isIgnored ? ' ignored' : '') +
              '" style="display: inline-block; padding: 2px 6px; margin: 0; border: 1px solid #ccc; border-radius: 3px; cursor: pointer; white-space: nowrap;' +
-             (isDispatched ? '' : ' animation: blink 1.5s infinite;') + '"' +
-             ' onclick="toggleDispositionStatus(' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')" title="' + resource + '">' +
+             (isDispatched || isIgnored ? '' : ' animation: blink 1.5s infinite;') + '"' +
+             ' onclick="toggleDispositionStatus(' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
+             ' oncontextmenu="toggleDispositionIgnore(event, ' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
+             ' title="' + resource + '">' +
              abbrev + '</span>';
     });
     
@@ -502,6 +506,52 @@ function toggleDispositionStatus(patientId, resource) {
     delete patient.dispositionStatus[resource]; // 'required' ist der Standard
   } else {
     patient.dispositionStatus[resource] = 'dispatched';
+  }
+  
+  // Patienten-Daten zurück in localStorage speichern
+  localStorage.setItem("patients", JSON.stringify(patients));
+  
+  // Event für Aktualisierung auslösen
+  window.dispatchEvent(
+    new StorageEvent("storage", {
+      key: "patients",
+      newValue: JSON.stringify(patients),
+    })
+  );
+  
+  // Trupp-Karten neu rendern
+  renderTrupps();
+}
+
+/**
+ * Schaltet die Ignorierung einer Disposition um (gelber Hintergrund)
+ * @param {Event} event - Das Kontextmenü-Event
+ * @param {number} patientId - ID des Patienten
+ * @param {string} resource - Name der Ressource
+ */
+function toggleDispositionIgnore(event, patientId, resource) {
+  event.preventDefault(); // Verhindert das Kontextmenü
+  
+  // Alle Patienten aus localStorage abrufen
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  
+  // Den entsprechenden Patienten finden
+  const patient = patients.find(p => p.id === patientId);
+  if (!patient) return;
+  
+  // Disposition Status initialisieren falls nicht vorhanden
+  if (!patient.dispositionStatus) {
+    patient.dispositionStatus = {};
+  }
+  
+  // Ignore-Status umschalten
+  const ignoreKey = resource + '_ignored';
+  const isCurrentlyIgnored = patient.dispositionStatus[ignoreKey] === true;
+  
+  if (isCurrentlyIgnored) {
+    delete patient.dispositionStatus[ignoreKey];
+  } else {
+    patient.dispositionStatus[ignoreKey] = true;
   }
   
   // Patienten-Daten zurück in localStorage speichern

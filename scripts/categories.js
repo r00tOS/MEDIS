@@ -6,7 +6,7 @@ window.alarmConfig = {
         { "word": "Reanimation", "resources": [ "Trupp", "RTW", "UHS-Notarzt oder NEF", "NEF", "First Responder", "Info an ASL", "Ordnungsdienst hinzuziehen" ] },
         { "word": "Bewusstlos", "resources": [ "Trupp", "RTW", "UHS-Notarzt oder NEF", "First Responder", "Info an ASL" ] },
         { "word": "Akute Atemnot", "resources": [ "Trupp", "RTW", "UHS-Notarzt oder NEF" ] },
-        { "word": "Anaphylaxie / anaphylaktischer Schock", "resources": [ "Trupp", "RTW", "UHS-Notarzt oder NEF", "NEF", "First Responder" ] },
+        { "word": "anaphylaktischer Schock", "resources": [ "Trupp", "RTW", "UHS-Notarzt oder NEF", "NEF", "First Responder" ] },
         { "word": "(Bolus-) Aspiration / gefährdeter Atemweg", "resources": [ "Trupp", "RTW", "UHS-Notarzt oder NEF", "NEF" ] },
         { "word": "Polytrauma", "resources": [ "Trupp", "RTW", "UHS-Notarzt oder NEF", "First Responder", "Info an ASL" ] }
       ]
@@ -68,6 +68,7 @@ window.alarmConfig = {
         { "word": "Synkope/Kollaps", "resources": [ "Trupp", "RTW" ] },
         { "word": "Thrombose", "resources": [ "Trupp", "RTW" ] },
         { "word": "Exsikkose", "resources": [ "Trupp" ] },
+        { "word": "Anaphylaxie / Unverträglichkeitsreaktion", "resources": [ "Trupp", "RTW" ] },
         { "word": "sonstige internistische Notfälle (Kreislaufprobleme, Unwohlsein, Fieber, etc)", "resources": [ "Trupp" ] }
       ]
     },
@@ -79,6 +80,7 @@ window.alarmConfig = {
         { "word": "Schwindel", "resources": [ "Trupp" ] },
         { "word": "neurologischer Notfall, sonstiger", "resources": [ "Trupp" ] },
         { "word": "Suizid, angedroht", "resources": [ "Trupp", "RTW", "UHS-Notarzt oder NEF", "Info an ASL", "Ggf. Ordnungsdienst hinzuziehen", "Polizei hinzuziehen" ] },
+        { "word": "Suizid", "resources": [ "Trupp", "RTW", "UHS-Notarzt oder NEF", "Info an ASL", "Ggf. Ordnungsdienst hinzuziehen", "Polizei hinzuziehen" ] },
         { "word": "Akute Verwirrtheit / Delir", "resources": [ "Trupp", "RTW" ] },
         { "word": "psychischer Ausnahmezustand", "resources": [ "Trupp", "RTW", "Ggf. Ordnungsdienst hinzuziehen" ] },
         { "word": "psychischer Notfall, sonstiger", "resources": [ "Trupp", ] }
