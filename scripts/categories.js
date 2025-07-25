@@ -68,7 +68,7 @@ window.alarmConfig = {
         { "word": "Atemnot (unklar)/Atembeschwerden/ARI", "resources": [ "Trupp", "RTW" ] },
         { "word": "Obstruktion (Asthma / COPD)", "resources": [ "Trupp", "RTW" ] },
         { "word": "Hyperventilation", "resources": [ "Trupp" ] },
-        { "word": "Synkope/Kollaps", "resources": [ "Trupp", "RTW" ] },
+        { "word": "Synkope/Kollaps", "resources": [ "Trupp" ] },
         { "word": "Thrombose", "resources": [ "Trupp", "RTW" ] },
         { "word": "Exsikkose", "resources": [ "Trupp" ] },
         { "word": "Anaphylaxie / Unverträglichkeitsreaktion", "resources": [ "Trupp", "RTW" ] },
