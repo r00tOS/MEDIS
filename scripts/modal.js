@@ -503,7 +503,6 @@ function createNewPatientForTrupp(truppIndex) {
   const pid = newPatient({
     location: letzteOrt,
     initialStatus: "disponiert",
-    skipDispositionTimer: true  // Neuer Parameter um Disposition-Timer zu überspringen
   });
 
   // Patient-Daten laden für weitere Bearbeitung
@@ -660,7 +659,6 @@ function populateInternalRtms() {
   try {
     rtms = JSON.parse(localStorage.getItem("rtms")) || [];
   } catch (e) {
-    console.warn("Could not load RTMs from localStorage:", e);
     rtms = [];
   }
   
@@ -750,7 +748,6 @@ function confirmRtmAssignment() {
           }));
         }
       } catch (e) {
-        console.warn("Could not update RTM status:", e);
       }
     });
     
@@ -798,7 +795,6 @@ function confirmRtmAssignment() {
           newValue: JSON.stringify(rtms),
         }));
       } catch (e) {
-        console.warn("Could not create external RTM:", e);
       }
     });
   }
@@ -972,56 +968,4 @@ function confirmTruppAssignment(patientId) {
 // Globale Funktion für Trupp-Assignment (für Patient-Karten)
 function openTruppDispositionModal(patientId) {
   showTruppAssignmentModal(patientId);
-}
-
-function newPatient(options = {}) {
-  let nextPatientNumber = parseInt(localStorage.getItem("nextPatientNumber"), 10) || 1;
-  
-  const patient = {
-    id: nextPatientNumber,
-    age: options.age || "",
-    gender: options.gender || "",
-    location: options.location || "",
-    diagnosis: options.diagnosis || "",
-    status: options.initialStatus || "gemeldet",
-    team: options.team || [],
-    rtm: options.rtm || [],
-    remarks: options.remarks || "",
-    createdAt: Date.now(),
-    history: [],
-    statusTimestamps: { gemeldet: Date.now() },
-    durations: {
-      einsatzdauer: "",
-      dispositionsdauer: "",
-      ausrueckdauer: "",
-      behandlungsdauer: "",
-      verlegedauerUHS: "",
-    },
-    disposed: {},
-    suggestedResources: options.suggestedResources || [],
-    dispositionStatus: options.dispositionStatus || {}
-  };
-
-  // Standardwerte setzen
-  if (!patient.statusTimestamps) {
-    patient.statusTimestamps = {};
-  }
-  patient.statusTimestamps.gemeldet = Date.now();
-  
-  // Patient in localStorage speichern
-  const patients = JSON.parse(localStorage.getItem("patients")) || [];
-  patients.push(patient);
-  localStorage.setItem("patients", JSON.stringify(patients));
-  
-  // Nächste Patientennummer erhöhen
-  nextPatientNumber++;
-  localStorage.setItem("nextPatientNumber", nextPatientNumber);
-  
-  // Storage-Event für neue Patientenliste auslösen
-  window.dispatchEvent(new StorageEvent("storage", {
-    key: "patients",
-    newValue: JSON.stringify(patients),
-  }));
-  
-  return nextPatientNumber - 1;
 }

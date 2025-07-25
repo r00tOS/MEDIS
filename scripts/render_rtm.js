@@ -179,13 +179,11 @@ div.innerHTML = `
 ${(() => {
   // nur für Patient-Status 3, 4, 7, 8
   if (![3, 4, 7, 8].includes(rtm.status)) {
-    console.log("RTM", rtm.name, "hat keinen Patientenstatus:", rtm.status);
     return "";
   }
 
   // Check if rtm.patientInput exists
   if (!rtm.patientInput) {
-    console.log("No patientInput for RTM:", rtm.name);
     return "";
   }
 
@@ -193,26 +191,15 @@ ${(() => {
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
   const patient = patients.find(p => p.id === rtm.patientInput || p.id === String(rtm.patientInput));
   if (!patient) {
-    console.log("Patient not found for ID:", rtm.patientInput, "Available patients:", patients.map(p => p.id));
     return '<div style="margin: 8px 0; color: #f00; font-style: italic;">Patient nicht gefunden (ID: ' + rtm.patientInput + ')</div>';
   }
 
-  console.log("RTM", rtm.name, "Patient gefunden:", patient.id, "suggestedResources:", patient.suggestedResources);
-
-  // Debug: RTM-Zuordnungen prüfen
-  console.log("Debug RTM-Zuordnungen für Patient", patient.id);
-  console.log("- patient.rtm Array:", patient.rtm);
-  console.log("- Aktuelles RTM:", rtm.name, "rtmType:", rtm.rtmType);
-  console.log("- RTM Status:", rtm.status);
-  console.log("- RTM patientInput:", rtm.patientInput);
 
   // Disposition-Status aktualisieren (zentrale Funktion aus render_patients.js)
   const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
   const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
   if (typeof updatePatientDispositionStatus === 'function') {
-    console.log("Calling updatePatientDispositionStatus...");
     updatePatientDispositionStatus(patient, trupps, rtms);
-    console.log("Disposition status after update:", patient.dispositionStatus);
   }
 
   // Hilfsfunktion für Ressourcen-Kürzel

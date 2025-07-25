@@ -40,7 +40,6 @@
         loadPatients(id);
         openEditModal(id);
       });
-      // Wird bei jeder Eingabe im Suchfeld aufgerufen
 
       function formatMS(ms) {
         if (!isFinite(ms) || ms < 0) return "–";
@@ -145,11 +144,6 @@ patients.forEach((patient) => {
           confirmKeyword();
         }
       });
-
-      // 1) Live-Timer updaten
-
-      // weiter wie gehabt
-      setInterval(updateLiveTimers, 1000);
     </script>
     <!-- Stichwort-Modal -->
     <div id="keywordModal" class="modal" style="display: none">

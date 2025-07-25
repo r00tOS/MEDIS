@@ -363,16 +363,21 @@ function confirmNachforderungModal() {
     patient.team.push(trupp);
 
     // Status-Logik mit korrekter Timestamp-Behandlung
+    const oldStatus = patient.status;
     if (patient.status === "gemeldet") {
-      // Verwende updatePatientData für korrekte Timestamp-Setzung
-      updatePatientData(nachforderungPatientId, "status", "disponiert");
-    } else {
-      // Sicherstellen, dass disponiert-Timestamp gesetzt ist
+      patient.status = "disponiert";
+      patient.history = patient.history || [];
+      patient.history.push(`${getCurrentTime()} Status: disponiert`);
+      
+      // Timestamps korrekt setzen
+      const now = Date.now();
       patient.statusTimestamps = patient.statusTimestamps || {};
       if (!patient.statusTimestamps.disponiert) {
-        patient.statusTimestamps.disponiert = Date.now();
-        recordStatusChange(patient, "disponiert");
+        patient.statusTimestamps.disponiert = now;
       }
+      
+      // Timer-Berechnung für Statuswechsel
+      recordStatusChange(patient, "disponiert");
     }
     
     // History: Nachforderung + Trupp zugeordnet
@@ -422,14 +427,21 @@ function confirmNachforderungModal() {
     details.rtm = rtmKennung;
     
     // Status-Logik mit korrekter Timestamp-Behandlung
+    const oldStatus = patient.status;
     if (patient.status === "gemeldet") {
-      updatePatientData(nachforderungPatientId, "status", "disponiert");
-    } else {
+      patient.status = "disponiert";
+      patient.history = patient.history || [];
+      patient.history.push(`${getCurrentTime()} Status: disponiert`);
+      
+      // Timestamps korrekt setzen
+      const now = Date.now();
       patient.statusTimestamps = patient.statusTimestamps || {};
       if (!patient.statusTimestamps.disponiert) {
-        patient.statusTimestamps.disponiert = Date.now();
-        recordStatusChange(patient, "disponiert");
+        patient.statusTimestamps.disponiert = now;
       }
+      
+      // Timer-Berechnung für Statuswechsel
+      recordStatusChange(patient, "disponiert");
     }
   }
 
@@ -440,6 +452,15 @@ function confirmNachforderungModal() {
 
   // Persistieren und UI refresh
   localStorage.setItem("patients", JSON.stringify(patients));
+  
+  // Storage-Event auslösen
+  window.dispatchEvent(
+    new StorageEvent("storage", {
+      key: "patients",
+      newValue: JSON.stringify(patients),
+    })
+  );
+  
   closeNachforderungModal();
   loadPatients(nachforderungPatientId);
 }
@@ -543,7 +564,7 @@ function resetKeywordSelection() {
 }
 
 
-/**
+ /**
  * Schließt das Edit-/Keyword-Modal.
  */
 function closeEditModal() {

@@ -8,7 +8,6 @@ function formatTime(timestamp) {
 function renderTrupps() {
   // Sicherheitsprüfung: trupps muss verfügbar sein
   if (typeof trupps === 'undefined' || !Array.isArray(trupps)) {
-    console.warn('trupps ist nicht verfügbar, renderTrupps wird übersprungen');
     return;
   }
   
@@ -340,7 +339,6 @@ ${(() => {
       div.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log('Kontextmenü für Trupp', trupp.name, 'Patient', trupp.patientInput);
         showTruppContextMenu(e, i, trupp.patientInput);
       });
     }, 10);
@@ -456,7 +454,6 @@ cards.forEach(el => {
 
 // Kontextmenü anzeigen - verbesserte Version
 function showTruppContextMenu(event, truppIndex, patientId) {
-  console.log('showTruppContextMenu aufgerufen', { truppIndex, patientId });
   
   // Entferne existierendes Menü
   hideTruppContextMenu();
@@ -511,8 +508,6 @@ function showTruppContextMenu(event, truppIndex, patientId) {
     menu.style.top = (y - rect.height) + 'px';
   }
 
-  console.log('Kontextmenü angezeigt an Position', x, y);
-
   // Klick außerhalb schließt das Menü
   setTimeout(() => {
     document.addEventListener('click', hideTruppContextMenu, { once: true });
@@ -524,7 +519,6 @@ function hideTruppContextMenu() {
   const menu = document.getElementById('truppContextMenu');
   if (menu) {
     menu.remove();
-    console.log('Kontextmenü geschlossen');
   }
 }
 

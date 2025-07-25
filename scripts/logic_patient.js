@@ -1,16 +1,3 @@
-/**
- * Wandelt Millisekunden in MM:SS um.
- * @param {number} ms Millisekunden
- * @returns {string} formatierte Zeit MM:SS
- */
-function formatMS(ms) {
-  const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-}
-
-
 function clearAssignments(patientId, finalStatus) {
   const now = Date.now();
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
@@ -59,6 +46,51 @@ function clearAssignments(patientId, finalStatus) {
       newValue: JSON.stringify(trupps),
     })
   );
+}
+
+function newPatient(options = {}) {
+  let nextPatientNumber = parseInt(localStorage.getItem("nextPatientNumber"), 10) || 1;
+  
+  const patient = {
+    id: nextPatientNumber,
+    age: options.age || "",
+    gender: options.gender || "",
+    location: options.location || "",
+    diagnosis: options.diagnosis || "",
+    status: options.initialStatus || "gemeldet",
+    team: options.team || [],
+    rtm: options.rtm || [],
+    remarks: options.remarks || "",
+    createdAt: Date.now(),
+    history: [],
+    statusTimestamps: { gemeldet: Date.now() },
+    disposed: {},
+    suggestedResources: options.suggestedResources || [],
+    dispositionStatus: options.dispositionStatus || {}
+  };
+
+  // Standardwerte setzen
+  if (!patient.statusTimestamps) {
+    patient.statusTimestamps = {};
+  }
+  patient.statusTimestamps.gemeldet = Date.now();
+  
+  // Patient in localStorage speichern
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  patients.push(patient);
+  localStorage.setItem("patients", JSON.stringify(patients));
+  
+  // Nächste Patientennummer erhöhen
+  nextPatientNumber++;
+  localStorage.setItem("nextPatientNumber", nextPatientNumber);
+  
+  // Storage-Event für neue Patientenliste auslösen
+  window.dispatchEvent(new StorageEvent("storage", {
+    key: "patients",
+    newValue: JSON.stringify(patients),
+  }));
+  
+  return nextPatientNumber - 1;
 }
 
 function disposeRequest(id, request) {
@@ -244,12 +276,6 @@ function updatePatientData(id, field, value) {
 
   // Hilfs-Objekte sicherstellen
   patient.statusTimestamps = patient.statusTimestamps || {};
-  patient.durations = patient.durations || {};
-
-  // 1) Timestamp & Dauer-Kalkulation zentral in recordStatusChange
-  function doTimeTracking() {
-    recordStatusChange(patient, value);
-  }
 
   // 2) Update von History, Feld, Triggern von recordStatusChange und Speichern
   function applyUpdate() {
@@ -267,9 +293,6 @@ function updatePatientData(id, field, value) {
     // b) Feld setzen
     patient[field] = value;
 
-    // c) Timestamp & Dauer-Berechnungen
-    doTimeTracking();
-
     // d) persistieren
     localStorage.setItem("patients", JSON.stringify(patients));
   }
@@ -279,9 +302,6 @@ function updatePatientData(id, field, value) {
     // a) History-Eintrag & Status setzen
     patient.history.push(`${getCurrentTime()} Status: ${value}`);
     patient.status = value;
-
-    // b) Timestamp‐ und Dauer‐Berechnung
-    recordStatusChange(patient, value);
 
     // c) Persist
     localStorage.setItem("patients", JSON.stringify(patients));
@@ -293,7 +313,6 @@ function updatePatientData(id, field, value) {
         clearAssignments(id);
       }
       loadPatients(id);
-      updateLiveTimers(); // einmal direkt nachladen
     };
 
     if (oldCard) {
@@ -308,125 +327,6 @@ function updatePatientData(id, field, value) {
   // 4) Alle anderen Felder → direkt updaten
   applyUpdate();
   loadPatients();
-}
-
-function recordStatusChange(patient, newStatus) {
-  const now = Date.now();
-
-  patient.statusTimestamps = patient.statusTimestamps || {};
-
-  patient.durations = patient.durations || {};
-
-  // 1) Timestamp für den neuen Status nur einmal setzen
-
-  if (!patient.statusTimestamps[newStatus]) {
-    patient.statusTimestamps[newStatus] = now;
-  }
-
-  // 2) Einsatzdauer → erst beim finalen Status
-
-  if (
-    (newStatus === "Entlassen" || newStatus === "Transport in KH") &&
-    !patient.durations.einsatzdauer
-  ) {
-    patient.durations.einsatzdauer = formatMS(now - patient.createdAt);
-  }
-
-  // 3) Dispositionsdauer: gemeldet → disponiert
-
-  if (
-    newStatus === "disponiert" &&
-    patient.statusTimestamps.gemeldet &&
-    !patient.durations.dispositionsdauer
-  ) {
-    patient.durations.dispositionsdauer = formatMS(
-      now - patient.statusTimestamps.gemeldet
-    );
-  }
-
-  // 4) Ausrückdauer: disponiert → in Behandlung/UHS
-
-  if (
-    ["in Behandlung", "verlegt in UHS", "Behandlung in UHS"].includes(
-      newStatus
-    ) &&
-    patient.statusTimestamps.disponiert &&
-    !patient.durations.ausrueckdauer
-  ) {
-    patient.durations.ausrueckdauer = formatMS(
-      now - patient.statusTimestamps.disponiert
-    );
-  }
-
-  // 5) Verlegedauer UHS: verlegt in UHS → Behandlung in UHS
-
-  if (
-    newStatus === "Behandlung in UHS" &&
-    patient.statusTimestamps["verlegt in UHS"] &&
-    !patient.durations.verlegedauerUHS
-  ) {
-    patient.durations.verlegedauerUHS = formatMS(
-      now - patient.statusTimestamps["verlegt in UHS"]
-    );
-  }
-
-  // 6) **Behandlungsdauer**: wenn wir ins Finale wechseln
-
-  if (
-    (newStatus === "Entlassen" || newStatus === "Transport in KH") &&
-    !patient.durations.behandlungsdauer
-  ) {
-    // 6a) nimm den Start-Timestamp „in Behandlung“ oder „Behandlung in UHS“
-
-    const start =
-      patient.statusTimestamps["in Behandlung"] ||
-      patient.statusTimestamps["Behandlung in UHS"];
-
-    if (start) {
-      patient.durations.behandlungsdauer = formatMS(now - start);
-    } else {
-      // falls nie richtig in Behandlung
-
-      patient.durations.behandlungsdauer = "00:00";
-    }
-  }
-
-  // 7) alle übrigen Dauern beim finalen Status nachtragen
-
-  if (newStatus === "Entlassen" || newStatus === "Transport in KH") {
-    // Dispositionsdauer, falls nie auf disponiert gewechselt
-
-    if (
-      patient.statusTimestamps.gemeldet &&
-      !patient.durations.dispositionsdauer
-    ) {
-      patient.durations.dispositionsdauer = formatMS(
-        now - patient.statusTimestamps.gemeldet
-      );
-    }
-
-    // Ausrückdauer, falls nie auf disponiert→in Behandlung gewechselt
-
-    if (
-      patient.statusTimestamps.disponiert &&
-      !patient.durations.ausrueckdauer
-    ) {
-      patient.durations.ausrueckdauer = formatMS(
-        now - patient.statusTimestamps.disponiert
-      );
-    }
-
-    // Verlegedauer UHS, falls nie auf verlegt→UHS gewechselt
-
-    if (
-      patient.statusTimestamps["verlegt in UHS"] &&
-      !patient.durations.verlegedauerUHS
-    ) {
-      patient.durations.verlegedauerUHS = formatMS(
-        now - patient.statusTimestamps["verlegt in UHS"]
-      );
-    }
-  }
 }
 
 function assignResource(id, type) {
@@ -701,7 +601,6 @@ ${historyText}`;
 function copyToClipboard(text) {
   if (navigator.clipboard && window.isSecureContext) {
     navigator.clipboard.writeText(text).catch((err) => {
-      console.error("Clipboard write failed, fallback:", err);
       fallbackCopyTextToClipboard(text);
     });
   } else {
@@ -721,7 +620,6 @@ function fallbackCopyTextToClipboard(text) {
     document.execCommand("copy");
     alert("Patientendaten kopiert 🎉");
   } catch (err) {
-    console.error("Fallback: Copy failed", err);
   }
   document.body.removeChild(ta);
 }
@@ -738,87 +636,4 @@ function deletePatient(id) {
     // neu rendern
     loadPatients();
   }
-}
-
-function updateLiveTimers() {
-  const patients = JSON.parse(localStorage.getItem("patients")) || [];
-  const now = Date.now();
-  let dirty = false;
-
-  patients.forEach((p) => {
-    const isFinal = p.status === "Entlassen" || p.status === "Transport in KH";
-    if (isFinal) return;
-    const t = p.statusTimestamps || {};
-    const d = (p.durations ||= {});
-    const id = p.id;
-
-    // 1) Einsatzdauer → läuft bis final
-    if (!isFinal) {
-      const val = formatMS(now - p.createdAt);
-      const el = document.querySelector(`.timer.einsatzdauer[data-id='${id}']`);
-      if (el) el.textContent = val;
-      if (d.einsatzdauer !== val) {
-        d.einsatzdauer = val;
-        dirty = true;
-      }
-    }
-
-    // 2) Dispositionsdauer → nur bis dispo gesetzt
-    if (t.gemeldet && !t.disponiert) {
-      const val = formatMS(now - t.gemeldet);
-      const el = document.querySelector(
-        `.timer.dispositionsdauer[data-id='${id}']`
-      );
-      if (el) el.textContent = val;
-      if (d.dispositionsdauer !== val) {
-        d.dispositionsdauer = val;
-        dirty = true;
-      }
-    }
-
-    // 3) Ausrückdauer → nur zwischen dispo und Behandlungs-/UHS-Start
-    if (
-      t.disponiert &&
-      !t["in Behandlung"] &&
-      !t["verlegt in UHS"] &&
-      !t["Behandlung in UHS"]
-    ) {
-      const val = formatMS(now - t.disponiert);
-      const el = document.querySelector(
-        `.timer.ausrueckdauer[data-id='${id}']`
-      );
-      if (el) el.textContent = val;
-      if (d.ausrueckdauer !== val) {
-        d.ausrueckdauer = val;
-        dirty = true;
-      }
-    }
-
-    // 4) Verlegedauer UHS → von verlegt → Behandlung in UHS
-    if (t["verlegt in UHS"] && !t["Behandlung in UHS"]) {
-      const val = formatMS(now - t["verlegt in UHS"]);
-      const el = document.querySelector(
-        `.timer.verlegedauerUHS[data-id='${id}']`
-      );
-      if (el) el.textContent = val;
-      if (d.verlegedauerUHS !== val) {
-        d.verlegedauerUHS = val;
-        dirty = true;
-      }
-    }
-
-    // 5) Behandlungsdauer → läuft während in Behandlung oder UHS-Behandlung
-    const behandlungsStart = t["in Behandlung"] ?? t["Behandlung in UHS"];
-    if (behandlungsStart && !isFinal) {
-      const val = formatMS(now - behandlungsStart);
-      const el = document.querySelector(
-        `.timer.behandlungsdauer[data-id='${id}']`
-      );
-      if (el) el.textContent = val;
-      if (d.behandlungsdauer !== val) {
-        d.behandlungsdauer = val;
-        dirty = true;
-      }
-    }
-  });
 }
