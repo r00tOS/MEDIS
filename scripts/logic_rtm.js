@@ -277,6 +277,17 @@ function updateRTM(index, status) {
   // 0) Scroll-Position merken
   const scrollEl = document.scrollingElement || document.documentElement;
   const scrollY = scrollEl.scrollTop;
+  
+  // Sicherstellen, dass RTMs verfügbar sind
+  let rtms = JSON.parse(localStorage.getItem("rtms")) || [];
+  if (!rtms[index]) {
+    console.error("RTM-Index nicht gefunden:", index);
+    return;
+  }
+  
+  // nextMaxEinsatzTime aus localStorage laden oder Standard verwenden
+  const currentMaxEinsatzTime = parseInt(localStorage.getItem("nextMaxEinsatzTime"), 10) || 45;
+  
   status = Number(status);
   const patientKeepStatuses = ["3","4","7","8"];
   const rtm = rtms[index];
@@ -416,32 +427,63 @@ if (status === 11) {
   if (oldStatus === 3 && !keepStatuses.includes(status)) {
     const stored = JSON.parse(localStorage.getItem("patients")) || [];
     stored.forEach((p) => {
-      if (Array.isArray(p.team)) {
-        const idx = p.team.indexOf(rtm.name);
+      if (Array.isArray(p.rtm)) {
+        const idx = p.rtm.indexOf(rtm.name);
         if (idx >= 0) {
-          p.team.splice(idx, 1);
+          p.rtm.splice(idx, 1);
           p.history = p.history || [];
           p.history.push(`${timeStr} RTM ${rtm.name} entfernt`);
         }
       }
     });
+    localStorage.setItem("patients", JSON.stringify(stored));
   }
 
-  // 12) Speichern & neu rendern
-  saveRTMs();
+  // 12) RTMs zurück speichern
+  localStorage.setItem("rtms", JSON.stringify(rtms));
+  localStorage.setItem("nextMaxEinsatzTime", currentMaxEinsatzTime);
+  
+  // Storage-Event auslösen
+  window.dispatchEvent(
+    new StorageEvent("storage", {
+      key: "rtms",
+      newValue: JSON.stringify(rtms),
+    })
+  );
 
   // Wenn ein RTM einem Patienten zugewiesen wurde, Disposition-Status aktualisieren
   if (status === 3 && rtm.patientInput) {
     updateRTMPatientDispositionStatus(rtm.patientInput);
   }
 
-  // Sofortige UI-Aktualisierung
-  renderRTMs();
-  window.scrollTo(0, scrollY);
+  // Sofortige UI-Aktualisierung nur wenn verfügbar
+  if (typeof renderRTMs === 'function') {
+    renderRTMs();
+  }
+  
+  // Scroll nur wenn im RTM-Tracker
+  if (typeof window.rtms !== 'undefined') {
+    window.scrollTo(0, scrollY);
+  }
+}
+
+// Neue Funktion für Status-Änderung nach RTM-Name
+function updateRTMByName(rtmName, status) {
+  const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
+  const rtmIndex = rtms.findIndex(r => r.name === rtmName);
+  
+  if (rtmIndex === -1) {
+    console.error("RTM nicht gefunden:", rtmName);
+    return;
+  }
+  
+  updateRTM(rtmIndex, status);
 }
 
 function saveRTMs() {
-  localStorage.setItem("nextMaxEinsatzTime", nextMaxEinsatzTime);
+  // nextMaxEinsatzTime aus localStorage laden oder Standard verwenden
+  const currentMaxEinsatzTime = parseInt(localStorage.getItem("nextMaxEinsatzTime"), 10) || 45;
+  localStorage.setItem("nextMaxEinsatzTime", currentMaxEinsatzTime);
   localStorage.setItem("rtms", JSON.stringify(rtms));
   
   // Storage-Event für andere Tabs/Fenster auslösen

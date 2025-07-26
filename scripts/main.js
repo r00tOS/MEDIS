@@ -35,13 +35,6 @@
         gemeldet: now,
         ...(initialStatus !== "gemeldet" ? { [initialStatus]: now } : {}),
       },
-      durations: {
-        einsatzdauer: "",
-        dispositionsdauer: "",
-        ausrueckdauer: "",
-        behandlungsdauer: "",
-        verlegedauerUHS: "",
-      },
       team: Array.isArray(team) ? team : [team],
       location,
       history: [`${timeStr} Status: gemeldet`],

@@ -43,104 +43,91 @@ function updatePatientDispositionStatus(patient, trupps, rtms) {
     patient.dispositionStatus = {};
   }
 
-  // Einmal alle relevanten Daten sammeln
-  const assignedTrupps = trupps.filter(t => t.patientInput === patient.id && [3, 4, 7, 8].includes(t.status));
-  const assignedRTMs = rtms.filter(r => (r.patientInput === patient.id || r.patientInput === String(patient.id)) && [3, 4, 7, 8].includes(r.status));
-
-  // ZUSÄTZLICH: RTMs auch aus patient.rtm Array berücksichtigen
-  const patientRTMNames = Array.isArray(patient.rtm) ? patient.rtm : [];
-  const additionalRTMs = rtms.filter(r => patientRTMNames.includes(r.name) && [3, 4, 7, 8].includes(r.status));
-  
-  // Kombiniere beide RTM-Listen
-  const allAssignedRTMs = [...assignedRTMs];
-  additionalRTMs.forEach(rtm => {
-    if (!allAssignedRTMs.find(r => r.name === rtm.name)) {
-      allAssignedRTMs.push(rtm);
-    }
+  // Reset all disposition status first
+  patient.suggestedResources.forEach(resource => {
+    patient.dispositionStatus[resource] = undefined;
   });
 
-  // Prüfe NA/NEF-Konstellation vorab
-  const hasNA = patient.suggestedResources.includes('UHS-Notarzt oder NEF');
-  const hasNEF = patient.suggestedResources.includes('NEF');
-  const nefRTMs = allAssignedRTMs.filter(rtm => rtm.rtmType === 82 || rtm.rtmType === 'RTH');
-
-  // Für jede Ressource prüfen
+  // Für jede Ressource prüfen - genau wie im Trupp-Tracker
   patient.suggestedResources.forEach(resource => {
     let shouldDispatch = false;
 
-    // 1. Trupp-Logik
-    if (resource === 'Trupp' && assignedTrupps.length > 0) {
+    // 1. Trupp-Logik - prüfe patient.team Array direkt
+    if (resource === 'Trupp' && Array.isArray(patient.team) && patient.team.length > 0) {
       shouldDispatch = true;
     }
 
-    // 2. RTM-Logik (erweitert)
-    if (resource === 'RTM' && allAssignedRTMs.length > 0) {
+    // 2. RTM-Logik - prüfe patient.rtm Array direkt  
+    if (resource === 'RTM' && Array.isArray(patient.rtm) && patient.rtm.length > 0) {
       shouldDispatch = true;
     }
 
-    // 3. RTM-Type-spezifische Disposition-Status-Setzung
-    // ALLE RTMs durchgehen, nicht nur das erste
-    allAssignedRTMs.forEach(assignedRTM => {
-      if (assignedRTM.rtmType) {
-        const rtmType = assignedRTM.rtmType;
-        
-        // RTW und NEF für Typ 80 und 81
-        if ((rtmType === 80 || rtmType === 81) && (resource === 'RTW' || resource === 'NEF' || resource === 'UHS-Notarzt oder NEF')) {
-          shouldDispatch = true;
-        }
-        // Nur NEF für Typ 82 - ABER spezielle NA/NEF-Behandlung
-        if (rtmType === 82) {
-          if (hasNA && hasNEF) {
-            // Beide vorhanden: nur NEF dispatched, NA nicht
-            if (resource === 'NEF') {
-              shouldDispatch = true;
+    // 3. RTM-Type-spezifische Disposition - basierend auf zugewiesenen RTMs
+    if (Array.isArray(patient.rtm) && patient.rtm.length > 0) {
+      patient.rtm.forEach(rtmName => {
+        const assignedRTM = rtms.find(r => r.name === rtmName);
+        if (assignedRTM && assignedRTM.rtmType) {
+          const rtmType = assignedRTM.rtmType;
+          
+          // Prüfe NA/NEF-Konstellation
+          const hasNA = patient.suggestedResources.includes('UHS-Notarzt oder NEF');
+          const hasNEF = patient.suggestedResources.includes('NEF');
+          
+          // RTW und NEF für Typ 80 und 81
+          if ((rtmType === 80 || rtmType === 81) && (resource === 'RTW' || resource === 'NEF' || resource === 'UHS-Notarzt oder NEF')) {
+            shouldDispatch = true;
+          }
+          // Nur NEF für Typ 82 - ABER spezielle NA/NEF-Behandlung
+          if (rtmType === 82) {
+            if (hasNA && hasNEF) {
+              // Beide vorhanden: nur NEF dispatched, NA nicht
+              if (resource === 'NEF') {
+                shouldDispatch = true;
+              }
+            } else if (hasNA && !hasNEF) {
+              // Nur NA vorhanden: NA dispatched
+              if (resource === 'UHS-Notarzt oder NEF') {
+                shouldDispatch = true;
+              }
+            } else if (!hasNA && hasNEF) {
+              // Nur NEF vorhanden: NEF dispatched
+              if (resource === 'NEF') {
+                shouldDispatch = true;
+              }
             }
-            // NA explizit NICHT dispatched setzen
-          } else if (hasNA && !hasNEF) {
-            // Nur NA vorhanden: NA dispatched
-            if (resource === 'UHS-Notarzt oder NEF') {
-              shouldDispatch = true;
-            }
-          } else if (!hasNA && hasNEF) {
-            // Nur NEF vorhanden: NEF dispatched
-            if (resource === 'NEF') {
-              shouldDispatch = true;
+          }
+          // Nur RTW für Typ 83 und 89
+          if ((rtmType === 83 || rtmType === 89) && resource === 'RTW') {
+            shouldDispatch = true;
+          }
+          // NEF für RTH - ABER spezielle NA/NEF-Behandlung
+          if (rtmType === 'RTH') {
+            if (hasNA && hasNEF) {
+              // Beide vorhanden: nur NEF dispatched, NA nicht
+              if (resource === 'NEF') {
+                shouldDispatch = true;
+              }
+            } else if (hasNA && !hasNEF) {
+              // Nur NA vorhanden: NA dispatched
+              if (resource === 'UHS-Notarzt oder NEF') {
+                shouldDispatch = true;
+              }
+            } else if (!hasNA && hasNEF) {
+              // Nur NEF vorhanden: NEF dispatched
+              if (resource === 'NEF') {
+                shouldDispatch = true;
+              }
             }
           }
         }
-        // Nur RTW für Typ 83 und 89
-        if ((rtmType === 83 || rtmType === 89) && resource === 'RTW') {
-          shouldDispatch = true;
-        }
-        // NEF für RTH - ABER spezielle NA/NEF-Behandlung
-        if (rtmType === 'RTH') {
-          if (hasNA && hasNEF) {
-            // Beide vorhanden: nur NEF dispatched, NA nicht
-            if (resource === 'NEF') {
-              shouldDispatch = true;
-            }
-          } else if (hasNA && !hasNEF) {
-            // Nur NA vorhanden: NA dispatched
-            if (resource === 'UHS-Notarzt oder NEF') {
-              shouldDispatch = true;
-            }
-          } else if (!hasNA && hasNEF) {
-            // Nur NEF vorhanden: NEF dispatched
-            if (resource === 'NEF') {
-              shouldDispatch = true;
-            }
-          }
-        }
-      } else {
-      }
-    });
+      });
+    }
 
     // Status setzen
     if (shouldDispatch) {
       patient.dispositionStatus[resource] = 'dispatched';
     }
   });
-
 }
 
 /**
@@ -157,6 +144,15 @@ function loadPatients(highlightId) {
   const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
   const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
   const scrollY = window.scrollY;
+
+  // Remove any existing status dropdowns before rendering
+  const existingDropdowns = document.querySelectorAll('.status-dropdown-overlay');
+  existingDropdowns.forEach(dropdown => dropdown.remove());
+
+  // Remove any existing global click handlers to prevent duplicates
+  if (window.dropdownClickHandler) {
+    document.removeEventListener('click', window.dropdownClickHandler);
+  }
 
   // Disposition-Status für alle Patienten aktualisieren
   patients.forEach(patient => {
@@ -289,9 +285,6 @@ Patient ${patient.id}
 <button class="reset-btn"   onclick="deletePatient(${
       patient.id
     })">Löschen</button>
-</div>
-
-
 
 </div>
 
@@ -317,7 +310,7 @@ ${historyHTML}
 
 <div class="patient-info-block" style="min-width:400px;">
   <div class="patient-info-text">
-  <!-- ➊ Tabelle für Verdachtsdiagnose & Dispositionsvorschlag -->
+  <!-- ➊ Tabelle für Verdachtsdiagnose  -->
 <table class="patient-details-table">
 <thead>
 <tr>
@@ -336,6 +329,42 @@ ${patient.diagnosis || "–"}
 <!-- ➋ Tabelle für die restlichen Felder -->
 <table class="patient-info-table">
 <tbody>
+${(() => {
+  // Dispositionssymbole generieren
+  let dispositionSymbols = '';
+  
+  if (patient.suggestedResources && Array.isArray(patient.suggestedResources) && patient.suggestedResources.length > 0) {
+    dispositionSymbols = '<div class="disposition-symbols" style="margin-top: 10px;">' +
+      '<div style="font-weight: bold; margin-bottom: 4px;">Dispositionsvorschlag:</div>' +
+      '<div style="display: flex; flex-wrap: wrap; gap: 4px;">';
+    
+    patient.suggestedResources.forEach(resource => {
+      // Verwende die bereits definierte getResourceAbbreviation Funktion
+      const abbrev = getResourceAbbreviation(resource);
+      
+      // Status aus den Patientendaten abrufen
+      if (!patient.dispositionStatus) {
+        patient.dispositionStatus = {};
+      }
+      
+      const isDispatched = patient.dispositionStatus[resource] === 'dispatched';
+      const isIgnored = patient.dispositionStatus[resource + '_ignored'] === true;
+      
+      dispositionSymbols += '<span class="disposition-symbol ' + (isDispatched ? 'dispatched' : 'required') + 
+             (isIgnored ? ' ignored' : '') +
+             '" style="display: inline-block; padding: 2px 6px; margin: 0; border: 1px solid #ccc; border-radius: 3px; cursor: pointer; white-space: nowrap;' +
+             (!isDispatched && !isIgnored ? ' animation: blink 1.5s infinite;' : '') + '"' +
+             ' onclick="toggleDispositionStatus(' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
+             ' oncontextmenu="toggleDispositionIgnore(event, ' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
+             ' title="' + resource + '">' +
+             abbrev + '</span>';
+    });
+    
+    dispositionSymbols += '</div></div>';
+  }
+  
+  return dispositionSymbols;
+})()}
 <tr>
 <th>Alter</th>
 <td>
@@ -394,12 +423,21 @@ ${patient.remarks || "–"}
   ${
     (patient.team || [])
       .map(
-        (t, i) =>
-          `<span>${t}${
+        (t, i) => {
+          // Find the corresponding trupp to get its status
+          const trupp = trupps.find(tr => tr.name === t);
+          const statusDef = trupp ? window.statusOptions?.find(o => o.status === trupp.status) : null;
+          const statusIndicator = statusDef ? 
+            `<span class="status-code" style="background: ${statusDef.color}; border: 1px solid ${statusDef.color}; color: black; padding: 1px 4px; border-radius: 2px; font-size: 0.8em; margin-left: 4px; cursor: pointer;" 
+             oncontextmenu="openTruppStatusDropdown(event, '${t}'); return false;" 
+             title="Rechtsklick zum Ändern des Status">${statusDef.status}</span>` : '';
+          
+          return `<span>${t}${statusIndicator}${
             !isFinal
               ? ` <button class="reset-btn" onclick="removeTrupp(${patient.id},${i})">X</button>`
               : ``
           }</span>`
+        }
       )
       .join("<br>") || "–"
   }
@@ -409,17 +447,26 @@ ${patient.remarks || "–"}
   </button>
 </div>
 
-<div style="min-width:200px;">
+<div style="min-width:300px;">
   <strong>RTM:</strong><br>
   ${
     (patient.rtm || [])
       .map(
-        (r, i) =>
-          `<span>${r}${
+        (r, i) => {
+          // Find the corresponding RTM to get its status
+          const rtm = rtms.find(rt => rt.name === r);
+          const statusDef = rtm ? window.statusOptions?.find(o => o.status === rtm.status) : null;
+          const statusIndicator = statusDef ? 
+            `<span class="status-code" style="background: ${statusDef.color}; border: 1px solid ${statusDef.color}; color: black; padding: 1px 4px; border-radius: 2px; font-size: 0.8em; margin-left: 4px; cursor: pointer;" 
+             oncontextmenu="openRtmStatusDropdown(event, '${r}'); return false;" 
+             title="Rechtsklick zum Ändern des Status">${statusDef.status}</span>` : '';
+          
+          return `<span>${r}${statusIndicator}${
             !isFinal
               ? ` <button class="reset-btn" onclick="removeRtm(${patient.id},${i})">X</button>`
               : ``
           }</span>`
+        }
       )
       .join("<br>") || "–"
   }<br>
@@ -465,5 +512,16 @@ ${patient.remarks || "–"}
   document.querySelectorAll(".history-container").forEach((hc) => {
     hc.scrollTop = hc.scrollHeight;
   });
+  
+  // Set up persistent global click handler to close dropdowns
+  window.dropdownClickHandler = function(e) {
+    if (!e.target.closest('.status-dropdown-overlay') && !e.target.closest('.status-code')) {
+      const dropdowns = document.querySelectorAll('.status-dropdown-overlay');
+      dropdowns.forEach(dropdown => dropdown.remove());
+    }
+  };
+  
+  document.addEventListener('click', window.dropdownClickHandler);
+  
   window.scrollTo(0, scrollY); 
 }

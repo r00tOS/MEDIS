@@ -21,6 +21,17 @@ function updateTrupp(index, status) {
   // 0) Scroll-Position merken
   const scrollEl = document.scrollingElement || document.documentElement;
   const scrollY = scrollEl.scrollTop;
+  
+  // Sicherstellen, dass trupps verfügbar ist
+  let trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+  if (!trupps[index]) {
+    console.error("Trupp-Index nicht gefunden:", index);
+    return;
+  }
+  
+  // nextMaxEinsatzTime aus localStorage laden oder Standard verwenden
+  const currentMaxEinsatzTime = parseInt(localStorage.getItem("nextMaxEinsatzTime"), 10) || 45;
+  
   status = Number(status);
   const patientKeepStatuses = ["3","4","7","8"];
   const trupp = trupps[index];
@@ -169,27 +180,55 @@ if (status === 11) {
         }
       }
     });
+    localStorage.setItem("patients", JSON.stringify(stored));
   }
 
-  // 12) Speichern & neu rendern
-  saveTrupps();
+  // 12) Trupps zurück speichern
+  localStorage.setItem("trupps", JSON.stringify(trupps));
+  localStorage.setItem("nextMaxEinsatzTime", currentMaxEinsatzTime);
+  
+  // Storage-Event auslösen
+  window.dispatchEvent(
+    new StorageEvent("storage", {
+      key: "trupps",
+      newValue: JSON.stringify(trupps),
+    })
+  );
   
   // Wenn ein Trupp einem Patienten zugewiesen wurde, Disposition-Status aktualisieren
   if (status === 3 && trupp.patientInput) {
     updatePatientDispositionStatus(trupp.patientInput);
   }
   
-  renderTrupps();
-  window.scrollTo(0, scrollY);
+  // Renderer nur aufrufen wenn verfügbar
+  if (typeof renderTrupps === 'function') {
+    renderTrupps();
+  }
+  
+  // Scroll nur wenn im Trupp-Tracker
+  if (typeof window.trupps !== 'undefined') {
+    window.scrollTo(0, scrollY);
+  }
+}
+
+// Neue Funktion für Status-Änderung nach Trupp-Name
+function updateTruppByName(truppName, status) {
+  const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+  const truppIndex = trupps.findIndex(t => t.name === truppName);
+  
+  if (truppIndex === -1) {
+    console.error("Trupp nicht gefunden:", truppName);
+    return;
+  }
+  
+  updateTrupp(truppIndex, status);
 }
 
 // EventListener für automatische Disposition-Updates
 window.addEventListener('storage', (e) => {
   if (e.key === 'patients') {
-    // Prüfe ob trupps verfügbar ist, bevor wir Disposition-Updates durchführen
-    if (typeof trupps === 'undefined' || !Array.isArray(trupps)) {
-      return;
-    }
+    // Trupps aus localStorage laden statt globale Variable zu verwenden
+    const currentTrupps = JSON.parse(localStorage.getItem("trupps")) || [];
     
     // Prüfe ob Disposition-relevante Änderungen vorliegen
     const updatedPatients = JSON.parse(e.newValue || '[]');
@@ -197,7 +236,7 @@ window.addEventListener('storage', (e) => {
     // Für jeden Patienten mit Dispositionsvorschlägen prüfen
     updatedPatients.forEach(patient => {
       if (patient.suggestedResources && patient.suggestedResources.length > 0) {
-        updatePatientDispositionStatusSilent(patient.id);
+        updatePatientDispositionStatusSilent(patient.id, currentTrupps);
       }
     });
     
@@ -209,11 +248,9 @@ window.addEventListener('storage', (e) => {
 });
 
 // Neue Hilfsfunktion für die Aktualisierung der Disposition-Status (ohne Re-Render)
-function updatePatientDispositionStatusSilent(patientId) {
-  // Sicherheitsprüfung für trupps Variable
-  if (typeof trupps === 'undefined' || !Array.isArray(trupps)) {
-    return;
-  }
+function updatePatientDispositionStatusSilent(patientId, truppsArray = null) {
+  // Trupps aus Parameter oder localStorage laden
+  const currentTrupps = truppsArray || JSON.parse(localStorage.getItem("trupps")) || [];
   
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
   const patient = patients.find(p => p.id === patientId);
@@ -225,7 +262,7 @@ function updatePatientDispositionStatusSilent(patientId) {
   }
   
   // Alle Trupps finden, die diesem Patienten zugeordnet sind
-  const assignedTrupps = trupps.filter(t => t.patientInput === patientId && [3, 4, 7, 8].includes(t.status));
+  const assignedTrupps = currentTrupps.filter(t => t.patientInput === patientId && [3, 4, 7, 8].includes(t.status));
   
   // Trupp-Symbol auf dispatched setzen wenn mindestens ein Trupp zugeordnet
   if (assignedTrupps.length > 0 && patient.suggestedResources.includes('Trupp')) {
@@ -247,7 +284,9 @@ function updatePatientDispositionStatus(patientId) {
 }
 
 function saveTrupps() {
-  localStorage.setItem("nextMaxEinsatzTime", nextMaxEinsatzTime);
+  // nextMaxEinsatzTime aus localStorage laden oder Standard verwenden
+  const currentMaxEinsatzTime = parseInt(localStorage.getItem("nextMaxEinsatzTime"), 10) || 45;
+  localStorage.setItem("nextMaxEinsatzTime", currentMaxEinsatzTime);
   localStorage.setItem("trupps", JSON.stringify(trupps));
 }
 

@@ -6,11 +6,18 @@
     <title>Patienten-Tracking</title>
     <link rel="stylesheet" href="../styles/main.css" />
     <link rel="stylesheet" href="../styles/patient.css" />
+    <link rel="stylesheet" href="../styles/disposition_status.css" />
     <script src="../scripts/categories.js"></script>
     <script src="../scripts/logic_patient.js"></script>
     <script src="../scripts/render_patients.js"></script>
+    <script src="../scripts/status_options.js"></script>
+    <script src="../scripts/logic_trupp.js"></script>
+    <script src="../scripts/render_trupps.js"></script>
   </head>
   <body>
+    <script src="../scripts/main.js"></script>
+    <script src="../scripts/keyword_modal.js"></script>
+    <script src="../scripts/modal.js"></script>
     <header>
       <button id="btnNewPatient">Neuen Patienten erstellen</button>
     </header>
@@ -30,9 +37,6 @@
         <div id="dismissedPatients"></div>
       </section>
     </main>
-    <script src="../scripts/keyword_modal.js"></script>
-    <script src="../scripts/modal.js"></script>
-    <script src="../scripts/main.js"></script>
     <script>
       //event listener für den Button "Neuen Patienten erstellen"
       document.getElementById("btnNewPatient").addEventListener("click", () => {
@@ -68,6 +72,25 @@
         const text = prompt("Bitte Eintrag eingeben:");
         if (text && text.trim()) {
           addCustomHistory(id, text.trim());
+        }
+      }
+
+      // Funktion um Disposition-Status nach Diagnose-Änderung zu aktualisieren
+      function updateDispositionAfterDiagnosisChange(patientId) {
+        // Patient-Karten neu laden um die aktualisierten Disposition-Symbole anzuzeigen
+        if (typeof loadPatients === 'function') {
+          loadPatients(patientId);
+        }
+        
+        // Auch Trupp-Karten aktualisieren falls sie Disposition-Symbole anzeigen
+        if (typeof updatePatientDispositionStatus === 'function') {
+          const patients = JSON.parse(localStorage.getItem("patients")) || [];
+          const patient = patients.find(p => p.id === patientId);
+          if (patient) {
+            const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+            const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
+            updatePatientDispositionStatus(patient, trupps, rtms);
+          }
         }
       }
 
@@ -134,6 +157,11 @@ patients.forEach((patient) => {
             loadPatients();
           }
         }
+        
+        if (e.key === "patients") {
+          // Bei Patient-Änderungen auch die Disposition-Updates verarbeiten
+          loadPatients();
+        }
       });
 
       // ENTER-Taste in Modal abfangen und bestätigen
@@ -141,53 +169,9 @@ patients.forEach((patient) => {
         const modal = document.getElementById("keywordModal");
         if (modal && modal.style.display === "flex" && e.key === "Enter") {
           e.preventDefault();
-          confirmKeyword();
+          confirmEdit();
         }
       });
     </script>
-    <!-- Stichwort-Modal -->
-    <div id="keywordModal" class="modal" style="display: none">
-      <div class="modal-content">
-        <span class="close" onclick="closeKeywordModal()">&times;</span>
-        <h2>Stichwort auswählen</h2>
-
-        <!-- ① Suchfeld -->
-        <input
-          type="text"
-          id="searchInput"
-          placeholder="Stichwort suchen…"
-          style="
-            width: 100%;
-            padding: 6px;
-            margin-bottom: 10px;
-            box-sizing: border-box;
-          "
-          oninput="onSearchInput()"
-        />
-
-        <div style="display: flex; gap: 10px; height: 400px">
-          <!-- ② Kategorien-Liste -->
-          <div id="categoryList" class="list"></div>
-          <!-- ③ Stichwort-Liste -->
-          <div id="keywordList" class="list"></div>
-          <!-- ④ Such-Ergebnis-Liste (initial versteckt) -->
-          <div id="searchResults" class="list" style="display: none"></div>
-        </div>
-
-        <!-- Zusatzfeld für „sonstiger … Notfall“ -->
-        <div id="otherDetail" style="margin-top: 10px; display: none">
-          <label for="otherInput"
-            ><strong>Bitte genauer beschreiben:</strong></label
-          ><br />
-          <input
-            type="text"
-            id="otherInput"
-            style="width: 100%; padding: 6px; box-sizing: border-box"
-          />
-        </div>
-
-        <button onclick="confirmKeyword()">Bestätigen</button>
-      </div>
-    </div>
   </body>
 </html>

@@ -600,3 +600,78 @@ document.body.insertAdjacentHTML("beforeend", einsatzortModalTemplate);
 
 // globale Variable für den gerade bearbeiteten Trupp-Index
 let _pendingTruppIndex = null;
+
+function confirmEdit() {
+  // 1) Basis-Daten speichern (Alter, Geschlecht, Standort, Bemerkung)
+  const p = JSON.parse(localStorage.getItem("patients")).find(
+    (x) => x.id === editPatientId
+  );
+  if (!p) return alert("Kein Patient geladen");
+
+  // Gender
+  const g = document.querySelector('input[name="editGender"]:checked');
+  if (g && g.value !== p.gender) {
+    updatePatientData(editPatientId, "gender", g.value);
+  }
+  // Age
+  const age = document.getElementById("editAge").value.trim();
+  if (age && age !== String(p.age)) {
+    updatePatientData(editPatientId, "age", age);
+  }
+  // Location
+  const loc = document.getElementById("editLocation").value.trim();
+  if (loc && loc !== p.location) {
+    updatePatientData(editPatientId, "location", loc);
+  }
+  // Remarks
+  const rem = document.getElementById("editRemarks").value.trim();
+  if (rem && rem !== p.remarks) {
+    updatePatientData(editPatientId, "remarks", rem);
+  }
+
+  // 2) Stichwort-Diagnose übernehmen (angepasst von confirmKeyword)
+  if (selectedCategory !== null && selectedKeyword !== null) {
+    const cfg = alarmConfig[selectedCategory].keywords[selectedKeyword];
+    let finalWord = cfg.word;
+
+    // falls „sonstiger …“ sichtbar, hänge Zusatztext an
+    if (document.getElementById("otherDetail").style.display === "block") {
+      const extra = document.getElementById("otherInput").value.trim();
+      if (!extra) {
+        return alert("Bitte die Art des Notfalls genauer beschreiben.");
+      }
+      finalWord += " – " + extra;
+    }
+
+    // 2a) Diagnose setzen (inkl. Historie)
+    updatePatientData(editPatientId, "diagnosis", finalWord);
+
+    // 2b) vorgeschlagene Ressourcen ergänzen
+    const arr = JSON.parse(localStorage.getItem("patients")) || [];
+    const toUpdate = arr.find((x) => x.id === editPatientId);
+    if (toUpdate) {
+      toUpdate.suggestedResources = cfg.resources;
+      localStorage.setItem("patients", JSON.stringify(arr));
+      // Storage-Event, damit alle UIs neu rendern
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: "patients",
+          newValue: JSON.stringify(arr),
+        })
+      );
+    }
+  }
+
+  // 3) Modal schließen & neu rendern
+closeEditModal();
+loadPatients(editPatientId);
+
+// Trupp-Cards neu laden:
+window.dispatchEvent(new StorageEvent('storage', {
+  key: 'trupps',
+  newValue: localStorage.getItem('trupps')
+}));
+  // 4) Immer die “Patientendaten geändert: …”-Zeile in die Historie schreiben
+  //     – unabhängig davon, welche Felder wirklich verändert wurden.
+  addCombinedHistoryEntry(editPatientId);
+}
