@@ -388,6 +388,11 @@ function assignSelectedTrupp(patientId) {
         newValue: JSON.stringify(trupps),
       })
     );
+    
+    // Disposition-Update auslösen
+    if (typeof triggerDispositionUpdate === 'function') {
+      triggerDispositionUpdate();
+    }
   }
 }
 
@@ -443,6 +448,11 @@ function removeTrupp(id, index) {
         newValue: JSON.stringify(trupps),
       })
     );
+    
+    // Disposition-Update auslösen
+    if (typeof triggerDispositionUpdate === 'function') {
+      triggerDispositionUpdate();
+    }
   }
 }
 
@@ -456,6 +466,11 @@ function removeRtm(id, index) {
     patient.history.push(`${getCurrentTime()} RTM ${removed[0]} entfernt`);
     localStorage.setItem("patients", JSON.stringify(patients));
     loadPatients();
+    
+    // Disposition-Update auslösen
+    if (typeof triggerDispositionUpdate === 'function') {
+      triggerDispositionUpdate();
+    }
   }
 }
 

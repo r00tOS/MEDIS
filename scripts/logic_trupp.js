@@ -198,6 +198,11 @@ if (status === 11) {
   // Wenn ein Trupp einem Patienten zugewiesen wurde, Disposition-Status aktualisieren
   if (status === 3 && trupp.patientInput) {
     updatePatientDispositionStatus(trupp.patientInput);
+    
+    // Disposition-Update auslösen
+    if (typeof triggerDispositionUpdate === 'function') {
+      triggerDispositionUpdate();
+    }
   }
   
   // Renderer nur aufrufen wenn verfügbar

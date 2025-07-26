@@ -16,7 +16,7 @@
 }
 
 .disposition-symbol {
-  float: left;
+  display: inline-block !important;
   width: auto;
   min-width: 32px;
   height: 32px;
@@ -33,30 +33,61 @@
   box-sizing: border-box;
   text-align: center;
   line-height: 28px;
+  float: none !important;
 }
 
 .disposition-symbol:last-child {
   margin-right: 0;
 }
 
-.disposition-symbol.dispatched {
-  background-color: #d4edda;
-  color: #155724;
-  border-color: #c3e6cb;
+/* HÖCHSTE Priorität für dispatched Status - BLAU statt GRÜN */
+html body .disposition-symbols .disposition-symbol.dispatched,
+html body .patient-summary .disposition-symbol.dispatched,
+html body span.disposition-symbol.dispatched,
+html body div.trupp span.disposition-symbol.dispatched,
+html body div.rtm span.disposition-symbol.dispatched,
+html body div.patient-card span.disposition-symbol.dispatched,
+html body .patient-info-table span.disposition-symbol.dispatched,
+html body .patient-details-table span.disposition-symbol.dispatched,
+.disposition-symbol.dispatched.required,
+.disposition-symbol.dispatched.ignored {
+  background-color: #cce5ff !important;
+  color: #004080 !important;
+  border-color: #80bfff !important;
+  border: 1px solid #80bfff !important;
+  animation: none !important;
 }
 
-.disposition-symbol.required {
-  background-color: #f8d7da;
-  color: #721c24;
-  border-color: #f5c6cb;
-  animation: blink 1.5s infinite;
-}
-
-.disposition-symbol.ignored {
+/* MITTLERE Priorität für ignored Status - GELB */
+html body .disposition-symbols .disposition-symbol.ignored:not(.dispatched),
+html body .patient-summary .disposition-symbol.ignored:not(.dispatched),
+html body span.disposition-symbol.ignored:not(.dispatched),
+html body div.trupp span.disposition-symbol.ignored:not(.dispatched),
+html body div.rtm span.disposition-symbol.ignored:not(.dispatched),
+html body div.patient-card span.disposition-symbol.ignored:not(.dispatched),
+html body .patient-info-table span.disposition-symbol.ignored:not(.dispatched),
+html body .patient-details-table span.disposition-symbol.ignored:not(.dispatched) {
   background-color: #fff3cd !important;
   color: #856404 !important;
   border-color: #ffeaa7 !important;
+  border: 1px solid #ffeaa7 !important;
   animation: none !important;
+}
+
+/* NIEDRIGSTE Priorität für required Status - ROT */
+html body .disposition-symbols .disposition-symbol.required:not(.dispatched):not(.ignored),
+html body .patient-summary .disposition-symbol.required:not(.dispatched):not(.ignored),
+html body span.disposition-symbol.required:not(.dispatched):not(.ignored),
+html body div.trupp span.disposition-symbol.required:not(.dispatched):not(.ignored),
+html body div.rtm span.disposition-symbol.required:not(.dispatched):not(.ignored),
+html body div.patient-card span.disposition-symbol.required:not(.dispatched):not(.ignored),
+html body .patient-info-table span.disposition-symbol.required:not(.dispatched):not(.ignored),
+html body .patient-details-table span.disposition-symbol.required:not(.dispatched):not(.ignored) {
+  background-color: #f8d7da !important;
+  color: #721c24 !important;
+  border-color: #f5c6cb !important;
+  border: 1px solid #f5c6cb !important;
+  animation: blink 1.5s infinite !important;
 }
 
 .disposition-symbol:hover {

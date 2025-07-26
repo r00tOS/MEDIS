@@ -152,7 +152,22 @@
           trupps = latest;
           renderTrupps();
         }
+        
+        // HINZUGEFÜGT: Auch bei Patient-Änderungen Trupp-Karten aktualisieren
+        if (e.key === "patients") {
+          renderTrupps();
+        }
       });
+
+      // HINZUGEFÜGT: Event Listener für Disposition-Updates
+      if (!window.truppDispositionUpdateListener) {
+        window.truppDispositionUpdateListener = function() {
+          console.log('Disposition update received in trupp tracker');
+          renderTrupps();
+        };
+        
+        window.addEventListener('dispositionUpdate', window.truppDispositionUpdateListener);
+      }
 
       // Fallback alle 5 s
       setInterval(() => {

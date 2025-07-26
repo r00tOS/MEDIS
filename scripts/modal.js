@@ -851,7 +851,7 @@ function showTruppAssignmentModal(patientId) {
             <option value="">Bitte Trupp auswählen...</option>
             ${availableTrupps.map(trupp => {
               const statusDef = window.statusOptions?.find(o => o.status === trupp.status) || { text: 'Unbekannt' };
-              return `<option value="${trupp.name}">${trupp.name} (${statusDef.text})</option>`;
+              return `<option value="${trupp.name}">${trupp.name}</option>`;
             }).join('')}
           </select>
         </div>

@@ -43,101 +43,259 @@ function updatePatientDispositionStatus(patient, trupps, rtms) {
     patient.dispositionStatus = {};
   }
 
+  console.log('=== UPDATE DISPOSITION STATUS ===');
+  console.log('Patient ID:', patient.id);
+  console.log('Before reset:', patient.dispositionStatus);
+
+  // WICHTIG: Manuelle Status-Setzungen beibehalten!
+  const manualStatus = {};
+  patient.suggestedResources.forEach(resource => {
+    if (patient.dispositionStatus[resource] === 'dispatched') {
+      manualStatus[resource] = 'dispatched';
+    }
+    if (patient.dispositionStatus[resource + '_ignored'] === true) {
+      manualStatus[resource + '_ignored'] = true;
+    }
+  });
+
   // Reset all disposition status first
   patient.suggestedResources.forEach(resource => {
     patient.dispositionStatus[resource] = undefined;
   });
 
-  // Für jede Ressource prüfen - genau wie im Trupp-Tracker
+  console.log('After reset:', patient.dispositionStatus);
+
+  // Finde alle Trupps die diesem Patienten zugewiesen sind (wie im Trupp-Tracker)
+  const assignedTrupps = trupps.filter(t => t.patientInput === patient.id && [3, 4, 7, 8].includes(t.status));
+  
+  console.log('Assigned trupps:', assignedTrupps.map(t => t.name));
+
+  // Finde alle RTMs die diesem Patienten zugewiesen sind
+  const assignedRTMs = rtms.filter(r => (r.patientInput === patient.id || r.patientInput === String(patient.id)) && [3, 4, 7, 8].includes(r.status));
+
+  // ZUSÄTZLICH: RTMs auch aus patient.rtm Array berücksichtigen
+  const patientRTMNames = Array.isArray(patient.rtm) ? patient.rtm : [];
+  const additionalRTMs = rtms.filter(r => patientRTMNames.includes(r.name) && [3, 4, 7, 8].includes(r.status));
+  
+  // Kombiniere beide RTM-Listen
+  const allAssignedRTMs = [...assignedRTMs];
+  additionalRTMs.forEach(rtm => {
+    if (!allAssignedRTMs.find(r => r.name === rtm.name)) {
+      allAssignedRTMs.push(rtm);
+    }
+  });
+
+  // Für jede Ressource prüfen
   patient.suggestedResources.forEach(resource => {
     let shouldDispatch = false;
 
-    // 1. Trupp-Logik - prüfe patient.team Array direkt
-    if (resource === 'Trupp' && Array.isArray(patient.team) && patient.team.length > 0) {
+    // 1. Trupp-Logik - bereits zugewiesen = dispatched (wie im Trupp-Tracker)
+    if (resource === 'Trupp' && assignedTrupps.length > 0) {
       shouldDispatch = true;
     }
 
-    // 2. RTM-Logik - prüfe patient.rtm Array direkt  
-    if (resource === 'RTM' && Array.isArray(patient.rtm) && patient.rtm.length > 0) {
+    // 2. RTM-Logik - bereits zugewiesen = dispatched
+    if (resource === 'RTM' && allAssignedRTMs.length > 0) {
       shouldDispatch = true;
     }
 
-    // 3. RTM-Type-spezifische Disposition - basierend auf zugewiesenen RTMs
-    if (Array.isArray(patient.rtm) && patient.rtm.length > 0) {
-      patient.rtm.forEach(rtmName => {
-        const assignedRTM = rtms.find(r => r.name === rtmName);
-        if (assignedRTM && assignedRTM.rtmType) {
-          const rtmType = assignedRTM.rtmType;
-          
-          // Prüfe NA/NEF-Konstellation
-          const hasNA = patient.suggestedResources.includes('UHS-Notarzt oder NEF');
-          const hasNEF = patient.suggestedResources.includes('NEF');
-          
-          // RTW und NEF für Typ 80 und 81
-          if ((rtmType === 80 || rtmType === 81) && (resource === 'RTW' || resource === 'NEF' || resource === 'UHS-Notarzt oder NEF')) {
-            shouldDispatch = true;
-          }
-          // Nur NEF für Typ 82 - ABER spezielle NA/NEF-Behandlung
-          if (rtmType === 82) {
-            if (hasNA && hasNEF) {
-              // Beide vorhanden: nur NEF dispatched, NA nicht
-              if (resource === 'NEF') {
-                shouldDispatch = true;
-              }
-            } else if (hasNA && !hasNEF) {
-              // Nur NA vorhanden: NA dispatched
-              if (resource === 'UHS-Notarzt oder NEF') {
-                shouldDispatch = true;
-              }
-            } else if (!hasNA && hasNEF) {
-              // Nur NEF vorhanden: NEF dispatched
-              if (resource === 'NEF') {
-                shouldDispatch = true;
-              }
+    // 3. RTM-Type-spezifische Disposition-Status-Setzung
+    allAssignedRTMs.forEach(assignedRTM => {
+      if (assignedRTM.rtmType) {
+        const rtmType = assignedRTM.rtmType;
+        
+        // Prüfe NA/NEF-Konstellation
+        const hasNA = patient.suggestedResources.includes('UHS-Notarzt oder NEF');
+        const hasNEF = patient.suggestedResources.includes('NEF');
+        
+        // RTW und NEF für Typ 80 und 81
+        if ((rtmType === 80 || rtmType === 81) && (resource === 'RTW' || resource === 'NEF' || resource === 'UHS-Notarzt oder NEF')) {
+          shouldDispatch = true;
+        }
+        // Nur NEF für Typ 82 - ABER spezielle NA/NEF-Behandlung
+        if (rtmType === 82) {
+          if (hasNA && hasNEF) {
+            // Beide vorhanden: nur NEF dispatched, NA nicht
+            if (resource === 'NEF') {
+              shouldDispatch = true;
             }
-          }
-          // Nur RTW für Typ 83 und 89
-          if ((rtmType === 83 || rtmType === 89) && resource === 'RTW') {
-            shouldDispatch = true;
-          }
-          // NEF für RTH - ABER spezielle NA/NEF-Behandlung
-          if (rtmType === 'RTH') {
-            if (hasNA && hasNEF) {
-              // Beide vorhanden: nur NEF dispatched, NA nicht
-              if (resource === 'NEF') {
-                shouldDispatch = true;
-              }
-            } else if (hasNA && !hasNEF) {
-              // Nur NA vorhanden: NA dispatched
-              if (resource === 'UHS-Notarzt oder NEF') {
-                shouldDispatch = true;
-              }
-            } else if (!hasNA && hasNEF) {
-              // Nur NEF vorhanden: NEF dispatched
-              if (resource === 'NEF') {
-                shouldDispatch = true;
-              }
+          } else if (hasNA && !hasNEF) {
+            // Nur NA vorhanden: NA dispatched
+            if (resource === 'UHS-Notarzt oder NEF') {
+              shouldDispatch = true;
+            }
+          } else if (!hasNA && hasNEF) {
+            // Nur NEF vorhanden: NEF dispatched
+            if (resource === 'NEF') {
+              shouldDispatch = true;
             }
           }
         }
-      });
-    }
+        // Nur RTW für Typ 83 und 89
+        if ((rtmType === 83 || rtmType === 89) && resource === 'RTW') {
+          shouldDispatch = true;
+        }
+        // NEF für RTH - ABER spezielle NA/NEF-Behandlung
+        if (rtmType === 'RTH') {
+          if (hasNA && hasNEF) {
+            // Beide vorhanden: nur NEF dispatched, NA nicht
+            if (resource === 'NEF') {
+              shouldDispatch = true;
+            }
+          } else if (hasNA && !hasNEF) {
+            // Nur NA vorhanden: NA dispatched
+            if (resource === 'UHS-Notarzt oder NEF') {
+              shouldDispatch = true;
+            }
+          } else if (!hasNA && hasNEF) {
+            // Nur NEF vorhanden: NEF dispatched
+            if (resource === 'NEF') {
+              shouldDispatch = true;
+            }
+          }
+        }
+      }
+    });
 
-    // Status setzen
-    if (shouldDispatch) {
+    // Status setzen: Automatisch ODER manuell
+    if (shouldDispatch || manualStatus[resource] === 'dispatched') {
       patient.dispositionStatus[resource] = 'dispatched';
+    }
+    
+    // Ignored Status wiederherstellen
+    if (manualStatus[resource + '_ignored'] === true) {
+      patient.dispositionStatus[resource + '_ignored'] = true;
+    }
+    
+    console.log(`Resource ${resource}: shouldDispatch=${shouldDispatch}, final status=${patient.dispositionStatus[resource]}`);
+  });
+  
+  console.log('Final disposition status:', patient.dispositionStatus);
+}
+
+/**
+ * Event zur automatischen Aktualisierung der Dispositionssymbole
+ */
+function triggerDispositionUpdate() {
+  // Custom Event dispatchen
+  window.dispatchEvent(new CustomEvent('dispositionUpdate'));
+}
+
+/**
+ * Toggle disposition status (dispatched/required)
+ */
+function toggleDispositionStatus(patientId, resource) {
+  console.log('=== TOGGLE DISPOSITION STATUS ===');
+  console.log('Patient ID:', patientId);
+  console.log('Resource:', resource);
+  
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  const patient = patients.find(p => p.id === patientId);
+  
+  if (!patient || !patient.dispositionStatus) {
+    if (!patient.dispositionStatus) patient.dispositionStatus = {};
+  }
+  
+  console.log('Before toggle:', patient.dispositionStatus[resource]);
+  
+  // Toggle zwischen dispatched und undefined
+  if (patient.dispositionStatus[resource] === 'dispatched') {
+    patient.dispositionStatus[resource] = undefined;
+  } else {
+    patient.dispositionStatus[resource] = 'dispatched';
+  }
+  
+  console.log('After toggle:', patient.dispositionStatus[resource]);
+  
+  localStorage.setItem("patients", JSON.stringify(patients));
+  
+  // Finde das geklickte Element und schaue dir seine aktuellen Styles an
+  const clickedElements = document.querySelectorAll(`[onclick*="${patientId}"][onclick*="${resource}"]`);
+  console.log('Found elements:', clickedElements.length);
+  
+  clickedElements.forEach((element, index) => {
+    console.log(`Element ${index}:`, element);
+    console.log('Tag name:', element.tagName);
+    console.log('Classes:', element.className);
+    console.log('Computed styles:', window.getComputedStyle(element));
+    console.log('Background color:', window.getComputedStyle(element).backgroundColor);
+    console.log('Color:', window.getComputedStyle(element).color);
+  });
+  
+  // Patient-Cards neu laden
+  if (typeof loadPatients === 'function') {
+    loadPatients(patientId);
+  }
+  
+  // Event für Updates auslösen
+  triggerDispositionUpdate();
+}
+
+/**
+ * Erzwingt sofortige CSS-Klasssen-Updates für Disposition-Symbole
+ */
+function forceDispositionStyleUpdate(patientId, resource, dispositionStatus) {
+  // Alle Symbole für diese Kombination finden
+  const symbolElements = document.querySelectorAll(`[onclick*="${patientId}"][onclick*="${resource}"]`);
+  
+  symbolElements.forEach(element => {
+    // Alle Status-Klassen entfernen
+    element.classList.remove('dispatched', 'required', 'ignored');
+    
+    // Korrekte Klasse basierend auf Status setzen
+    const isDispatched = dispositionStatus[resource] === 'dispatched';
+    const isIgnored = dispositionStatus[resource + '_ignored'] === true;
+    
+    if (isDispatched) {
+      element.classList.add('dispatched');
+      // Zusätzlich CSS direkt setzen als Fallback
+      element.style.backgroundColor = '#d4edda';
+      element.style.color = '#155724';
+      element.style.borderColor = '#c3e6cb';
+      element.style.animation = 'none';
+    } else if (isIgnored) {
+      element.classList.add('ignored');
+      element.style.backgroundColor = '#fff3cd';
+      element.style.color = '#856404';
+      element.style.borderColor = '#ffeaa7';
+      element.style.animation = 'none';
+    } else {
+      element.classList.add('required');
+      element.style.backgroundColor = '#f8d7da';
+      element.style.color = '#721c24';
+      element.style.borderColor = '#f5c6cb';
+      element.style.animation = 'blink 1.5s infinite';
     }
   });
 }
 
 /**
- * Renders and updates the patient cards UI based on the current patient and team data
- * stored in localStorage. Patients are sorted and displayed in different sections
- * according to their status. The function also ensures data consistency, initializes
- * missing fields, and attaches event handlers for patient actions.
- *
- * @param {number} [highlightId] - Optional patient ID to highlight after rendering.
+ * Toggle disposition ignore status
  */
+function toggleDispositionIgnore(event, patientId, resource) {
+  event.preventDefault();
+  event.stopPropagation();
+  
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  const patient = patients.find(p => p.id === patientId);
+  
+  if (!patient || !patient.dispositionStatus) return;
+  
+  // Toggle ignored status
+  const ignoredKey = resource + '_ignored';
+  patient.dispositionStatus[ignoredKey] = !patient.dispositionStatus[ignoredKey];
+  
+  localStorage.setItem("patients", JSON.stringify(patients));
+  
+  // Event für Updates auslösen
+  triggerDispositionUpdate();
+  
+  // Auch Patient-Cards neu laden
+  if (typeof loadPatients === 'function') {
+    loadPatients(patientId);
+  }
+}
+
 function loadPatients(highlightId) {
   if (!document.getElementById("activePatients")) return;
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
@@ -339,10 +497,8 @@ ${(() => {
       '<div style="display: flex; flex-wrap: wrap; gap: 4px;">';
     
     patient.suggestedResources.forEach(resource => {
-      // Verwende die bereits definierte getResourceAbbreviation Funktion
       const abbrev = getResourceAbbreviation(resource);
       
-      // Status aus den Patientendaten abrufen
       if (!patient.dispositionStatus) {
         patient.dispositionStatus = {};
       }
@@ -350,10 +506,18 @@ ${(() => {
       const isDispatched = patient.dispositionStatus[resource] === 'dispatched';
       const isIgnored = patient.dispositionStatus[resource + '_ignored'] === true;
       
-      dispositionSymbols += '<span class="disposition-symbol ' + (isDispatched ? 'dispatched' : 'required') + 
-             (isIgnored ? ' ignored' : '') +
-             '" style="display: inline-block; padding: 2px 6px; margin: 0; border: 1px solid #ccc; border-radius: 3px; cursor: pointer; white-space: nowrap;' +
-             (!isDispatched && !isIgnored ? ' animation: blink 1.5s infinite;' : '') + '"' +
+      // CSS-Klassen mit Priorität: dispatched überschreibt alles
+      let cssClass = 'disposition-symbol ';
+      if (isDispatched) {
+        // Dispatched hat höchste Priorität - alle anderen Klassen werden überschrieben
+        cssClass += 'dispatched';
+      } else if (isIgnored) {
+        cssClass += 'ignored';
+      } else {
+        cssClass += 'required';
+      }
+      
+      dispositionSymbols += '<span class="' + cssClass + '"' +
              ' onclick="toggleDispositionStatus(' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
              ' oncontextmenu="toggleDispositionIgnore(event, ' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
              ' title="' + resource + '">' +
@@ -522,6 +686,56 @@ ${patient.remarks || "–"}
   };
   
   document.addEventListener('click', window.dropdownClickHandler);
+  
+  window.scrollTo(0, scrollY); 
+  
+  // Event Listener für automatische Disposition-Updates
+  // Entferne vorherige Listener um Duplikate zu vermeiden
+  if (window.dispositionUpdateListener) {
+    window.removeEventListener('dispositionUpdate', window.dispositionUpdateListener);
+  }
+  
+  window.dispositionUpdateListener = function() {
+    // Nur die Disposition-Status aktualisieren ohne komplettes Neurendern
+    const patients = JSON.parse(localStorage.getItem("patients")) || [];
+    const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+    const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
+    
+    patients.forEach(patient => {
+      updatePatientDispositionStatus(patient, trupps, rtms);
+      
+      // Nur die Dispositionssymbole in der bestehenden Karte aktualisieren
+      const patientCard = document.querySelector(`[data-id="${patient.id}"]`);
+      if (patientCard) {
+        const dispositionContainer = patientCard.querySelector('.disposition-symbols');
+        if (dispositionContainer && patient.suggestedResources && Array.isArray(patient.suggestedResources)) {
+          const symbolsDiv = dispositionContainer.querySelector('div:last-child');
+          if (symbolsDiv) {
+            // Symbole neu generieren - OHNE inline-Styles!
+            let newSymbols = '';
+            patient.suggestedResources.forEach(resource => {
+              const abbrev = getResourceAbbreviation(resource);
+              const isDispatched = patient.dispositionStatus[resource] === 'dispatched';
+              const isIgnored = patient.dispositionStatus[resource + '_ignored'] === true;
+              
+              newSymbols += '<span class="disposition-symbol ' + (isDispatched ? 'dispatched' : 'required') + 
+                     (isIgnored ? ' ignored' : '') + '"' +
+                     ' onclick="toggleDispositionStatus(' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
+                     ' oncontextmenu="toggleDispositionIgnore(event, ' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
+                     ' title="' + resource + '">' +
+                     abbrev + '</span>';
+            });
+            symbolsDiv.innerHTML = newSymbols;
+          }
+        }
+      }
+    });
+    
+    // Aktualisierte Patientendaten speichern
+    localStorage.setItem("patients", JSON.stringify(patients));
+  };
+  
+  window.addEventListener('dispositionUpdate', window.dispositionUpdateListener);
   
   window.scrollTo(0, scrollY); 
 }

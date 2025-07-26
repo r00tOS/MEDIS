@@ -201,6 +201,10 @@ ${(() => {
   const patient  = patients.find(p => p.id === trupp.patientInput);
   if (!patient) return "";
 
+  // Debug-Ausgabe
+  console.log('Rendering disposition symbols for patient:', patient.id);
+  console.log('Patient disposition status:', patient.dispositionStatus);
+
   // Disposition-Status aktualisieren (zentrale Funktion aus render_patients.js)
   const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
   const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
@@ -237,7 +241,7 @@ ${(() => {
     return abbreviations[resource] || resource.substring(0, 3).toUpperCase();
   };
 
-  // Dispositionssymbole generieren - Status wird jetzt durch zentrale Funktion gesetzt
+  // Dispositionssymbole generieren - DEBUG VERSION
   let dispositionSymbols = '';
   
   if (patient.suggestedResources && Array.isArray(patient.suggestedResources) && patient.suggestedResources.length > 0) {
@@ -248,7 +252,6 @@ ${(() => {
     patient.suggestedResources.forEach(resource => {
       const abbrev = getResourceAbbreviation(resource);
       
-      // Status nur aus den Patientendaten abrufen (wurde durch zentrale Funktion gesetzt)
       if (!patient.dispositionStatus) {
         patient.dispositionStatus = {};
       }
@@ -256,14 +259,25 @@ ${(() => {
       const isDispatched = patient.dispositionStatus[resource] === 'dispatched';
       const isIgnored = patient.dispositionStatus[resource + '_ignored'] === true;
       
-      dispositionSymbols += '<span class="disposition-symbol ' + (isDispatched ? 'dispatched' : 'required') + 
-             (isIgnored ? ' ignored' : '') +
-             '" style="display: inline-block; padding: 2px 6px; margin: 0; border: 1px solid #ccc; border-radius: 3px; cursor: pointer; white-space: nowrap;' +
-             (isDispatched || isIgnored ? '' : ' animation: blink 1.5s infinite;') + '"' +
-             ' onclick="toggleDispositionStatus(' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
-             ' oncontextmenu="toggleDispositionIgnore(event, ' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
-             ' title="' + resource + '">' +
-             abbrev + '</span>';
+      console.log(`Resource: ${resource}, isDispatched: ${isDispatched}, isIgnored: ${isIgnored}`);
+      
+      // CSS-Klassen mit klarer Priorität: dispatched > ignored > required
+      let cssClass = 'disposition-symbol ';
+      if (isDispatched) {
+        // Dispatched überschreibt alle anderen Status
+        cssClass += 'dispatched';
+        console.log(`Applied CSS class: ${cssClass}`);
+      } else if (isIgnored) {
+        cssClass += 'ignored';
+      } else {
+        cssClass += 'required';
+      }
+      
+      dispositionSymbols += '<span class="' + cssClass + '"' +
+        ' onclick="toggleDispositionStatus(' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
+        ' oncontextmenu="toggleDispositionIgnore(event, ' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
+        ' title="' + resource + '">' +
+        abbrev + '</span>';
     });
     
     dispositionSymbols += '</div></div>';
@@ -657,6 +671,11 @@ function confirmTruppAssignment(patientId) {
     key: "patients",
     newValue: JSON.stringify(patients),
   }));
+  
+  // Disposition-Update auslösen
+  if (typeof triggerDispositionUpdate === 'function') {
+    triggerDispositionUpdate();
+  }
   
   closeTruppAssignmentModal();
   

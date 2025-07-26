@@ -398,3 +398,16 @@ h2 {
 .disposition-btn:hover {
   background: #0056b3;
 }
+
+/* Ensure disposition symbols are not overridden by patient card styles */
+.patient-card .disposition-symbol,
+.patient-info-table .disposition-symbol,
+.patient-details-table .disposition-symbol {
+  color: inherit; /* Ensure symbols inherit color without overriding */
+}
+
+/* Make sure no table or button styles interfere */
+.patient-info-table span,
+.patient-details-table span {
+  color: inherit; /* Ensure span elements inherit color without overriding */
+}

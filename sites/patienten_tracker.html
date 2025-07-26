@@ -161,6 +161,11 @@ patients.forEach((patient) => {
         if (e.key === "patients") {
           // Bei Patient-Änderungen auch die Disposition-Updates verarbeiten
           loadPatients();
+          
+          // HINZUGEFÜGT: Disposition-Update Event auslösen
+          if (typeof triggerDispositionUpdate === 'function') {
+            triggerDispositionUpdate();
+          }
         }
       });
 
