@@ -64,23 +64,32 @@ describe('updateTrupp', () => {
       patientHistorie: [],
       history: []
     }];
+    
+    // Synchronisiere mit localStorage - das fehlte!
+    localStorage.setItem("trupps", JSON.stringify(window.trupps));
   });
 
   test('wechsel in Pausen-Status setzt pausenzeit=0 und currentPauseStart', () => {
     jest.spyOn(Date, 'now').mockReturnValue(1000);
     // Status-Code 2 = Einsatzbereit in UHS (Pause)
     updateTrupp(0, 2);
-    const t = window.trupps[0];
+    // updateTrupp lädt aus localStorage, also müssen wir auch dort nachlesen
+    const updatedTrupps = JSON.parse(localStorage.getItem("trupps"));
+    const t = updatedTrupps[0];
     expect(t.pausenzeit).toBe(0);
     expect(t.currentPauseStart).toBe(1000);
   });
 
   test('wechsel weg von Pausen-Status löscht currentPauseStart', () => {
-    window.trupps[0].status = 2;     // war Pause
+    // Ausgangszustand: Trupp ist in Pause
+    window.trupps[0].status = 2;
     window.trupps[0].currentPauseStart = 500;
+    localStorage.setItem("trupps", JSON.stringify(window.trupps));
+    
     // zurück auf Nicht Einsatzbereit (6)
     updateTrupp(0, 6);
-    const t = window.trupps[0];
+    const updatedTrupps = JSON.parse(localStorage.getItem("trupps"));
+    const t = updatedTrupps[0];
     expect(t.currentPauseStart).toBeNull();
   });
 
@@ -88,29 +97,27 @@ describe('updateTrupp', () => {
     jest.spyOn(Date, 'now').mockReturnValue(2000);
     // Status-Code 11 = Streife (Einsatz)
     updateTrupp(0, 11);
-    const t = window.trupps[0];
+    const updatedTrupps = JSON.parse(localStorage.getItem("trupps"));
+    const t = updatedTrupps[0];
     expect(t.einsatzzeit).toBe(0);
     expect(t.currentEinsatzStart).toBe(2000);
   });
 
   test('wechsel weg von Patient fügt patientHistorie-Entry hinzu und leert patientInput/patientStart', () => {
     // Setup: alter Status war Patient (3) und patientStart gesetzt
-    window.trupps[0].status = 3;     // Patient
+    window.trupps[0].status = 3;
     window.trupps[0].patientStart = 500;
-    window.trupps[0].patientHistorie = [];
-    window.trupps[0].history = [];
+    localStorage.setItem("trupps", JSON.stringify(window.trupps));
 
     jest.spyOn(Date, 'now').mockReturnValue(1500);
-
-    // Merke dir den Start-Wert, bevor er gelöscht wird
-    const initialStart = window.trupps[0].patientStart;
 
     // von Patient (3) → Nicht Einsatzbereit (6)
     updateTrupp(0, 6);
 
-    const t = window.trupps[0];
+    const updatedTrupps = JSON.parse(localStorage.getItem("trupps"));
+    const t = updatedTrupps[0];
     expect(t.patientHistorie).toEqual([
-      { nummer: 'p1', von: initialStart, bis: 1500 }
+      { nummer: 'p1', von: 500, bis: 1500 }
     ]);
     expect(t.patientInput).toBeNull();
     expect(t.patientStart).toBeNull();
