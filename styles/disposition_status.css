@@ -51,10 +51,10 @@ html body .patient-info-table span.disposition-symbol.dispatched,
 html body .patient-details-table span.disposition-symbol.dispatched,
 .disposition-symbol.dispatched.required,
 .disposition-symbol.dispatched.ignored {
-  background-color: #cce5ff !important;
-  color: #004080 !important;
-  border-color: #80bfff !important;
-  border: 1px solid #80bfff !important;
+  background-color: #d4edda !important;
+  color: #155724 !important;
+  border-color: #c3e6cb !important;
+  border: 1px solid #c3e6cb !important;
   animation: none !important;
 }
 

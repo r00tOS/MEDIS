@@ -232,10 +232,14 @@ ${(() => {
     return abbreviations[resource] || resource.substring(0, 3).toUpperCase();
   };
 
-  // Dispositionssymbole generieren - Status wird jetzt durch zentrale Funktion gesetzt
+  // Dispositionssymbole generieren - DEBUG VERSION (wie in render_trupps.js)
   let dispositionSymbols = '';
   
   if (patient.suggestedResources && Array.isArray(patient.suggestedResources) && patient.suggestedResources.length > 0) {
+    // Debug-Ausgabe
+    console.log('Rendering disposition symbols for patient:', patient.id);
+    console.log('Patient disposition status:', patient.dispositionStatus);
+    
     dispositionSymbols = '<div class="disposition-symbols" style="display: flex; flex-direction: column; gap: 4px; margin: 8px 0;">' +
       '<span style="font-weight: bold; margin-bottom: 4px;">Dispositionsvorschlag:</span>' +
       '<div style="display: flex; flex-wrap: wrap; gap: 4px;">';
@@ -243,7 +247,6 @@ ${(() => {
     patient.suggestedResources.forEach(resource => {
       const abbrev = getResourceAbbreviation(resource);
       
-      // Status nur aus den Patientendaten abrufen (wurde durch zentrale Funktion gesetzt)
       if (!patient.dispositionStatus) {
         patient.dispositionStatus = {};
       }
@@ -251,14 +254,25 @@ ${(() => {
       const isDispatched = patient.dispositionStatus[resource] === 'dispatched';
       const isIgnored = patient.dispositionStatus[resource + '_ignored'] === true;
       
-      dispositionSymbols += '<span class="disposition-symbol ' + (isDispatched ? 'dispatched' : 'required') + 
-         (isIgnored ? ' ignored' : '') +
-         '" style="display: inline-block; padding: 2px 6px; margin: 0; border: 1px solid #ccc; border-radius: 3px; cursor: pointer; white-space: nowrap;' +
-         (isDispatched || isIgnored ? '' : ' animation: blink 1.5s infinite;') + '"' +
-         ' onclick="toggleDispositionStatus(' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
-         ' oncontextmenu="toggleDispositionIgnore(event, ' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
-         ' title="' + resource + '">' +
-         abbrev + '</span>';
+      console.log(`Resource: ${resource}, isDispatched: ${isDispatched}, isIgnored: ${isIgnored}`);
+      
+      // CSS-Klassen mit klarer Priorität: dispatched > ignored > required
+      let cssClass = 'disposition-symbol ';
+      if (isDispatched) {
+        // Dispatched überschreibt alle anderen Status
+        cssClass += 'dispatched';
+        console.log(`Applied CSS class: ${cssClass}`);
+      } else if (isIgnored) {
+        cssClass += 'ignored';
+      } else {
+        cssClass += 'required';
+      }
+      
+      dispositionSymbols += '<span class="' + cssClass + '"' +
+        ' onclick="toggleDispositionStatus(' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
+        ' oncontextmenu="toggleDispositionIgnore(event, ' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
+        ' title="' + resource + '">' +
+        abbrev + '</span>';
     });
     
     dispositionSymbols += '</div></div>';
@@ -630,4 +644,3 @@ function openRTMNameChangeModal(rtmIndex) {
   updateRTMPreview();
   document.getElementById('rtmCreationModal').style.display = 'flex';
 }
-
