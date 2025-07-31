@@ -159,13 +159,11 @@ patients.forEach((patient) => {
         }
         
         if (e.key === "patients") {
-          // Bei Patient-Änderungen auch die Disposition-Updates verarbeiten
+          // Bei Patient-Änderungen nur neu laden, KEINE Disposition-Updates
           loadPatients();
           
-          // HINZUGEFÜGT: Disposition-Update Event auslösen
-          if (typeof triggerDispositionUpdate === 'function') {
-            triggerDispositionUpdate();
-          }
+          // REMOVED: triggerDispositionUpdate() - was causing save conflicts
+          // Disposition updates will be handled through direct logic in assignResource() etc.
         }
       });
 
@@ -177,6 +175,20 @@ patients.forEach((patient) => {
           confirmEdit();
         }
       });
+
+      // DISPOSITION UPDATE LISTENER COMPLETELY DISABLED
+      // This was causing conflicts with patient data saving
+      // Disposition updates will happen through normal save operations only
+      
+      if (window.dispositionUpdateListener) {
+        window.removeEventListener('dispositionUpdate', window.dispositionUpdateListener);
+        window.dispositionUpdateListener = null;
+      }
+      
+      // Remove the save flag as well
+      window.isSavingPatientData = false;
     </script>
+  </body>
+</html>
   </body>
 </html>

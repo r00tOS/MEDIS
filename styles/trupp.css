@@ -96,6 +96,7 @@ body {
 /* 4. Statusfarben */
 .einsatz {
   border-left: 5px solid #28a745;
+  background: #cce7c7;
 }
 .pause {
   border-left: 5px solid #007bff;

@@ -160,7 +160,7 @@ function updatePatientData(id, field, value) {
 
   // 2) Update von History, Feld, Triggern von recordStatusChange und Speichern
   function applyUpdate() {
-    // a) History-Eintrag
+    // a) History-Eintrag - NUR wenn value nicht leer ist
     if (field === "status") {
       patient.history.push(`${getCurrentTime()} Status: ${value}`);
     } else if (field === "discharge") {
@@ -169,14 +169,14 @@ function updatePatientData(id, field, value) {
       patient.history.push(`${getCurrentTime()} Transport in KH: ${value}`);
     } else if (field === "additionalRequest") {
       patient.history.push(`${getCurrentTime()} ${value}`);
-    } else if (field === "diagnosis") {
+    } else if (field === "diagnosis" && value) { // Nur wenn diagnosis nicht leer
       patient.history.push(`${getCurrentTime()} Verdachtsdiagnose: ${value}`);
       
       // Spezialbehandlung für Diagnose: suggestedResources aktualisieren
       updateSuggestedResourcesForDiagnosis(patient, value);
     }
 
-    // b) Feld setzen
+    // b) Feld IMMER setzen (auch bei leerem Wert)
     patient[field] = value;
 
     // d) persistieren
@@ -218,9 +218,10 @@ function updatePatientData(id, field, value) {
     return;
   }
 
-  // 4) Alle anderen Felder → direkt updaten
+  // 4) Alle anderen Felder → direkt updaten OHNE Disposition-Update
+  // Disposition-Updates erfolgen nur bei Trupp/RTM-Änderungen
   applyUpdate();
-  loadPatients();
+  loadPatients(); // Einfaches Neurendern ohne Disposition-Updates
 }
 
 // Neue Hilfsfunktion: suggestedResources basierend auf Diagnose aktualisieren
@@ -303,23 +304,82 @@ function assignResource(id, type) {
     patient.team.push(value.trim());
   } else {
     if (!Array.isArray(patient.rtm)) patient.rtm = [];
-    patient.rtm.push(value.trim());
+    
+    // Behandle mehrere RTMs (kommagetrennt)
+    const rtmList = value.split(',').map(rtm => rtm.trim()).filter(rtm => rtm.length > 0);
+    rtmList.forEach(rtm => {
+      patient.rtm.push(rtm);
+    });
   }
 
-  // 3) Sofort speichern
+  // 3) Disposition-Status direkt aktualisieren
+  if (!patient.dispositionStatus) patient.dispositionStatus = {};
+  
+  if (type === "rtm") {
+    // RTMs zu Ressourcen-Namen mappen - für alle hinzugefügten RTMs
+    const rtmList = value.split(',').map(rtm => rtm.trim()).filter(rtm => rtm.length > 0);
+    
+    rtmList.forEach(rtmName => {
+      const rtmLower = rtmName.toLowerCase();
+      
+      console.log(`Processing RTM: ${rtmName} (${rtmLower})`);
+      
+      // Prüfe ob RTM zu bekannten Ressourcen passt und aktualisiere alle passenden
+      if (rtmLower.includes('rtw')) {
+        patient.dispositionStatus['RTW'] = 'dispatched';
+        console.log('Set RTW to dispatched');
+      }
+      if (rtmLower.includes('nef')) {
+        patient.dispositionStatus['NEF'] = 'dispatched';
+        patient.dispositionStatus['UHS-Notarzt oder NEF'] = 'dispatched';
+        console.log('Set NEF and UHS-Notarzt oder NEF to dispatched');
+      }
+      if (rtmLower.includes('rettungsdienst') || rtmLower.includes('rd')) {
+        patient.dispositionStatus['RTW'] = 'dispatched';
+      }
+      if (rtmLower.includes('notarzt') || rtmLower.includes('na')) {
+        patient.dispositionStatus['UHS-Notarzt oder NEF'] = 'dispatched';
+      }
+    });
+    
+    console.log('Updated dispositionStatus:', patient.dispositionStatus);
+  } else if (type === "team") {
+    // Trupp wurde zugeordnet
+    patient.dispositionStatus['Trupp'] = 'dispatched';
+  }
+
+  // 4) Sofort speichern
   localStorage.setItem("patients", JSON.stringify(patients));
 
-  // 4) Nur wenn vorher gemeldet → Status auf „disponiert“ setzen
+  // 5) Nur wenn vorher gemeldet → Status auf „disponiert" setzen
   if (patient.status === "gemeldet") {
     updatePatientData(id, "status", "disponiert");
   }
 
-  // 5) Historieneintrag für die Ressource
+  // 6) Historieneintrag für die Ressource
   const updated = JSON.parse(localStorage.getItem("patients")) || [];
   const p2 = updated.find((p) => p.id === id);
   if (p2) {
     p2.history = p2.history || [];
-    p2.history.push(`${getCurrentTime()} ${label} ${value.trim()} disponiert`);
+    p2.history.push(`${getCurrentTime()} ${label} ${value.trim()} zugeordnet`);
+    
+    // Stelle sicher dass die Disposition-Status-Updates auch in der gespeicherten Version sind
+    if (type === "rtm") {
+      const rtmList = value.split(',').map(rtm => rtm.trim()).filter(rtm => rtm.length > 0);
+      rtmList.forEach(rtmName => {
+        const rtmLower = rtmName.toLowerCase();
+        if (rtmLower.includes('rtw')) {
+          p2.dispositionStatus = p2.dispositionStatus || {};
+          p2.dispositionStatus['RTW'] = 'dispatched';
+        }
+        if (rtmLower.includes('nef')) {
+          p2.dispositionStatus = p2.dispositionStatus || {};
+          p2.dispositionStatus['NEF'] = 'dispatched';
+          p2.dispositionStatus['UHS-Notarzt oder NEF'] = 'dispatched';
+        }
+      });
+    }
+    
     localStorage.setItem("patients", JSON.stringify(updated));
     loadPatients(id);
   }
@@ -363,36 +423,9 @@ function assignSelectedTrupp(patientId) {
     loadPatients(patientId);
   }
 
-  // 8) Und zum Schluss Trupp-Tracker starten, wie gehabt:
-  const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
-  const t = trupps.find((t) => t.name === truppName);
-  if (t) {
-    const now = Date.now();
-    if (t.currentOrt && t.einsatzStartOrt) {
-      t.einsatzHistorie = t.einsatzHistorie || [];
-      t.einsatzHistorie.push({
-        ort: t.currentOrt,
-        von: t.einsatzStartOrt,
-        bis: now,
-      });
-    }
-    t.status              = 3;
-    t.patientInput        = patientId;
-    t.patientStart        = now;
-    t.currentEinsatzStart = now;
-    t.currentPauseStart   = null;
-    localStorage.setItem("trupps", JSON.stringify(trupps));
-    window.dispatchEvent(
-      new StorageEvent("storage", {
-        key: "trupps",
-        newValue: JSON.stringify(trupps),
-      })
-    );
-    
-    // Disposition-Update auslösen
-    if (typeof triggerDispositionUpdate === 'function') {
-      triggerDispositionUpdate();
-    }
+  // 8) Disposition-Update NUR bei Trupp-Zuordnung auslösen
+  if (typeof triggerDispositionUpdate === 'function') {
+    triggerDispositionUpdate();
   }
 }
 
@@ -449,7 +482,7 @@ function removeTrupp(id, index) {
       })
     );
     
-    // Disposition-Update auslösen
+    // Disposition-Update NUR bei Trupp-Entfernung auslösen
     if (typeof triggerDispositionUpdate === 'function') {
       triggerDispositionUpdate();
     }
@@ -465,12 +498,13 @@ function removeRtm(id, index) {
     if (!patient.history) patient.history = [];
     patient.history.push(`${getCurrentTime()} RTM ${removed[0]} entfernt`);
     localStorage.setItem("patients", JSON.stringify(patients));
-    loadPatients();
     
-    // Disposition-Update auslösen
+    // Disposition-Update NUR bei RTM-Entfernung auslösen
     if (typeof triggerDispositionUpdate === 'function') {
       triggerDispositionUpdate();
     }
+    
+    loadPatients();
   }
 }
 
@@ -480,408 +514,333 @@ function editField(id, field) {
     openKeywordModal(id);
     return;
   }
+
   // für alle anderen Felder weiter wie gehabt:
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
   const patient = patients.find((p) => p.id === id);
+  if (!patient) {
+    console.error("Patient nicht gefunden:", id);
+    return;
+  }
+
   const current = patient[field] || "";
   const labelMap = {
     age: "Alter",
     diagnosis: "Verdachtsdiagnose",
     location: "Standort",
     remarks: "Bemerkungen",
+    gender: "Geschlecht",
   };
-  const value = prompt(
-    `Neuen Wert für ${labelMap[field] || field} eingeben:`,
-    current
-  );
-  if (value !== null && value !== current) {
-    updatePatientData(id, field, value);
-  }
-}
 
-function addCustomHistory(id, message) {
-  if (!message.trim()) return;
-  const patients = JSON.parse(localStorage.getItem("patients")) || [];
-  const patient = patients.find((p) => p.id === id);
-  if (!patient.history) patient.history = [];
-  patient.history.push(`${getCurrentTime()} ${message}`);
-  localStorage.setItem("patients", JSON.stringify(patients));
-  loadPatients();
-}
+  let value;
 
-// Globale Variable, die immer aktuell ist
-window.nextPatientNumber =
-  parseInt(localStorage.getItem("nextPatientNumber"), 10) || 1;
+  // Spezialbehandlung für Geschlecht
+  if (field === "gender") {
+    const options = ["M", "W", "D"];
+    const currentIndex = options.indexOf(current);
+    const selection = prompt(
+      `Geschlecht auswählen:\n1 = M (Männlich)\n2 = W (Weiblich)\n3 = D (Divers)\n\nAktuell: ${current || "nicht gesetzt"}`,
+      currentIndex >= 0 ? (currentIndex + 1).toString() : ""
+    );
 
-// 1) Polling
-function syncNextPatientNumber() {
-  window.nextPatientNumber =
-    parseInt(localStorage.getItem("nextPatientNumber"), 10) || 1;
-}
-setInterval(syncNextPatientNumber, 2000);
+    if (selection === null) return; // Abgebrochen
 
-// 2) storage-Event
-window.addEventListener("storage", (e) => {
-  if (e.key === "nextPatientNumber") syncNextPatientNumber();
-});
-
-window.addEventListener("storage", (e) => {
-  if (e.key === "patients") {
-    loadPatients();
-  }
-});
-
-/**
- * Sammelt alle relevanten Felddaten des Patienten, formatiert sie
- * und kopiert den resultierenden Text in die Zwischenablage.
- */
-function copyPatientData(id) {
-  // Patientendaten laden
-  const patients = JSON.parse(localStorage.getItem("patients")) || [];
-  const patient = patients.find((p) => p.id === id);
-  if (!patient) return;
-
-  // Felder extrahieren
-  const trupp = Array.isArray(patient.team) ? patient.team.join(", ") : "–";
-  const rtm = Array.isArray(patient.rtm) ? patient.rtm.join(", ") : "–";
-  const nachf =
-    (patient.history || []).filter((e) => /nachgefordert/.test(e)).join("\n") ||
-    "–";
-  const remarks = patient.remarks || "–";
-  const historyText = (patient.history || []).join("\n") || "–";
-
-  // Textblock zusammenbauen
-  const text = `Patient Nr.: ${patient.id}
-Trupp: ${trupp}
-RTM: ${rtm}
-Standort: ${patient.location || "–"}
-Alter: ${patient.age || "–"}
-Geschlecht: ${patient.gender || "–"}
-Verdachtsdiagnose: ${patient.diagnosis || "–"}
-Nachforderungen:
-${nachf}
-Bemerkung: ${remarks}
-
-Patienten-Historie:
-${historyText}`;
-
-  copyToClipboard(text);
-}
-
-/**
- * Kopiert reinen Text in die Zwischenablage, mit Fallback.
- */
-function copyToClipboard(text) {
-  if (navigator.clipboard && window.isSecureContext) {
-    navigator.clipboard.writeText(text).catch((err) => {
-      fallbackCopyTextToClipboard(text);
-    });
+    const selectedIndex = parseInt(selection) - 1;
+    if (selectedIndex >= 0 && selectedIndex < options.length) {
+      value = options[selectedIndex];
+    } else {
+      alert("Ungültige Auswahl. Bitte 1, 2 oder 3 eingeben.");
+      return;
+    }
   } else {
-    fallbackCopyTextToClipboard(text);
+    // Normale Texteingabe für andere Felder
+    value = prompt(
+      `Neuen Wert für ${labelMap[field] || field} eingeben:`,
+      current
+    );
+  }
+
+  if (value !== null && value !== current) {
+    console.log(`Updating ${field} from "${current}" to "${value}" for patient ${id}`);
+    
+    // WICHTIG: Frische Kopie der Patientendaten holen
+    const freshPatients = JSON.parse(localStorage.getItem("patients")) || [];
+    const freshPatient = freshPatients.find((p) => p.id === id);
+    
+    if (!freshPatient) {
+      console.error("Patient nicht mehr gefunden nach Neuladen:", id);
+      return;
+    }
+    
+    // DIREKTE Datenaktualisierung
+    freshPatient[field] = value;
+    
+    // History-Eintrag hinzufügen
+    if (!freshPatient.history) freshPatient.history = [];
+    const timeStr = getCurrentTime();
+    
+    if (field === "diagnosis") {
+      freshPatient.history.push(`${timeStr} Verdachtsdiagnose: ${value}`);
+      // Spezialbehandlung für Diagnose: suggestedResources aktualisieren
+      updateSuggestedResourcesForDiagnosis(freshPatient, value);
+    } else if (field === "age") {
+      freshPatient.history.push(`${timeStr} Alter: ${value}`);
+    } else if (field === "gender") {
+      freshPatient.history.push(`${timeStr} Geschlecht: ${value}`);
+    } else if (field === "location") {
+      freshPatient.history.push(`${timeStr} Standort: ${value}`);
+    } else if (field === "remarks") {
+      freshPatient.history.push(`${timeStr} Bemerkungen: ${value}`);
+    }
+    
+    // SOFORT speichern und UI komplett neu laden
+    try {
+      localStorage.setItem("patients", JSON.stringify(freshPatients));
+      console.log(`Patient ${id} - ${field} erfolgreich gespeichert:`, value);
+      
+      // WICHTIG: Komplettes Neurendern erzwingen
+      loadPatients();
+      
+      // Storage-Event auslösen für andere Tracker
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: "patients",
+          newValue: JSON.stringify(freshPatients),
+        })
+      );
+      
+    } catch (error) {
+      console.error("Fehler beim Speichern der Patientendaten:", error);
+      alert("Fehler beim Speichern der Daten. Bitte erneut versuchen.");
+    }
   }
 }
 
-function fallbackCopyTextToClipboard(text) {
-  const ta = document.createElement("textarea");
-  ta.value = text;
-  ta.style.position = "fixed"; // verhindert Scroll-Jump
-  ta.style.opacity = "0";
-  document.body.appendChild(ta);
-  ta.focus();
-  ta.select();
-  try {
-    document.execCommand("copy");
-    alert("Patientendaten kopiert 🎉");
-  } catch (err) {
-  }
-  document.body.removeChild(ta);
-}
-
-function deletePatient(id) {
-  if (!confirm("Soll Patient " + id + " wirklich gelöscht werden?")) return;
-  // aus localStorage holen
-  const patients = JSON.parse(localStorage.getItem("patients")) || [];
-  // Patient finden und entfernen
-  const idx = patients.findIndex((p) => p.id === id);
-  if (idx > -1) {
-    patients.splice(idx, 1);
-    localStorage.setItem("patients", JSON.stringify(patients));
-    // neu rendern
-    loadPatients();
-  }
-}
-
-function getCurrentTime() {
-  return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
-
-// Funktionen für Status-Dropdown bei Trupps und RTMs
+// Add dropdown functions for status changes
 function openTruppStatusDropdown(event, truppName) {
-  event.preventDefault();
   event.stopPropagation();
   
-  // Finde den Trupp
+  // Remove any existing dropdowns
+  const existingDropdowns = document.querySelectorAll('.status-dropdown-overlay');
+  existingDropdowns.forEach(dropdown => dropdown.remove());
+  
   const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
   const trupp = trupps.find(t => t.name === truppName);
+  if (!trupp) return;
   
-  if (!trupp) {
-    alert('Trupp nicht gefunden!');
-    return;
-  }
-  
-  // Entferne existierendes Dropdown
-  closeStatusDropdown();
-  
-  // Erstelle Status-Dropdown
   const dropdown = document.createElement('div');
-  dropdown.id = 'patientStatusDropdown';
   dropdown.className = 'status-dropdown-overlay';
   dropdown.style.cssText = `
     position: fixed;
-    z-index: 10000;
     background: white;
     border: 1px solid #ccc;
     border-radius: 4px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-    max-height: 300px;
-    overflow-y: auto;
-    min-width: 200px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    z-index: 1000;
+    padding: 5px;
+    min-width: 120px;
   `;
   
-  // Status-Optionen hinzufügen
-  let optionsHTML = '';
+  // Position dropdown near the clicked element
+  const rect = event.target.getBoundingClientRect();
+  dropdown.style.left = rect.left + 'px';
+  dropdown.style.top = (rect.bottom + 5) + 'px';
+  
+  // Add status options
   if (window.statusOptions) {
     window.statusOptions.forEach(option => {
-      const isActive = option.status === trupp.status;
-      optionsHTML += `
-        <div class="status-option ${isActive ? 'active' : ''}" 
-             onclick="changeTruppStatus('${truppName}', ${option.status}); event.stopPropagation();"
-             style="padding: 8px 12px; cursor: pointer; display: flex; align-items: center; ${isActive ? 'background: #e9ecef;' : ''}">
-          <span class="status-code" style="background: ${option.color}; border: 1px solid ${option.color}; color: black; padding: 2px 6px; border-radius: 2px; margin-right: 8px; font-size: 0.8em;">${option.status}</span>
-          <span>${option.text}</span>
-        </div>
+      const optionDiv = document.createElement('div');
+      optionDiv.style.cssText = `
+        padding: 5px;
+        cursor: pointer;
+        border-radius: 2px;
+        background: ${option.color};
+        margin: 2px 0;
+        color: black;
       `;
+      optionDiv.textContent = option.status + ' - ' + option.text;
+      optionDiv.onclick = () => {
+        changeTruppStatus(truppName, option.status);
+        dropdown.remove();
+      };
+      dropdown.appendChild(optionDiv);
     });
   }
   
-  dropdown.innerHTML = optionsHTML;
-  
-  // Position berechnen
-  const x = event.clientX;
-  const y = event.clientY;
-  
   document.body.appendChild(dropdown);
-  
-  // Position setzen
-  dropdown.style.left = x + 'px';
-  dropdown.style.top = y + 'px';
-  
-  // Sicherstellen, dass das Dropdown im Viewport bleibt
-  const rect = dropdown.getBoundingClientRect();
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
-  
-  if (rect.right > viewportWidth) {
-    dropdown.style.left = (x - rect.width) + 'px';
-  }
-  if (rect.bottom > viewportHeight) {
-    dropdown.style.top = (y - rect.height) + 'px';
-  }
-  
-  // Event-Listener für das Schließen bei Klick außerhalb
-  setTimeout(() => {
-    document.addEventListener('click', handleOutsideClick, true);
-    document.addEventListener('contextmenu', handleOutsideClick, true);
-  }, 50);
 }
 
 function openRtmStatusDropdown(event, rtmName) {
-  event.preventDefault();
   event.stopPropagation();
   
-  // Finde das RTM
+  // Remove any existing dropdowns
+  const existingDropdowns = document.querySelectorAll('.status-dropdown-overlay');
+  existingDropdowns.forEach(dropdown => dropdown.remove());
+  
   const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
   const rtm = rtms.find(r => r.name === rtmName);
+  if (!rtm) return;
   
-  if (!rtm) {
-    alert('RTM nicht gefunden!');
-    return;
-  }
-  
-  // Entferne existierendes Dropdown
-  closeStatusDropdown();
-  
-  // Erstelle Status-Dropdown
   const dropdown = document.createElement('div');
-  dropdown.id = 'patientStatusDropdown';
   dropdown.className = 'status-dropdown-overlay';
   dropdown.style.cssText = `
     position: fixed;
-    z-index: 10000;
     background: white;
     border: 1px solid #ccc;
     border-radius: 4px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-    max-height: 300px;
-    overflow-y: auto;
-    min-width: 200px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    z-index: 1000;
+    padding: 5px;
+    min-width: 120px;
   `;
   
-  // Status-Optionen hinzufügen
-  let optionsHTML = '';
+  // Position dropdown near the clicked element
+  const rect = event.target.getBoundingClientRect();
+  dropdown.style.left = rect.left + 'px';
+  dropdown.style.top = (rect.bottom + 5) + 'px';
+  
+  // Add status options
   if (window.statusOptions) {
     window.statusOptions.forEach(option => {
-      const isActive = option.status === rtm.status;
-      optionsHTML += `
-        <div class="status-option ${isActive ? 'active' : ''}" 
-             onclick="changeRtmStatus('${rtmName}', ${option.status}); event.stopPropagation();"
-             style="padding: 8px 12px; cursor: pointer; display: flex; align-items: center; ${isActive ? 'background: #e9ecef;' : ''}">
-          <span class="status-code" style="background: ${option.color}; border: 1px solid ${option.color}; color: black; padding: 2px 6px; border-radius: 2px; margin-right: 8px; font-size: 0.8em;">${option.status}</span>
-          <span>${option.text}</span>
-        </div>
+      const optionDiv = document.createElement('div');
+      optionDiv.style.cssText = `
+        padding: 5px;
+        cursor: pointer;
+        border-radius: 2px;
+        background: ${option.color};
+        margin: 2px 0;
+        color: black;
       `;
+      optionDiv.textContent = option.status + ' - ' + option.text;
+      optionDiv.onclick = () => {
+        changeRtmStatus(rtmName, option.status);
+        dropdown.remove();
+      };
+      dropdown.appendChild(optionDiv);
     });
   }
   
-  dropdown.innerHTML = optionsHTML;
-  
-  // Position berechnen
-  const x = event.clientX;
-  const y = event.clientY;
-  
   document.body.appendChild(dropdown);
-  
-  // Position setzen
-  dropdown.style.left = x + 'px';
-  dropdown.style.top = y + 'px';
-  
-  // Sicherstellen, dass das Dropdown im Viewport bleibt
-  const rect = dropdown.getBoundingClientRect();
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
-  
-  if (rect.right > viewportWidth) {
-    dropdown.style.left = (x - rect.width) + 'px';
-  }
-  if (rect.bottom > viewportHeight) {
-    dropdown.style.top = (y - rect.height) + 'px';
-  }
-  
-  // Event-Listener für das Schließen bei Klick außerhalb
-  setTimeout(() => {
-    document.addEventListener('click', handleOutsideClick, true);
-    document.addEventListener('contextmenu', handleOutsideClick, true);
-  }, 50);
-}
-
-function handleOutsideClick(event) {
-  const dropdown = document.getElementById('patientStatusDropdown');
-  if (dropdown) {
-    // Prüfe ob der Klick innerhalb des Dropdowns war
-    if (!dropdown.contains(event.target)) {
-      closeStatusDropdown();
-    }
-  }
-}
-
-function closeStatusDropdown() {
-  const dropdown = document.getElementById('patientStatusDropdown');
-  if (dropdown) {
-    dropdown.remove();
-  }
-  // Event-Listener entfernen
-  document.removeEventListener('click', handleOutsideClick, true);
-  document.removeEventListener('contextmenu', handleOutsideClick, true);
 }
 
 function changeTruppStatus(truppName, newStatus) {
-  // Dropdown sofort schließen
-  closeStatusDropdown();
+  const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+  const trupp = trupps.find(t => t.name === truppName);
+  if (!trupp) return;
   
-  // Verwende die neue updateTruppByName Funktion
-  if (typeof updateTruppByName === 'function') {
-    updateTruppByName(truppName, newStatus);
-  } else if (typeof updateTrupp === 'function') {
-    // Fallback: Trupp-Index finden und updateTrupp verwenden
-    const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
-    const truppIndex = trupps.findIndex(t => t.name === truppName);
-    
-    if (truppIndex !== -1) {
-      updateTrupp(truppIndex, newStatus);
-    }
-  } else {
-    // Letzter Fallback: Direkte Status-Änderung
-    const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
-    const truppIndex = trupps.findIndex(t => t.name === truppName);
-    
-    if (truppIndex !== -1) {
-      const trupp = trupps[truppIndex];
-      trupp.status = newStatus;
-      trupp.lastStatusChange = Date.now();
-      
-      // Historie hinzufügen
-      if (!trupp.history) trupp.history = [];
-      const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      trupp.history.push(`${timeStr} Status: ${newStatus}`);
-      
-      localStorage.setItem("trupps", JSON.stringify(trupps));
-      
-      // Storage-Event auslösen
-      window.dispatchEvent(new StorageEvent("storage", {
-        key: "trupps",
-        newValue: JSON.stringify(trupps),
-      }));
-    }
-  }
+  trupp.status = newStatus;
+  trupp.history = trupp.history || [];
+  trupp.history.push({
+    when: Date.now(),
+    event: newStatus
+  });
   
-  // Patient-Karten neu laden
-  if (typeof loadPatients === 'function') {
-    loadPatients();
-  }
+  localStorage.setItem("trupps", JSON.stringify(trupps));
+  
+  // Update patient status based on trupp status change
+  updatePatientStatusBasedOnResourceStatus(truppName, newStatus, 'trupp');
+  
+  // Trigger storage event to update all trackers
+  window.dispatchEvent(new StorageEvent("storage", {
+    key: "trupps",
+    newValue: JSON.stringify(trupps)
+  }));
+  
+  // Reload patients to show updated status
+  loadPatients();
 }
 
 function changeRtmStatus(rtmName, newStatus) {
-  // Dropdown sofort schließen
-  closeStatusDropdown();
+  const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
+  const rtm = rtms.find(r => r.name === rtmName);
+  if (!rtm) return;
   
-  // Verwende die updateRTMByName Funktion falls verfügbar
-  if (typeof updateRTMByName === 'function') {
-    updateRTMByName(rtmName, newStatus);
-  } else if (typeof updateRTM === 'function') {
-    // Fallback: RTM-Index finden und updateRTM verwenden
-    const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
-    const rtmIndex = rtms.findIndex(r => r.name === rtmName);
-    
-    if (rtmIndex !== -1) {
-      updateRTM(rtmIndex, newStatus);
-    }
-  } else {
-    // Letzter Fallback: Direkte Status-Änderung
-    const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
-    const rtmIndex = rtms.findIndex(r => r.name === rtmName);
-    
-    if (rtmIndex !== -1) {
-      const rtm = rtms[rtmIndex];
-      rtm.status = newStatus;
-      rtm.lastStatusChange = Date.now();
-      
-      // Historie hinzufügen
-      if (!rtm.history) rtm.history = [];
-      const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      rtm.history.push(`${timeStr} Status: ${newStatus}`);
-      
-      localStorage.setItem("rtms", JSON.stringify(rtms));
-      
-      // Storage-Event auslösen
-      window.dispatchEvent(new StorageEvent("storage", {
-        key: "rtms",
-        newValue: JSON.stringify(rtms),
-      }));
-    }
-  }
+  rtm.status = newStatus;
+  rtm.history = rtm.history || [];
+  rtm.history.push({
+    when: Date.now(),
+    event: newStatus
+  });
   
-  // Patient-Karten neu laden
-  if (typeof loadPatients === 'function') {
-    loadPatients();
+  localStorage.setItem("rtms", JSON.stringify(rtms));
+  
+  // Update patient status based on RTM status change
+  updatePatientStatusBasedOnResourceStatus(rtmName, newStatus, 'rtm');
+  
+  // Trigger storage event to update all trackers
+  window.dispatchEvent(new StorageEvent("storage", {
+    key: "rtms",
+    newValue: JSON.stringify(rtms)
+  }));
+  
+  // Reload patients to show updated status
+  loadPatients();
+}
+
+// New function to update patient status based on resource status changes
+function updatePatientStatusBasedOnResourceStatus(resourceName, newStatus, resourceType) {
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  let patientsUpdated = false;
+  
+  patients.forEach(patient => {
+    // Skip if patient is already in final states
+    if (patient.status === "Entlassen" || patient.status === "Transport in KH") {
+      return;
+    }
+    
+    // Check if this resource is assigned to this patient
+    let isAssigned = false;
+    if (resourceType === 'trupp' && Array.isArray(patient.team)) {
+      isAssigned = patient.team.includes(resourceName);
+    } else if (resourceType === 'rtm' && Array.isArray(patient.rtm)) {
+      isAssigned = patient.rtm.includes(resourceName);
+    }
+    
+    if (!isAssigned) return;
+    
+    // Update patient status based on resource status
+    let newPatientStatus = null;
+    
+    switch (newStatus) {
+      case 3: // Einsatz übernommen
+        if (patient.status === "gemeldet") {
+          newPatientStatus = "disponiert";
+        }
+        break;
+      case 4: // Am Einsatzort
+        if (["gemeldet", "disponiert"].includes(patient.status)) {
+          newPatientStatus = "in Behandlung";
+        }
+        break;
+      case 7: // Transport in UHS
+        if (["gemeldet", "disponiert", "in Behandlung"].includes(patient.status)) {
+          newPatientStatus = "verlegt in UHS";
+        }
+        break;
+      case 8: // Transportziel erreicht
+        if (["gemeldet", "disponiert", "in Behandlung", "verlegt in UHS"].includes(patient.status)) {
+          newPatientStatus = "Behandlung in UHS";
+        }
+        break;
+    }
+    
+    // Apply status change if needed
+    if (newPatientStatus && newPatientStatus !== patient.status) {
+      patient.status = newPatientStatus;
+      patient.history = patient.history || [];
+      patient.history.push(`${getCurrentTime()} Status: ${newPatientStatus} (via ${resourceType === 'trupp' ? 'Trupp' : 'RTM'} ${resourceName})`);
+      patientsUpdated = true;
+    }
+  });
+  
+  // Save updated patients if any changes were made
+  if (patientsUpdated) {
+    localStorage.setItem("patients", JSON.stringify(patients));
+    
+    // Trigger storage event for patient updates
+    window.dispatchEvent(new StorageEvent("storage", {
+      key: "patients",
+      newValue: JSON.stringify(patients)
+    }));
   }
 }

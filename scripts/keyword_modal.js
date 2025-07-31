@@ -602,39 +602,49 @@ document.body.insertAdjacentHTML("beforeend", einsatzortModalTemplate);
 let _pendingTruppIndex = null;
 
 function confirmEdit() {
-  // 1) Basis-Daten speichern (Alter, Geschlecht, Standort, Bemerkung)
-  const p = JSON.parse(localStorage.getItem("patients")).find(
-    (x) => x.id === editPatientId
-  );
-  if (!p) return alert("Kein Patient geladen");
+  // 1) EINMAL die Patientendaten laden
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  const patient = patients.find(x => x.id === editPatientId);
+  if (!patient) return alert("Kein Patient geladen");
+
+  // 2) ALLE Änderungen an diesem EINEN Objekt machen - KEINE updatePatientData() Aufrufe!
+  const timeStr = getCurrentTime();
+  if (!patient.history) patient.history = [];
 
   // Gender
   const g = document.querySelector('input[name="editGender"]:checked');
-  if (g && g.value !== p.gender) {
-    updatePatientData(editPatientId, "gender", g.value);
+  const genderValue = g ? g.value : "";
+  if (patient.gender !== genderValue) {
+    patient.gender = genderValue;
+    if (genderValue) patient.history.push(`${timeStr} Geschlecht: ${genderValue}`);
   }
+  
   // Age
   const age = document.getElementById("editAge").value.trim();
-  if (age && age !== String(p.age)) {
-    updatePatientData(editPatientId, "age", age);
+  if (patient.age !== age) {
+    patient.age = age;
+    if (age) patient.history.push(`${timeStr} Alter: ${age}`);
   }
+  
   // Location
   const loc = document.getElementById("editLocation").value.trim();
-  if (loc && loc !== p.location) {
-    updatePatientData(editPatientId, "location", loc);
+  if (patient.location !== loc) {
+    patient.location = loc;
+    if (loc) patient.history.push(`${timeStr} Standort: ${loc}`);
   }
+  
   // Remarks
   const rem = document.getElementById("editRemarks").value.trim();
-  if (rem && rem !== p.remarks) {
-    updatePatientData(editPatientId, "remarks", rem);
+  if (patient.remarks !== rem) {
+    patient.remarks = rem;
+    if (rem) patient.history.push(`${timeStr} Bemerkungen: ${rem}`);
   }
 
-  // 2) Stichwort-Diagnose übernehmen (angepasst von confirmKeyword)
+  // Stichwort-Diagnose
   if (selectedCategory !== null && selectedKeyword !== null) {
     const cfg = alarmConfig[selectedCategory].keywords[selectedKeyword];
     let finalWord = cfg.word;
 
-    // falls „sonstiger …“ sichtbar, hänge Zusatztext an
     if (document.getElementById("otherDetail").style.display === "block") {
       const extra = document.getElementById("otherInput").value.trim();
       if (!extra) {
@@ -643,35 +653,45 @@ function confirmEdit() {
       finalWord += " – " + extra;
     }
 
-    // 2a) Diagnose setzen (inkl. Historie)
-    updatePatientData(editPatientId, "diagnosis", finalWord);
-
-    // 2b) vorgeschlagene Ressourcen ergänzen
-    const arr = JSON.parse(localStorage.getItem("patients")) || [];
-    const toUpdate = arr.find((x) => x.id === editPatientId);
-    if (toUpdate) {
-      toUpdate.suggestedResources = cfg.resources;
-      localStorage.setItem("patients", JSON.stringify(arr));
-      // Storage-Event, damit alle UIs neu rendern
-      window.dispatchEvent(
-        new StorageEvent("storage", {
-          key: "patients",
-          newValue: JSON.stringify(arr),
-        })
-      );
+    // Diagnose und Ressourcen direkt setzen
+    patient.diagnosis = finalWord;
+    patient.suggestedResources = [...cfg.resources];
+    patient.history.push(`${timeStr} Verdachtsdiagnose: ${finalWord}`);
+    
+    // Disposition-Status zurücksetzen für neue Ressourcen
+    if (patient.dispositionStatus) {
+      const newDispositionStatus = {};
+      cfg.resources.forEach(resource => {
+        if (patient.dispositionStatus[resource] === 'dispatched') {
+          newDispositionStatus[resource] = 'dispatched';
+        }
+        if (patient.dispositionStatus[resource + '_ignored'] === true) {
+          newDispositionStatus[resource + '_ignored'] = true;
+        }
+      });
+      patient.dispositionStatus = newDispositionStatus;
     }
   }
 
-  // 3) Modal schließen & neu rendern
-closeEditModal();
-loadPatients(editPatientId);
+  // 3) EINMAL speichern
+  localStorage.setItem("patients", JSON.stringify(patients));
 
-// Trupp-Cards neu laden:
-window.dispatchEvent(new StorageEvent('storage', {
-  key: 'trupps',
-  newValue: localStorage.getItem('trupps')
-}));
-  // 4) Immer die “Patientendaten geändert: …”-Zeile in die Historie schreiben
-  //     – unabhängig davon, welche Felder wirklich verändert wurden.
+  // 4) Events auslösen
+  window.dispatchEvent(new StorageEvent("storage", {
+    key: "patients",
+    newValue: JSON.stringify(patients),
+  }));
+
+  // 5) Modal schließen & UI aktualisieren
+  closeEditModal();
+  loadPatients(editPatientId);
+
+  // Trupp-Cards neu laden
+  window.dispatchEvent(new StorageEvent('storage', {
+    key: 'trupps',
+    newValue: localStorage.getItem('trupps')
+  }));
+  
+  // Kombinierte Historie hinzufügen
   addCombinedHistoryEntry(editPatientId);
 }

@@ -555,24 +555,24 @@ function openTruppAssignmentModalForRTM(patientId) {
     newValue: JSON.stringify(patients),
   }));
   
-  // Trupp-Tracker aktualisieren
-  const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
-  const trupp = trupps.find(t => t.name === truppName.trim());
-  if (trupp) {
+  // RTM-Tracker aktualisieren - aber sicherstellen dass RTMs existieren
+  const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
+  const rtm = rtms.find(r => r.name === truppName.trim());
+  if (rtm) {
     const now = Date.now();
-    trupp.status = 3;
-    trupp.patientInput = patientId;
-    trupp.patientStart = now;
-    trupp.currentEinsatzStart = now;
-    trupp.currentPauseStart = null;
+    rtm.status = 3;
+    rtm.patientInput = patientId;
+    rtm.patientStart = now;
+    rtm.currentEinsatzStart = now;
+    rtm.currentPauseStart = null;
     
-    if (!trupp.history) trupp.history = [];
-    trupp.history.push(`${timeStr} Status: 3`);
+    if (!rtm.history) rtm.history = [];
+    rtm.history.push(`${timeStr} Status: 3`);
     
-    localStorage.setItem("trupps", JSON.stringify(trupps));
+    localStorage.setItem("rtms", JSON.stringify(rtms));
     window.dispatchEvent(new StorageEvent("storage", {
-      key: "trupps",
-      newValue: JSON.stringify(trupps),
+      key: "rtms",
+      newValue: JSON.stringify(rtms),
     }));
   }
 }

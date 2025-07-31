@@ -284,8 +284,8 @@ function confirmPatientAssignment() {
   const assignmentType = document.querySelector('input[name="assignmentType"]:checked').value;
   
   // Prüfen ob wir mit Trupps oder RTMs arbeiten
-  const isRTMMode = typeof rtms !== 'undefined';
-  const isTruppMode = typeof trupps !== 'undefined';
+  const isRTMMode = typeof rtms !== 'undefined' && Array.isArray(rtms);
+  const isTruppMode = typeof trupps !== 'undefined' && Array.isArray(trupps);
   
   if (assignmentType === 'new') {
     // Neuen Patienten erstellen (bisherige Logik)
@@ -808,6 +808,39 @@ function confirmRtmAssignment() {
     patient.status = "disponiert";
     patient.history.push(`${timeStr} Status: disponiert`);
   }
+  
+  // DIREKT: Disposition-Status für RTMs aktualisieren
+  if (!patient.dispositionStatus) patient.dispositionStatus = {};
+  
+  console.log('Updating RTM disposition for patient', patient.id, 'with RTMs:', addedRtms);
+  
+  addedRtms.forEach(rtmName => {
+    const rtmLower = rtmName.toLowerCase();
+    
+    console.log(`Processing RTM: ${rtmName} (${rtmLower})`);
+    
+    // Prüfe ob RTM zu bekannten Ressourcen passt
+    if (rtmLower.includes('rtw')) {
+      patient.dispositionStatus['RTW'] = 'dispatched';
+      console.log('Set RTW to dispatched');
+    }
+    if (rtmLower.includes('nef')) {
+      patient.dispositionStatus['NEF'] = 'dispatched';
+      if (!patient.dispositionStatus['NEF']) {
+      patient.dispositionStatus['UHS-Notarzt oder NEF'] = 'dispatched';
+      console.log('Set UHS-Notarzt oder NEF to dispatched');
+      }
+      console.log('Set NEF to dispatched');
+    }
+    if (rtmLower.includes('rettungsdienst') || rtmLower.includes('rd')) {
+      patient.dispositionStatus['RTW'] = 'dispatched';
+    }
+    if (rtmLower.includes('notarzt') || rtmLower.includes('na')) {
+      patient.dispositionStatus['UHS-Notarzt oder NEF'] = 'dispatched';
+    }
+  });
+  
+  console.log('Final dispositionStatus:', patient.dispositionStatus);
   
   // Patientendaten speichern
   localStorage.setItem("patients", JSON.stringify(patients));

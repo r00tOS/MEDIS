@@ -228,6 +228,36 @@
         }
       });
 
+      // Add disposition update listener for RTM tracker
+      if (!window.rtmDispositionUpdateListener) {
+        window.rtmDispositionUpdateListener = function() {
+          console.log('Disposition update received in RTM tracker');
+          renderRTMs();
+        };
+        
+        window.addEventListener('dispositionUpdate', window.rtmDispositionUpdateListener);
+      }
+
+      // Function to trigger disposition updates when RTMs are assigned
+      function triggerDispositionUpdateAfterRTMChange() {
+        if (typeof triggerDispositionUpdate === 'function') {
+          // Small delay to ensure localStorage is updated first
+          setTimeout(() => {
+            triggerDispositionUpdate();
+          }, 50);
+        }
+      }
+
+      // Override the RTM assignment function to trigger disposition updates
+      const originalAssignRTM = window.assignRTMToPatient;
+      if (originalAssignRTM) {
+        window.assignRTMToPatient = function(rtmName, patientId) {
+          const result = originalAssignRTM(rtmName, patientId);
+          triggerDispositionUpdateAfterRTMChange();
+          return result;
+        };
+      }
+
       // === Event Listeners ===
       
       // Polling-Fallback alle 2s für Patient-Nummer

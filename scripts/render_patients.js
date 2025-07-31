@@ -312,10 +312,8 @@ function loadPatients(highlightId) {
     document.removeEventListener('click', window.dropdownClickHandler);
   }
 
-  // Disposition-Status für alle Patienten aktualisieren
-  patients.forEach(patient => {
-    updatePatientDispositionStatus(patient, trupps, rtms);
-  });
+  // NUR bei bestimmten Events Disposition-Status aktualisieren, NICHT bei jeder Patientendaten-Änderung
+  // Das passiert jetzt nur noch über explizite Events (Trupp/RTM-Zuordnung, etc.)
 
   patients.forEach((p) => {
     // 1) createdAt sicher als Zahl
@@ -593,8 +591,8 @@ ${patient.remarks || "–"}
           const statusDef = trupp ? window.statusOptions?.find(o => o.status === trupp.status) : null;
           const statusIndicator = statusDef ? 
             `<span class="status-code" style="background: ${statusDef.color}; border: 1px solid ${statusDef.color}; color: black; padding: 1px 4px; border-radius: 2px; font-size: 0.8em; margin-left: 4px; cursor: pointer;" 
-             oncontextmenu="openTruppStatusDropdown(event, '${t}'); return false;" 
-             title="Rechtsklick zum Ändern des Status">${statusDef.status}</span>` : '';
+             onclick="openTruppStatusDropdown(event, '${t}')" 
+             title="Klick zum Ändern des Status">${statusDef.status}</span>` : '';
           
           return `<span>${t}${statusIndicator}${
             !isFinal
@@ -622,8 +620,8 @@ ${patient.remarks || "–"}
           const statusDef = rtm ? window.statusOptions?.find(o => o.status === rtm.status) : null;
           const statusIndicator = statusDef ? 
             `<span class="status-code" style="background: ${statusDef.color}; border: 1px solid ${statusDef.color}; color: black; padding: 1px 4px; border-radius: 2px; font-size: 0.8em; margin-left: 4px; cursor: pointer;" 
-             oncontextmenu="openRtmStatusDropdown(event, '${r}'); return false;" 
-             title="Rechtsklick zum Ändern des Status">${statusDef.status}</span>` : '';
+             onclick="openRtmStatusDropdown(event, '${r}')" 
+             title="Klick zum Ändern des Status">${statusDef.status}</span>` : '';
           
           return `<span>${r}${statusIndicator}${
             !isFinal
@@ -689,34 +687,35 @@ ${patient.remarks || "–"}
   
   window.scrollTo(0, scrollY); 
   
-  // Event Listener für automatische Disposition-Updates
-  // Entferne vorherige Listener um Duplikate zu vermeiden
+  // Event-Listener für Disposition-Updates - aber nur für relevante Changes
   if (window.dispositionUpdateListener) {
     window.removeEventListener('dispositionUpdate', window.dispositionUpdateListener);
   }
   
   window.dispositionUpdateListener = function() {
-    // Nur die Disposition-Status aktualisieren ohne komplettes Neurendern
-    const patients = JSON.parse(localStorage.getItem("patients")) || [];
-    const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
-    const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
+    console.log('Disposition update received - updating relevant patients only');
     
-    patients.forEach(patient => {
-      updatePatientDispositionStatus(patient, trupps, rtms);
+    // Nur Disposition-Status aktualisieren, KEINE komplette Patient-Liste neu laden
+    const currentPatients = JSON.parse(localStorage.getItem("patients")) || [];
+    const currentTrupps = JSON.parse(localStorage.getItem("trupps")) || [];
+    const currentRtms = JSON.parse(localStorage.getItem("rtms")) || [];
+    
+    currentPatients.forEach(patient => {
+      updatePatientDispositionStatus(patient, currentTrupps, currentRtms);
       
       // Nur die Dispositionssymbole in der bestehenden Karte aktualisieren
       const patientCard = document.querySelector(`[data-id="${patient.id}"]`);
-      if (patientCard) {
+      if (patientCard && patient.suggestedResources && Array.isArray(patient.suggestedResources)) {
         const dispositionContainer = patientCard.querySelector('.disposition-symbols');
-        if (dispositionContainer && patient.suggestedResources && Array.isArray(patient.suggestedResources)) {
+        if (dispositionContainer) {
           const symbolsDiv = dispositionContainer.querySelector('div:last-child');
           if (symbolsDiv) {
-            // Symbole neu generieren - OHNE inline-Styles!
+            // Symbole neu generieren
             let newSymbols = '';
             patient.suggestedResources.forEach(resource => {
               const abbrev = getResourceAbbreviation(resource);
-              const isDispatched = patient.dispositionStatus[resource] === 'dispatched';
-              const isIgnored = patient.dispositionStatus[resource + '_ignored'] === true;
+              const isDispatched = patient.dispositionStatus && patient.dispositionStatus[resource] === 'dispatched';
+              const isIgnored = patient.dispositionStatus && patient.dispositionStatus[resource + '_ignored'] === true;
               
               newSymbols += '<span class="disposition-symbol ' + (isDispatched ? 'dispatched' : 'required') + 
                      (isIgnored ? ' ignored' : '') + '"' +
@@ -732,7 +731,7 @@ ${patient.remarks || "–"}
     });
     
     // Aktualisierte Patientendaten speichern
-    localStorage.setItem("patients", JSON.stringify(patients));
+    localStorage.setItem("patients", JSON.stringify(currentPatients));
   };
   
   window.addEventListener('dispositionUpdate', window.dispositionUpdateListener);

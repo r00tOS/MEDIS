@@ -153,13 +153,12 @@
           renderTrupps();
         }
         
-        // HINZUGEFÜGT: Auch bei Patient-Änderungen Trupp-Karten aktualisieren
         if (e.key === "patients") {
           renderTrupps();
         }
       });
 
-      // HINZUGEFÜGT: Event Listener für Disposition-Updates
+      // Re-enable disposition update listener for proper synchronization
       if (!window.truppDispositionUpdateListener) {
         window.truppDispositionUpdateListener = function() {
           console.log('Disposition update received in trupp tracker');
@@ -212,7 +211,7 @@
               trupp.currentPauseStart = now;
             }
           }
-          // 3) Dann Einsatz (inkl. “Einsatz beendet”)
+          // 3) Dann Einsatz (inkl. "Einsatz beendet")
           else if (einsatzStatuses.includes(trupp.status)) {
             if (trupp.currentEinsatzStart) {
               const diff = now - trupp.currentEinsatzStart;
@@ -248,3 +247,4 @@
     </script>
   </body>
 </html>
+

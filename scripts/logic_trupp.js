@@ -181,6 +181,14 @@ if (status === 11) {
       }
     });
     localStorage.setItem("patients", JSON.stringify(stored));
+    
+    // Sofortiges Storage-Event für Patient-Updates
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "patients",
+        newValue: JSON.stringify(stored),
+      })
+    );
   }
 
   // 12) Trupps zurück speichern

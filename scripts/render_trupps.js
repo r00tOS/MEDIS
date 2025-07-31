@@ -723,3 +723,41 @@ function openTruppNameChangeModal(truppIndex) {
     renderTrupps();
   }
 }
+
+function renderDispositionSymbols(patient) {
+    console.log('Rendering disposition symbols for patient:', patient.id);
+    console.log('Patient disposition status:', patient.dispositionStatus);
+    
+    if (!patient.suggestedResources || !Array.isArray(patient.suggestedResources)) {
+        return '';
+    }
+
+    // ZENTRALE DISPOSITION UPDATE LOGIK - führt zur Endlosschleife, ist aber gewünscht
+    const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+    const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
+    updatePatientDispositionStatus(patient, trupps, rtms);
+
+    let symbolsHtml = '';
+    patient.suggestedResources.forEach(resource => {
+        const abbrev = getResourceAbbreviation(resource);
+        const isDispatched = patient.dispositionStatus && patient.dispositionStatus[resource] === 'dispatched';
+        const isIgnored = patient.dispositionStatus && patient.dispositionStatus[resource + '_ignored'] === true;
+        
+        console.log(`Resource: ${resource}, isDispatched: ${isDispatched}, isIgnored: ${isIgnored}`);
+        
+        let cssClass = 'disposition-symbol ' + (isDispatched ? 'dispatched' : 'required');
+        if (isIgnored) {
+            cssClass += ' ignored';
+        }
+        
+        console.log('Applied CSS class:', cssClass);
+        
+        symbolsHtml += '<span class="' + cssClass + '"' +
+                      ' onclick="toggleDispositionStatus(' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
+                      ' oncontextmenu="toggleDispositionIgnore(event, ' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
+                      ' title="' + resource + '">' +
+                      abbrev + '</span>';
+    });
+
+    return symbolsHtml;
+}
