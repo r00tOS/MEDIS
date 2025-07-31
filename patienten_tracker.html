@@ -1,0 +1,20 @@
+<!-- ...existing code... -->
+
+<script>
+// Entferne oder korrigiere die Zeile 152, die updateLiveTimers aufruft
+// Stattdessen initialisiere die Timer-Funktion korrekt:
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Lade Patienten beim Start
+  if (typeof loadPatients === 'function') {
+    loadPatients();
+  }
+  
+  // Starte Timer für Live-Updates
+  if (typeof updateLiveTimers === 'function') {
+    setInterval(updateLiveTimers, 60000); // Update jede Minute
+  }
+});
+</script>
+
+<!-- ...existing code... -->

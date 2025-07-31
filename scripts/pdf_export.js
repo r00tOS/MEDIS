@@ -151,18 +151,6 @@ async function exportPatientPDF() {
 
     line("", 0);
 
-    line("Einsatzzeiten (mm:ss):");
-    const d = p.durations || {};
-    [
-      ["Einsatzdauer", d.einsatzdauer || "–"],
-      ["Dispositionsdauer", d.dispositionsdauer || "–"],
-      ["Ausrückdauer", d.ausrueckdauer || "–"],
-      ["Behandlungsdauer", d.behandlungsdauer || "–"],
-      ["Verlegedauer UHS", d.verlegedauerUHS || "–"],
-    ].forEach(([label, val]) => {
-      line(`${label}: ${val}`, 5);
-    });
-
     // Rahmen
     const sessionH = y - sessionStartY;
     doc.setDrawColor(150);

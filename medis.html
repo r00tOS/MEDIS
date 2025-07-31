@@ -28,7 +28,7 @@
         <button
           id="btnClearAll"
           class="btnHeader"
-          title="Alle Trupps & Patienten löschen"
+          title="Alle Daten löschen"
           style="font-size: 3.5rem; padding: 8px 12px"
         >
           🗑️
@@ -67,12 +67,15 @@
         <img src="icons/teams.png" alt="Trupps" class="tab-icon" />
       </div>
       <div class="tab" data-tab="tab2">
+        <img src="icons/rtm.png" alt="Rettungsmittel" class="tab-icon" />
+      </div>      
+      <div class="tab" data-tab="tab3">
         <img src="icons/patients.png" alt="Patienten" class="tab-icon" />
       </div>
-      <div class="tab" data-tab="tab3">
+      <div class="tab" data-tab="tab4">
         <img src="icons/dashboard.png" alt="Dashboard" class="tab-icon" />
       </div>
-      <div class="tab" data-tab="tab4">
+      <div class="tab" data-tab="tab5">
         <img src="icons/map.png" alt="Karte" class="tab-icon" />
       </div>
     </div>
@@ -82,12 +85,15 @@
         <iframe src="sites/trupp_status_tracker.html"></iframe>
       </div>
       <div class="tab-content" id="tab2">
-        <iframe src="sites/patienten_tracker.html"></iframe>
+        <iframe src="sites/rtm_tracker.html"></iframe>
       </div>
       <div class="tab-content" id="tab3">
-        <iframe src="sites/dashboard.html"></iframe>
+        <iframe src="sites/patienten_tracker.html"></iframe>
       </div>
       <div class="tab-content" id="tab4">
+        <iframe src="sites/dashboard.html"></iframe>
+      </div>
+      <div class="tab-content" id="tab5">
         <iframe src="sites/map.html"></iframe>
     </div>
 
@@ -235,7 +241,7 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("btnClearAll").addEventListener("click", () => {
           if (
             !confirm(
-              "Soll wirklich **ALLES** gelöscht werden? (Trupps + Patienten)"
+              "Soll wirklich **ALLES** gelöscht werden?"
             )
           )
             return;
@@ -243,6 +249,7 @@ document.addEventListener("DOMContentLoaded", () => {
           // Trupp- und Patienten-Daten im localStorage entfernen
           localStorage.removeItem("patients");
           localStorage.removeItem("trupps");
+          localStorage.removeItem("rtms");
           localStorage.removeItem("nextPatientNumber");
           localStorage.removeItem("u18Trupps");
           localStorage.removeItem("mapMarkers");

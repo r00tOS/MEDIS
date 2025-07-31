@@ -1,16 +1,3 @@
-/**
- * Wandelt Millisekunden in MM:SS um.
- * @param {number} ms Millisekunden
- * @returns {string} formatierte Zeit MM:SS
- */
-function formatMS(ms) {
-  const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-}
-
-
 function clearAssignments(patientId, finalStatus) {
   const now = Date.now();
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
@@ -60,6 +47,7 @@ function clearAssignments(patientId, finalStatus) {
     })
   );
 }
+
 
 function disposeRequest(id, request) {
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
@@ -118,81 +106,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-function confirmEdit() {
-  // 1) Basis-Daten speichern (Alter, Geschlecht, Standort, Bemerkung)
-  const p = JSON.parse(localStorage.getItem("patients")).find(
-    (x) => x.id === editPatientId
-  );
-  if (!p) return alert("Kein Patient geladen");
-
-  // Gender
-  const g = document.querySelector('input[name="editGender"]:checked');
-  if (g && g.value !== p.gender) {
-    updatePatientData(editPatientId, "gender", g.value);
-  }
-  // Age
-  const age = document.getElementById("editAge").value.trim();
-  if (age && age !== String(p.age)) {
-    updatePatientData(editPatientId, "age", age);
-  }
-  // Location
-  const loc = document.getElementById("editLocation").value.trim();
-  if (loc && loc !== p.location) {
-    updatePatientData(editPatientId, "location", loc);
-  }
-  // Remarks
-  const rem = document.getElementById("editRemarks").value.trim();
-  if (rem && rem !== p.remarks) {
-    updatePatientData(editPatientId, "remarks", rem);
-  }
-
-  // 2) Stichwort-Diagnose übernehmen (angepasst von confirmKeyword)
-  if (selectedCategory !== null && selectedKeyword !== null) {
-    const cfg = alarmConfig[selectedCategory].keywords[selectedKeyword];
-    let finalWord = cfg.word;
-
-    // falls „sonstiger …“ sichtbar, hänge Zusatztext an
-    if (document.getElementById("otherDetail").style.display === "block") {
-      const extra = document.getElementById("otherInput").value.trim();
-      if (!extra) {
-        return alert("Bitte die Art des Notfalls genauer beschreiben.");
-      }
-      finalWord += " – " + extra;
-    }
-
-    // 2a) Diagnose setzen (inkl. Historie)
-    updatePatientData(editPatientId, "diagnosis", finalWord);
-
-    // 2b) vorgeschlagene Ressourcen ergänzen
-    const arr = JSON.parse(localStorage.getItem("patients")) || [];
-    const toUpdate = arr.find((x) => x.id === editPatientId);
-    if (toUpdate) {
-      toUpdate.suggestedResources = cfg.resources;
-      localStorage.setItem("patients", JSON.stringify(arr));
-      // Storage-Event, damit alle UIs neu rendern
-      window.dispatchEvent(
-        new StorageEvent("storage", {
-          key: "patients",
-          newValue: JSON.stringify(arr),
-        })
-      );
-    }
-  }
-
-  // 3) Modal schließen & neu rendern
-closeEditModal();
-loadPatients(editPatientId);
-
-// Trupp-Cards neu laden:
-window.dispatchEvent(new StorageEvent('storage', {
-  key: 'trupps',
-  newValue: localStorage.getItem('trupps')
-}));
-  // 4) Immer die “Patientendaten geändert: …”-Zeile in die Historie schreiben
-  //     – unabhängig davon, welche Felder wirklich verändert wurden.
-  addCombinedHistoryEntry(editPatientId);
-}
-
 /**
  * Baut die Text‐Zeile „Patientendaten geändert: Verdachtsdiagnose=…, Alter=…, Geschlecht=…, Standort=…, Bemerkung=…“
  * und hängt sie an patient.history an. Persistiert in localStorage.
@@ -244,16 +157,10 @@ function updatePatientData(id, field, value) {
 
   // Hilfs-Objekte sicherstellen
   patient.statusTimestamps = patient.statusTimestamps || {};
-  patient.durations = patient.durations || {};
-
-  // 1) Timestamp & Dauer-Kalkulation zentral in recordStatusChange
-  function doTimeTracking() {
-    recordStatusChange(patient, value);
-  }
 
   // 2) Update von History, Feld, Triggern von recordStatusChange und Speichern
   function applyUpdate() {
-    // a) History-Eintrag
+    // a) History-Eintrag - NUR wenn value nicht leer ist
     if (field === "status") {
       patient.history.push(`${getCurrentTime()} Status: ${value}`);
     } else if (field === "discharge") {
@@ -262,16 +169,26 @@ function updatePatientData(id, field, value) {
       patient.history.push(`${getCurrentTime()} Transport in KH: ${value}`);
     } else if (field === "additionalRequest") {
       patient.history.push(`${getCurrentTime()} ${value}`);
-    } 
+    } else if (field === "diagnosis" && value) { // Nur wenn diagnosis nicht leer
+      patient.history.push(`${getCurrentTime()} Verdachtsdiagnose: ${value}`);
+      
+      // Spezialbehandlung für Diagnose: suggestedResources aktualisieren
+      updateSuggestedResourcesForDiagnosis(patient, value);
+    }
 
-    // b) Feld setzen
+    // b) Feld IMMER setzen (auch bei leerem Wert)
     patient[field] = value;
-
-    // c) Timestamp & Dauer-Berechnungen
-    doTimeTracking();
 
     // d) persistieren
     localStorage.setItem("patients", JSON.stringify(patients));
+    
+    // e) Storage-Event auslösen für UI-Updates
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "patients",
+        newValue: JSON.stringify(patients),
+      })
+    );
   }
 
   // 3) Sonderfall Status → Animation + Delayed Update
@@ -279,9 +196,6 @@ function updatePatientData(id, field, value) {
     // a) History-Eintrag & Status setzen
     patient.history.push(`${getCurrentTime()} Status: ${value}`);
     patient.status = value;
-
-    // b) Timestamp‐ und Dauer‐Berechnung
-    recordStatusChange(patient, value);
 
     // c) Persist
     localStorage.setItem("patients", JSON.stringify(patients));
@@ -293,7 +207,6 @@ function updatePatientData(id, field, value) {
         clearAssignments(id);
       }
       loadPatients(id);
-      updateLiveTimers(); // einmal direkt nachladen
     };
 
     if (oldCard) {
@@ -305,127 +218,73 @@ function updatePatientData(id, field, value) {
     return;
   }
 
-  // 4) Alle anderen Felder → direkt updaten
+  // 4) Alle anderen Felder → direkt updaten OHNE Disposition-Update
+  // Disposition-Updates erfolgen nur bei Trupp/RTM-Änderungen
   applyUpdate();
-  loadPatients();
+  loadPatients(); // Einfaches Neurendern ohne Disposition-Updates
 }
 
-function recordStatusChange(patient, newStatus) {
-  const now = Date.now();
-
-  patient.statusTimestamps = patient.statusTimestamps || {};
-
-  patient.durations = patient.durations || {};
-
-  // 1) Timestamp für den neuen Status nur einmal setzen
-
-  if (!patient.statusTimestamps[newStatus]) {
-    patient.statusTimestamps[newStatus] = now;
+// Neue Hilfsfunktion: suggestedResources basierend auf Diagnose aktualisieren
+function updateSuggestedResourcesForDiagnosis(patient, diagnosis) {
+  // Versuche die Diagnose in den Alarm-Konfigurationen zu finden
+  if (!window.alarmConfig || !window.alarmConfig.categories) {
+    return; // Keine Konfiguration verfügbar
   }
-
-  // 2) Einsatzdauer → erst beim finalen Status
-
-  if (
-    (newStatus === "Entlassen" || newStatus === "Transport in KH") &&
-    !patient.durations.einsatzdauer
-  ) {
-    patient.durations.einsatzdauer = formatMS(now - patient.createdAt);
-  }
-
-  // 3) Dispositionsdauer: gemeldet → disponiert
-
-  if (
-    newStatus === "disponiert" &&
-    patient.statusTimestamps.gemeldet &&
-    !patient.durations.dispositionsdauer
-  ) {
-    patient.durations.dispositionsdauer = formatMS(
-      now - patient.statusTimestamps.gemeldet
-    );
-  }
-
-  // 4) Ausrückdauer: disponiert → in Behandlung/UHS
-
-  if (
-    ["in Behandlung", "verlegt in UHS", "Behandlung in UHS"].includes(
-      newStatus
-    ) &&
-    patient.statusTimestamps.disponiert &&
-    !patient.durations.ausrueckdauer
-  ) {
-    patient.durations.ausrueckdauer = formatMS(
-      now - patient.statusTimestamps.disponiert
-    );
-  }
-
-  // 5) Verlegedauer UHS: verlegt in UHS → Behandlung in UHS
-
-  if (
-    newStatus === "Behandlung in UHS" &&
-    patient.statusTimestamps["verlegt in UHS"] &&
-    !patient.durations.verlegedauerUHS
-  ) {
-    patient.durations.verlegedauerUHS = formatMS(
-      now - patient.statusTimestamps["verlegt in UHS"]
-    );
-  }
-
-  // 6) **Behandlungsdauer**: wenn wir ins Finale wechseln
-
-  if (
-    (newStatus === "Entlassen" || newStatus === "Transport in KH") &&
-    !patient.durations.behandlungsdauer
-  ) {
-    // 6a) nimm den Start-Timestamp „in Behandlung“ oder „Behandlung in UHS“
-
-    const start =
-      patient.statusTimestamps["in Behandlung"] ||
-      patient.statusTimestamps["Behandlung in UHS"];
-
-    if (start) {
-      patient.durations.behandlungsdauer = formatMS(now - start);
-    } else {
-      // falls nie richtig in Behandlung
-
-      patient.durations.behandlungsdauer = "00:00";
+  
+  // Suche nach der Diagnose in allen Kategorien und Keywords
+  let foundResources = null;
+  
+  window.alarmConfig.categories.forEach(category => {
+    if (foundResources) return; // Bereits gefunden
+    
+    category.keywords.forEach(keyword => {
+      if (foundResources) return; // Bereits gefunden
+      
+      // Prüfe ob die Diagnose mit dem Keyword übereinstimmt
+      // Berücksichtige auch "sonstiger XYZ – Details" Format
+      let keywordToMatch = keyword.word;
+      let diagnosisToMatch = diagnosis;
+      
+      // Wenn Diagnose ein "– " enthält (sonstiger Fall), nur den ersten Teil vergleichen
+      if (diagnosis.includes(' – ')) {
+        const diagnosisParts = diagnosis.split(' – ');
+        if (diagnosisParts[0] && keyword.word.toLowerCase().includes('sonstiger')) {
+          // Für "sonstiger" Keywords, prüfe ob der erste Teil der Diagnose passt
+          keywordToMatch = keyword.word;
+          diagnosisToMatch = diagnosisParts[0];
+        }
+      }
+      
+      // Exakte Übereinstimmung oder "sonstiger" Match
+      if (keywordToMatch.toLowerCase() === diagnosisToMatch.toLowerCase() || 
+          (keyword.word.toLowerCase().includes('sonstiger') && diagnosis.toLowerCase().startsWith(keyword.word.toLowerCase().split(' – ')[0]))) {
+        foundResources = keyword.resources;
+      }
+    });
+  });
+  
+  // Wenn Ressourcen gefunden wurden, aktualisiere sie
+  if (foundResources && Array.isArray(foundResources)) {
+    patient.suggestedResources = [...foundResources]; // Kopie erstellen
+    
+    // Disposition-Status zurücksetzen, da neue Ressourcen vorgeschlagen werden
+    if (patient.dispositionStatus) {
+      // Behalte nur die bereits disponierten Ressourcen bei
+      const newDispositionStatus = {};
+      foundResources.forEach(resource => {
+        if (patient.dispositionStatus[resource] === 'dispatched') {
+          newDispositionStatus[resource] = 'dispatched';
+        }
+        // Ignored-Status auch beibehalten
+        if (patient.dispositionStatus[resource + '_ignored'] === true) {
+          newDispositionStatus[resource + '_ignored'] = true;
+        }
+      });
+      patient.dispositionStatus = newDispositionStatus;
     }
-  }
-
-  // 7) alle übrigen Dauern beim finalen Status nachtragen
-
-  if (newStatus === "Entlassen" || newStatus === "Transport in KH") {
-    // Dispositionsdauer, falls nie auf disponiert gewechselt
-
-    if (
-      patient.statusTimestamps.gemeldet &&
-      !patient.durations.dispositionsdauer
-    ) {
-      patient.durations.dispositionsdauer = formatMS(
-        now - patient.statusTimestamps.gemeldet
-      );
-    }
-
-    // Ausrückdauer, falls nie auf disponiert→in Behandlung gewechselt
-
-    if (
-      patient.statusTimestamps.disponiert &&
-      !patient.durations.ausrueckdauer
-    ) {
-      patient.durations.ausrueckdauer = formatMS(
-        now - patient.statusTimestamps.disponiert
-      );
-    }
-
-    // Verlegedauer UHS, falls nie auf verlegt→UHS gewechselt
-
-    if (
-      patient.statusTimestamps["verlegt in UHS"] &&
-      !patient.durations.verlegedauerUHS
-    ) {
-      patient.durations.verlegedauerUHS = formatMS(
-        now - patient.statusTimestamps["verlegt in UHS"]
-      );
-    }
+  } else {
+    // Keine passenden Ressourcen gefunden - bestehende beibehalten oder leeren
+    // patient.suggestedResources = []; // Auskommentiert um bestehende Ressourcen zu behalten
   }
 }
 
@@ -445,23 +304,82 @@ function assignResource(id, type) {
     patient.team.push(value.trim());
   } else {
     if (!Array.isArray(patient.rtm)) patient.rtm = [];
-    patient.rtm.push(value.trim());
+    
+    // Behandle mehrere RTMs (kommagetrennt)
+    const rtmList = value.split(',').map(rtm => rtm.trim()).filter(rtm => rtm.length > 0);
+    rtmList.forEach(rtm => {
+      patient.rtm.push(rtm);
+    });
   }
 
-  // 3) Sofort speichern
+  // 3) Disposition-Status direkt aktualisieren
+  if (!patient.dispositionStatus) patient.dispositionStatus = {};
+  
+  if (type === "rtm") {
+    // RTMs zu Ressourcen-Namen mappen - für alle hinzugefügten RTMs
+    const rtmList = value.split(',').map(rtm => rtm.trim()).filter(rtm => rtm.length > 0);
+    
+    rtmList.forEach(rtmName => {
+      const rtmLower = rtmName.toLowerCase();
+      
+      console.log(`Processing RTM: ${rtmName} (${rtmLower})`);
+      
+      // Prüfe ob RTM zu bekannten Ressourcen passt und aktualisiere alle passenden
+      if (rtmLower.includes('rtw')) {
+        patient.dispositionStatus['RTW'] = 'dispatched';
+        console.log('Set RTW to dispatched');
+      }
+      if (rtmLower.includes('nef')) {
+        patient.dispositionStatus['NEF'] = 'dispatched';
+        patient.dispositionStatus['UHS-Notarzt oder NEF'] = 'dispatched';
+        console.log('Set NEF and UHS-Notarzt oder NEF to dispatched');
+      }
+      if (rtmLower.includes('rettungsdienst') || rtmLower.includes('rd')) {
+        patient.dispositionStatus['RTW'] = 'dispatched';
+      }
+      if (rtmLower.includes('notarzt') || rtmLower.includes('na')) {
+        patient.dispositionStatus['UHS-Notarzt oder NEF'] = 'dispatched';
+      }
+    });
+    
+    console.log('Updated dispositionStatus:', patient.dispositionStatus);
+  } else if (type === "team") {
+    // Trupp wurde zugeordnet
+    patient.dispositionStatus['Trupp'] = 'dispatched';
+  }
+
+  // 4) Sofort speichern
   localStorage.setItem("patients", JSON.stringify(patients));
 
-  // 4) Nur wenn vorher gemeldet → Status auf „disponiert“ setzen
+  // 5) Nur wenn vorher gemeldet → Status auf „disponiert" setzen
   if (patient.status === "gemeldet") {
     updatePatientData(id, "status", "disponiert");
   }
 
-  // 5) Historieneintrag für die Ressource
+  // 6) Historieneintrag für die Ressource
   const updated = JSON.parse(localStorage.getItem("patients")) || [];
   const p2 = updated.find((p) => p.id === id);
   if (p2) {
     p2.history = p2.history || [];
-    p2.history.push(`${getCurrentTime()} ${label} ${value.trim()} disponiert`);
+    p2.history.push(`${getCurrentTime()} ${label} ${value.trim()} zugeordnet`);
+    
+    // Stelle sicher dass die Disposition-Status-Updates auch in der gespeicherten Version sind
+    if (type === "rtm") {
+      const rtmList = value.split(',').map(rtm => rtm.trim()).filter(rtm => rtm.length > 0);
+      rtmList.forEach(rtmName => {
+        const rtmLower = rtmName.toLowerCase();
+        if (rtmLower.includes('rtw')) {
+          p2.dispositionStatus = p2.dispositionStatus || {};
+          p2.dispositionStatus['RTW'] = 'dispatched';
+        }
+        if (rtmLower.includes('nef')) {
+          p2.dispositionStatus = p2.dispositionStatus || {};
+          p2.dispositionStatus['NEF'] = 'dispatched';
+          p2.dispositionStatus['UHS-Notarzt oder NEF'] = 'dispatched';
+        }
+      });
+    }
+    
     localStorage.setItem("patients", JSON.stringify(updated));
     loadPatients(id);
   }
@@ -505,31 +423,9 @@ function assignSelectedTrupp(patientId) {
     loadPatients(patientId);
   }
 
-  // 8) Und zum Schluss Trupp-Tracker starten, wie gehabt:
-  const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
-  const t = trupps.find((t) => t.name === truppName);
-  if (t) {
-    const now = Date.now();
-    if (t.currentOrt && t.einsatzStartOrt) {
-      t.einsatzHistorie = t.einsatzHistorie || [];
-      t.einsatzHistorie.push({
-        ort: t.currentOrt,
-        von: t.einsatzStartOrt,
-        bis: now,
-      });
-    }
-    t.status              = 3;
-    t.patientInput        = patientId;
-    t.patientStart        = now;
-    t.currentEinsatzStart = now;
-    t.currentPauseStart   = null;
-    localStorage.setItem("trupps", JSON.stringify(trupps));
-    window.dispatchEvent(
-      new StorageEvent("storage", {
-        key: "trupps",
-        newValue: JSON.stringify(trupps),
-      })
-    );
+  // 8) Disposition-Update NUR bei Trupp-Zuordnung auslösen
+  if (typeof triggerDispositionUpdate === 'function') {
+    triggerDispositionUpdate();
   }
 }
 
@@ -585,6 +481,11 @@ function removeTrupp(id, index) {
         newValue: JSON.stringify(trupps),
       })
     );
+    
+    // Disposition-Update NUR bei Trupp-Entfernung auslösen
+    if (typeof triggerDispositionUpdate === 'function') {
+      triggerDispositionUpdate();
+    }
   }
 }
 
@@ -597,6 +498,12 @@ function removeRtm(id, index) {
     if (!patient.history) patient.history = [];
     patient.history.push(`${getCurrentTime()} RTM ${removed[0]} entfernt`);
     localStorage.setItem("patients", JSON.stringify(patients));
+    
+    // Disposition-Update NUR bei RTM-Entfernung auslösen
+    if (typeof triggerDispositionUpdate === 'function') {
+      triggerDispositionUpdate();
+    }
+    
     loadPatients();
   }
 }
@@ -607,219 +514,333 @@ function editField(id, field) {
     openKeywordModal(id);
     return;
   }
+
   // für alle anderen Felder weiter wie gehabt:
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
   const patient = patients.find((p) => p.id === id);
+  if (!patient) {
+    console.error("Patient nicht gefunden:", id);
+    return;
+  }
+
   const current = patient[field] || "";
   const labelMap = {
     age: "Alter",
     diagnosis: "Verdachtsdiagnose",
     location: "Standort",
     remarks: "Bemerkungen",
+    gender: "Geschlecht",
   };
-  const value = prompt(
-    `Neuen Wert für ${labelMap[field] || field} eingeben:`,
-    current
-  );
-  if (value !== null) {
-    updatePatientData(id, field, value);
+
+  let value;
+
+  // Spezialbehandlung für Geschlecht
+  if (field === "gender") {
+    const options = ["M", "W", "D"];
+    const currentIndex = options.indexOf(current);
+    const selection = prompt(
+      `Geschlecht auswählen:\n1 = M (Männlich)\n2 = W (Weiblich)\n3 = D (Divers)\n\nAktuell: ${current || "nicht gesetzt"}`,
+      currentIndex >= 0 ? (currentIndex + 1).toString() : ""
+    );
+
+    if (selection === null) return; // Abgebrochen
+
+    const selectedIndex = parseInt(selection) - 1;
+    if (selectedIndex >= 0 && selectedIndex < options.length) {
+      value = options[selectedIndex];
+    } else {
+      alert("Ungültige Auswahl. Bitte 1, 2 oder 3 eingeben.");
+      return;
+    }
+  } else {
+    // Normale Texteingabe für andere Felder
+    value = prompt(
+      `Neuen Wert für ${labelMap[field] || field} eingeben:`,
+      current
+    );
+  }
+
+  if (value !== null && value !== current) {
+    console.log(`Updating ${field} from "${current}" to "${value}" for patient ${id}`);
+    
+    // WICHTIG: Frische Kopie der Patientendaten holen
+    const freshPatients = JSON.parse(localStorage.getItem("patients")) || [];
+    const freshPatient = freshPatients.find((p) => p.id === id);
+    
+    if (!freshPatient) {
+      console.error("Patient nicht mehr gefunden nach Neuladen:", id);
+      return;
+    }
+    
+    // DIREKTE Datenaktualisierung
+    freshPatient[field] = value;
+    
+    // History-Eintrag hinzufügen
+    if (!freshPatient.history) freshPatient.history = [];
+    const timeStr = getCurrentTime();
+    
+    if (field === "diagnosis") {
+      freshPatient.history.push(`${timeStr} Verdachtsdiagnose: ${value}`);
+      // Spezialbehandlung für Diagnose: suggestedResources aktualisieren
+      updateSuggestedResourcesForDiagnosis(freshPatient, value);
+    } else if (field === "age") {
+      freshPatient.history.push(`${timeStr} Alter: ${value}`);
+    } else if (field === "gender") {
+      freshPatient.history.push(`${timeStr} Geschlecht: ${value}`);
+    } else if (field === "location") {
+      freshPatient.history.push(`${timeStr} Standort: ${value}`);
+    } else if (field === "remarks") {
+      freshPatient.history.push(`${timeStr} Bemerkungen: ${value}`);
+    }
+    
+    // SOFORT speichern und UI komplett neu laden
+    try {
+      localStorage.setItem("patients", JSON.stringify(freshPatients));
+      console.log(`Patient ${id} - ${field} erfolgreich gespeichert:`, value);
+      
+      // WICHTIG: Komplettes Neurendern erzwingen
+      loadPatients();
+      
+      // Storage-Event auslösen für andere Tracker
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: "patients",
+          newValue: JSON.stringify(freshPatients),
+        })
+      );
+      
+    } catch (error) {
+      console.error("Fehler beim Speichern der Patientendaten:", error);
+      alert("Fehler beim Speichern der Daten. Bitte erneut versuchen.");
+    }
   }
 }
 
-function addCustomHistory(id, message) {
-  if (!message.trim()) return;
-  const patients = JSON.parse(localStorage.getItem("patients")) || [];
-  const patient = patients.find((p) => p.id === id);
-  if (!patient.history) patient.history = [];
-  patient.history.push(`${getCurrentTime()} ${message}`);
-  localStorage.setItem("patients", JSON.stringify(patients));
+// Add dropdown functions for status changes
+function openTruppStatusDropdown(event, truppName) {
+  event.stopPropagation();
+  
+  // Remove any existing dropdowns
+  const existingDropdowns = document.querySelectorAll('.status-dropdown-overlay');
+  existingDropdowns.forEach(dropdown => dropdown.remove());
+  
+  const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+  const trupp = trupps.find(t => t.name === truppName);
+  if (!trupp) return;
+  
+  const dropdown = document.createElement('div');
+  dropdown.className = 'status-dropdown-overlay';
+  dropdown.style.cssText = `
+    position: fixed;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    z-index: 1000;
+    padding: 5px;
+    min-width: 120px;
+  `;
+  
+  // Position dropdown near the clicked element
+  const rect = event.target.getBoundingClientRect();
+  dropdown.style.left = rect.left + 'px';
+  dropdown.style.top = (rect.bottom + 5) + 'px';
+  
+  // Add status options
+  if (window.statusOptions) {
+    window.statusOptions.forEach(option => {
+      const optionDiv = document.createElement('div');
+      optionDiv.style.cssText = `
+        padding: 5px;
+        cursor: pointer;
+        border-radius: 2px;
+        background: ${option.color};
+        margin: 2px 0;
+        color: black;
+      `;
+      optionDiv.textContent = option.status + ' - ' + option.text;
+      optionDiv.onclick = () => {
+        changeTruppStatus(truppName, option.status);
+        dropdown.remove();
+      };
+      dropdown.appendChild(optionDiv);
+    });
+  }
+  
+  document.body.appendChild(dropdown);
+}
+
+function openRtmStatusDropdown(event, rtmName) {
+  event.stopPropagation();
+  
+  // Remove any existing dropdowns
+  const existingDropdowns = document.querySelectorAll('.status-dropdown-overlay');
+  existingDropdowns.forEach(dropdown => dropdown.remove());
+  
+  const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
+  const rtm = rtms.find(r => r.name === rtmName);
+  if (!rtm) return;
+  
+  const dropdown = document.createElement('div');
+  dropdown.className = 'status-dropdown-overlay';
+  dropdown.style.cssText = `
+    position: fixed;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    z-index: 1000;
+    padding: 5px;
+    min-width: 120px;
+  `;
+  
+  // Position dropdown near the clicked element
+  const rect = event.target.getBoundingClientRect();
+  dropdown.style.left = rect.left + 'px';
+  dropdown.style.top = (rect.bottom + 5) + 'px';
+  
+  // Add status options
+  if (window.statusOptions) {
+    window.statusOptions.forEach(option => {
+      const optionDiv = document.createElement('div');
+      optionDiv.style.cssText = `
+        padding: 5px;
+        cursor: pointer;
+        border-radius: 2px;
+        background: ${option.color};
+        margin: 2px 0;
+        color: black;
+      `;
+      optionDiv.textContent = option.status + ' - ' + option.text;
+      optionDiv.onclick = () => {
+        changeRtmStatus(rtmName, option.status);
+        dropdown.remove();
+      };
+      dropdown.appendChild(optionDiv);
+    });
+  }
+  
+  document.body.appendChild(dropdown);
+}
+
+function changeTruppStatus(truppName, newStatus) {
+  const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+  const trupp = trupps.find(t => t.name === truppName);
+  if (!trupp) return;
+  
+  trupp.status = newStatus;
+  trupp.history = trupp.history || [];
+  trupp.history.push({
+    when: Date.now(),
+    event: newStatus
+  });
+  
+  localStorage.setItem("trupps", JSON.stringify(trupps));
+  
+  // Update patient status based on trupp status change
+  updatePatientStatusBasedOnResourceStatus(truppName, newStatus, 'trupp');
+  
+  // Trigger storage event to update all trackers
+  window.dispatchEvent(new StorageEvent("storage", {
+    key: "trupps",
+    newValue: JSON.stringify(trupps)
+  }));
+  
+  // Reload patients to show updated status
   loadPatients();
 }
 
-// Globale Variable, die immer aktuell ist
-window.nextPatientNumber =
-  parseInt(localStorage.getItem("nextPatientNumber"), 10) || 1;
-
-// 1) Polling
-function syncNextPatientNumber() {
-  window.nextPatientNumber =
-    parseInt(localStorage.getItem("nextPatientNumber"), 10) || 1;
+function changeRtmStatus(rtmName, newStatus) {
+  const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
+  const rtm = rtms.find(r => r.name === rtmName);
+  if (!rtm) return;
+  
+  rtm.status = newStatus;
+  rtm.history = rtm.history || [];
+  rtm.history.push({
+    when: Date.now(),
+    event: newStatus
+  });
+  
+  localStorage.setItem("rtms", JSON.stringify(rtms));
+  
+  // Update patient status based on RTM status change
+  updatePatientStatusBasedOnResourceStatus(rtmName, newStatus, 'rtm');
+  
+  // Trigger storage event to update all trackers
+  window.dispatchEvent(new StorageEvent("storage", {
+    key: "rtms",
+    newValue: JSON.stringify(rtms)
+  }));
+  
+  // Reload patients to show updated status
+  loadPatients();
 }
-setInterval(syncNextPatientNumber, 2000);
 
-// 2) storage-Event
-window.addEventListener("storage", (e) => {
-  if (e.key === "nextPatientNumber") syncNextPatientNumber();
-});
-
-window.addEventListener("storage", (e) => {
-  if (e.key === "patients") {
-    loadPatients();
-  }
-});
-
-/**
- * Sammelt alle relevanten Felddaten des Patienten, formatiert sie
- * und kopiert den resultierenden Text in die Zwischenablage.
- */
-function copyPatientData(id) {
-  // Patientendaten laden
+// New function to update patient status based on resource status changes
+function updatePatientStatusBasedOnResourceStatus(resourceName, newStatus, resourceType) {
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
-  const patient = patients.find((p) => p.id === id);
-  if (!patient) return;
-
-  // Felder extrahieren
-  const trupp = Array.isArray(patient.team) ? patient.team.join(", ") : "–";
-  const rtm = Array.isArray(patient.rtm) ? patient.rtm.join(", ") : "–";
-  const nachf =
-    (patient.history || []).filter((e) => /nachgefordert/.test(e)).join("\n") ||
-    "–";
-  const remarks = patient.remarks || "–";
-  const historyText = (patient.history || []).join("\n") || "–";
-
-  // Textblock zusammenbauen
-  const text = `Patient Nr.: ${patient.id}
-Trupp: ${trupp}
-RTM: ${rtm}
-Standort: ${patient.location || "–"}
-Alter: ${patient.age || "–"}
-Geschlecht: ${patient.gender || "–"}
-Verdachtsdiagnose: ${patient.diagnosis || "–"}
-Nachforderungen:
-${nachf}
-Bemerkung: ${remarks}
-
-Patienten-Historie:
-${historyText}`;
-
-  copyToClipboard(text);
-}
-
-/**
- * Kopiert reinen Text in die Zwischenablage, mit Fallback.
- */
-function copyToClipboard(text) {
-  if (navigator.clipboard && window.isSecureContext) {
-    navigator.clipboard.writeText(text).catch((err) => {
-      console.error("Clipboard write failed, fallback:", err);
-      fallbackCopyTextToClipboard(text);
-    });
-  } else {
-    fallbackCopyTextToClipboard(text);
-  }
-}
-
-function fallbackCopyTextToClipboard(text) {
-  const ta = document.createElement("textarea");
-  ta.value = text;
-  ta.style.position = "fixed"; // verhindert Scroll-Jump
-  ta.style.opacity = "0";
-  document.body.appendChild(ta);
-  ta.focus();
-  ta.select();
-  try {
-    document.execCommand("copy");
-    alert("Patientendaten kopiert 🎉");
-  } catch (err) {
-    console.error("Fallback: Copy failed", err);
-  }
-  document.body.removeChild(ta);
-}
-
-function deletePatient(id) {
-  if (!confirm("Soll Patient " + id + " wirklich gelöscht werden?")) return;
-  // aus localStorage holen
-  const patients = JSON.parse(localStorage.getItem("patients")) || [];
-  // Patient finden und entfernen
-  const idx = patients.findIndex((p) => p.id === id);
-  if (idx > -1) {
-    patients.splice(idx, 1);
-    localStorage.setItem("patients", JSON.stringify(patients));
-    // neu rendern
-    loadPatients();
-  }
-}
-
-function updateLiveTimers() {
-  const patients = JSON.parse(localStorage.getItem("patients")) || [];
-  const now = Date.now();
-  let dirty = false;
-
-  patients.forEach((p) => {
-    const isFinal = p.status === "Entlassen" || p.status === "Transport in KH";
-    if (isFinal) return;
-    const t = p.statusTimestamps || {};
-    const d = (p.durations ||= {});
-    const id = p.id;
-
-    // 1) Einsatzdauer → läuft bis final
-    if (!isFinal) {
-      const val = formatMS(now - p.createdAt);
-      const el = document.querySelector(`.timer.einsatzdauer[data-id='${id}']`);
-      if (el) el.textContent = val;
-      if (d.einsatzdauer !== val) {
-        d.einsatzdauer = val;
-        dirty = true;
-      }
+  let patientsUpdated = false;
+  
+  patients.forEach(patient => {
+    // Skip if patient is already in final states
+    if (patient.status === "Entlassen" || patient.status === "Transport in KH") {
+      return;
     }
-
-    // 2) Dispositionsdauer → nur bis dispo gesetzt
-    if (t.gemeldet && !t.disponiert) {
-      const val = formatMS(now - t.gemeldet);
-      const el = document.querySelector(
-        `.timer.dispositionsdauer[data-id='${id}']`
-      );
-      if (el) el.textContent = val;
-      if (d.dispositionsdauer !== val) {
-        d.dispositionsdauer = val;
-        dirty = true;
-      }
+    
+    // Check if this resource is assigned to this patient
+    let isAssigned = false;
+    if (resourceType === 'trupp' && Array.isArray(patient.team)) {
+      isAssigned = patient.team.includes(resourceName);
+    } else if (resourceType === 'rtm' && Array.isArray(patient.rtm)) {
+      isAssigned = patient.rtm.includes(resourceName);
     }
-
-    // 3) Ausrückdauer → nur zwischen dispo und Behandlungs-/UHS-Start
-    if (
-      t.disponiert &&
-      !t["in Behandlung"] &&
-      !t["verlegt in UHS"] &&
-      !t["Behandlung in UHS"]
-    ) {
-      const val = formatMS(now - t.disponiert);
-      const el = document.querySelector(
-        `.timer.ausrueckdauer[data-id='${id}']`
-      );
-      if (el) el.textContent = val;
-      if (d.ausrueckdauer !== val) {
-        d.ausrueckdauer = val;
-        dirty = true;
-      }
+    
+    if (!isAssigned) return;
+    
+    // Update patient status based on resource status
+    let newPatientStatus = null;
+    
+    switch (newStatus) {
+      case 3: // Einsatz übernommen
+        if (patient.status === "gemeldet") {
+          newPatientStatus = "disponiert";
+        }
+        break;
+      case 4: // Am Einsatzort
+        if (["gemeldet", "disponiert"].includes(patient.status)) {
+          newPatientStatus = "in Behandlung";
+        }
+        break;
+      case 7: // Transport in UHS
+        if (["gemeldet", "disponiert", "in Behandlung"].includes(patient.status)) {
+          newPatientStatus = "verlegt in UHS";
+        }
+        break;
+      case 8: // Transportziel erreicht
+        if (["gemeldet", "disponiert", "in Behandlung", "verlegt in UHS"].includes(patient.status)) {
+          newPatientStatus = "Behandlung in UHS";
+        }
+        break;
     }
-
-    // 4) Verlegedauer UHS → von verlegt → Behandlung in UHS
-    if (t["verlegt in UHS"] && !t["Behandlung in UHS"]) {
-      const val = formatMS(now - t["verlegt in UHS"]);
-      const el = document.querySelector(
-        `.timer.verlegedauerUHS[data-id='${id}']`
-      );
-      if (el) el.textContent = val;
-      if (d.verlegedauerUHS !== val) {
-        d.verlegedauerUHS = val;
-        dirty = true;
-      }
-    }
-
-    // 5) Behandlungsdauer → läuft während in Behandlung oder UHS-Behandlung
-    const behandlungsStart = t["in Behandlung"] ?? t["Behandlung in UHS"];
-    if (behandlungsStart && !isFinal) {
-      const val = formatMS(now - behandlungsStart);
-      const el = document.querySelector(
-        `.timer.behandlungsdauer[data-id='${id}']`
-      );
-      if (el) el.textContent = val;
-      if (d.behandlungsdauer !== val) {
-        d.behandlungsdauer = val;
-        dirty = true;
-      }
+    
+    // Apply status change if needed
+    if (newPatientStatus && newPatientStatus !== patient.status) {
+      patient.status = newPatientStatus;
+      patient.history = patient.history || [];
+      patient.history.push(`${getCurrentTime()} Status: ${newPatientStatus} (via ${resourceType === 'trupp' ? 'Trupp' : 'RTM'} ${resourceName})`);
+      patientsUpdated = true;
     }
   });
+  
+  // Save updated patients if any changes were made
+  if (patientsUpdated) {
+    localStorage.setItem("patients", JSON.stringify(patients));
+    
+    // Trigger storage event for patient updates
+    window.dispatchEvent(new StorageEvent("storage", {
+      key: "patients",
+      newValue: JSON.stringify(patients)
+    }));
+  }
 }
-

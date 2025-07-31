@@ -33,6 +33,21 @@ button:hover {
   background-color: #005f73;
 }
 
+/* Ensure button styles don't interfere with disposition symbols */
+button:not(.disposition-symbol) {
+  padding: 8px 14px;
+  cursor: pointer;
+  border: none;
+  border-radius: 5px;
+  font-weight: bold;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.2s ease;
+}
+
+button:not(.disposition-symbol):hover {
+  background-color: #005f73;
+}
+
 /* 3. Helfer-Klassen */
 .flex {
   display: flex;

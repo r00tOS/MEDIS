@@ -68,19 +68,19 @@ describe('onSearchInput', () => {
 
     const items = results.querySelectorAll('.item');
     expect(items.length).toBeGreaterThan(0);
-    // Check that the result contains "Bewusstlos" from "Patientenzustand"
-    expect(items[0].textContent).toMatch(/Patientenzustand ➔ Bewusstlos/i);
+    // Check that the result contains "Bewusstlos" from "Vitalbedrohliche Zustände"
+    expect(items[0].textContent).toMatch(/Vitalbedrohliche Zustände ➔ Bewusstlos/i);
   });
 
   test('Click auf Ergebnis setzt Such-Input und toggelt otherDetail', () => {
-    // Use a search term that exists - "sonstige" appears in multiple entries
+    // Use a search term that exists - "sonstige" erscheint in mehreren Einträgen
     const term = 'sonstige';
     document.getElementById('searchInput').value = term;
     onSearchInput();
 
     // Erstes Ergebnis anklicken
     const item = document.querySelector('#searchResults .item');
-    expect(item).toBeTruthy(); // Make sure item exists
+    expect(item).toBeTruthy(); // Stelle sicher, dass das Element existiert
     item.click();
 
     // 1) Input-Wert sollte dem im Item angezeigten Keyword entsprechen:

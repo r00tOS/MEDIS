@@ -260,10 +260,14 @@ let selectedCategory = null;
 let selectedKeyword = null;
 
 // Helper: Modal injizieren und öffnen/schließen
-document.body.insertAdjacentHTML("beforeend", modalTemplate);
+let modalInjected = false;
+
 document.addEventListener("DOMContentLoaded", () => {
-  document.body.insertAdjacentHTML("beforeend", modalTemplate);
-  renderCategoryList();
+  if (!modalInjected) {
+    document.body.insertAdjacentHTML("beforeend", modalTemplate);
+    modalInjected = true;
+    renderCategoryList();
+  }
 });
 
 // openEditModal(), confirmEdit(), closeEditModal(),
@@ -358,16 +362,24 @@ function confirmNachforderungModal() {
     if (!Array.isArray(patient.team)) patient.team = [];
     patient.team.push(trupp);
 
-    // Status-Logik wie gewohnt
-    if (
-      patient.status !== "in Behandlung" &&
-      patient.team.length === 1 &&
-      (!Array.isArray(patient.rtm) || patient.rtm.length === 0)
-    ) {
+    // Status-Logik mit korrekter Timestamp-Behandlung
+    const oldStatus = patient.status;
+    if (patient.status === "gemeldet") {
       patient.status = "disponiert";
       patient.history = patient.history || [];
       patient.history.push(`${getCurrentTime()} Status: disponiert`);
+      
+      // Timestamps korrekt setzen
+      const now = Date.now();
+      patient.statusTimestamps = patient.statusTimestamps || {};
+      if (!patient.statusTimestamps.disponiert) {
+        patient.statusTimestamps.disponiert = now;
+      }
+      
+      // Timer-Berechnung für Statuswechsel
+      recordStatusChange(patient, "disponiert");
     }
+    
     // History: Nachforderung + Trupp zugeordnet
     entryText += ` → Trupp ${trupp} disponiert`;
     details.trupp = trupp;
@@ -413,6 +425,24 @@ function confirmNachforderungModal() {
     patient.rtm.push(rtmKennung);
     entryText += ` → RTM ${rtmKennung} disponiert`;
     details.rtm = rtmKennung;
+    
+    // Status-Logik mit korrekter Timestamp-Behandlung
+    const oldStatus = patient.status;
+    if (patient.status === "gemeldet") {
+      patient.status = "disponiert";
+      patient.history = patient.history || [];
+      patient.history.push(`${getCurrentTime()} Status: disponiert`);
+      
+      // Timestamps korrekt setzen
+      const now = Date.now();
+      patient.statusTimestamps = patient.statusTimestamps || {};
+      if (!patient.statusTimestamps.disponiert) {
+        patient.statusTimestamps.disponiert = now;
+      }
+      
+      // Timer-Berechnung für Statuswechsel
+      recordStatusChange(patient, "disponiert");
+    }
   }
 
   // Nachforderung als "disponiert" markieren, Details speichern
@@ -422,6 +452,15 @@ function confirmNachforderungModal() {
 
   // Persistieren und UI refresh
   localStorage.setItem("patients", JSON.stringify(patients));
+  
+  // Storage-Event auslösen
+  window.dispatchEvent(
+    new StorageEvent("storage", {
+      key: "patients",
+      newValue: JSON.stringify(patients),
+    })
+  );
+  
   closeNachforderungModal();
   loadPatients(nachforderungPatientId);
 }
@@ -525,7 +564,7 @@ function resetKeywordSelection() {
 }
 
 
-/**
+ /**
  * Schließt das Edit-/Keyword-Modal.
  */
 function closeEditModal() {
@@ -562,378 +601,97 @@ document.body.insertAdjacentHTML("beforeend", einsatzortModalTemplate);
 // globale Variable für den gerade bearbeiteten Trupp-Index
 let _pendingTruppIndex = null;
 
-// öffnet den Einsatzort-Modal und füllt die Liste
-function openEinsatzortModal(truppIndex) {
-  _pendingTruppIndex = truppIndex;
-  const ul = document.getElementById("presetList");
-  ul.innerHTML = "";
-  // window.einsatzorte muss aus deiner presets-Datei kommen
-  window.einsatzorte.forEach(o => {
-    const li = document.createElement("li");
-    li.className = "item";
-    li.textContent = o;
-    li.onclick = () => {
-      ul.querySelectorAll("li").forEach(x => x.classList.remove("selected"));
-      li.classList.add("selected");
-      document.getElementById("customEinsatzort").value = o;
-    };
-    ul.appendChild(li);
-  });
-  document.getElementById("customEinsatzort").value = "";
-  document.getElementById("einsatzortModal").style.display = "flex";
-}
-
-// schließt den Modal
-function closeEinsatzortModal() {
-  document.getElementById("einsatzortModal").style.display = "none";
-  _pendingTruppIndex = null;
-}
-
-// klick auf OK im Modal
-document.getElementById("confirmEinsatzort").addEventListener("click", () => {
-  const ort = document.getElementById("customEinsatzort").value.trim();
-  if (!ort || _pendingTruppIndex === null) return;
-
-  const t = trupps[_pendingTruppIndex];
-  const now = Date.now();
-  const timeStr = new Date(now).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
-  // 1) Ort setzen
-  t.currentOrt = ort;
-  t.einsatzStartOrt = now;
-
-  // 2) Trupp-Historie ergänzen
-  if (!t.history) t.history = [];
-  t.history.push(`${timeStr} Einsatzort gesetzt: ${ort}`);
-
-  // 3) Speichern & neu rendern
-  saveTrupps();
-  renderTrupps();
-
-  // 4) Modal schließen
-  closeEinsatzortModal();
-});
-
-// ————————————————————————————————————————————————————————————————
-// 1) Discharge-Modal definieren
-const dischargeModalHTML = `
-<div id="dischargeModal" class="modal" style="display:none; z-index:2000">
-  <div class="modal-content">
-    <span class="close" onclick="closeDischargeModal()">&times;</span>
-    <h2>Patient entlassen</h2>
-    <form id="dischargeForm">
-      <label><input type="radio" name="dischargeType" value="in veranstaltung entlassen" checked> in Veranstaltung entlassen</label><br>
-      <label><input type="radio" name="dischargeType" value="begibt sich eigenständig nach hause"> begibt sich eigenständig nach Hause</label><br>
-      <label><input type="radio" name="dischargeType" value="begibt sich eigenständig in krankenhaus"> begibt sich eigenständig ins Krankenhaus</label><br>
-      <label><input type="radio" name="dischargeType" value="in obhut der eltern entlassen"> in Obhut der Eltern entlassen</label><br>
-      <label><input type="radio" name="dischargeType" value="in obhut von lebenspartner*in entlassen"> in Obhut von Lebenspartner*in entlassen</label><br>
-      <label><input type="radio" name="dischargeType" value="sonstige"> sonstige:</label>
-      <input type="text" id="dischargeOther" placeholder="Bitte Text eingeben…" style="width:100%; margin-top:4px;">
-      <div style="text-align:right; margin-top:12px">
-        <button type="button" onclick="closeDischargeModal()">Abbrechen</button>
-        <button type="button" onclick="confirmDischarge()">OK</button>
-      </div>
-    </form>
-  </div>
-</div>`;
-document.body.insertAdjacentHTML("beforeend", dischargeModalHTML);
-
-// 2) Transport-Modal definieren
-const transportModalHTML = `
-<div id="transportModal" class="modal" style="display:none; z-index:2000">
-  <div class="modal-content">
-    <span class="close" onclick="closeTransportModal()">&times;</span>
-    <h2>Patient transportieren</h2>
-    <form id="transportForm">
-      <label><input type="radio" name="transportType" value="an rtw übergeben" checked> an RTW übergeben</label><br>
-      <label><input type="radio" name="transportType" value="an nef übergeben"> an NEF übergeben</label><br>
-      <label><input type="radio" name="transportType" value="an ktw übergeben"> an KTW übergeben</label><br>
-      <label><input type="radio" name="transportType" value="sonstige"> sonstige:</label>
-      <input type="text" id="transportOther" placeholder="Bitte Text eingeben…" style="width:100%; margin-top:4px;">
-      <div style="text-align:right; margin-top:12px">
-        <button type="button" onclick="closeTransportModal()">Abbrechen</button>
-        <button type="button" onclick="confirmTransport()">OK</button>
-      </div>
-    </form>
-  </div>
-</div>`;
-document.body.insertAdjacentHTML("beforeend", transportModalHTML);
-
-// 3) State-Variablen für aktuell zu bearbeitenden Patienten
-let _pendingDischargeId = null;
-let _pendingTransportId = null;
-
-// 4) Öffnen-Funktionen
-function dischargePatient(id) {
-  _pendingDischargeId = id;
-  document.getElementById("dischargeOther").value = "";
-  // standardmäßig erster Radiosatz checked
-  document.querySelector('input[name="dischargeType"]:checked').checked = true;
-  document.getElementById("dischargeModal").style.display = "flex";
-}
-
-function transportPatient(id) {
-  _pendingTransportId = id;
-  document.getElementById("transportOther").value = "";
-  document.querySelector('input[name="transportType"]:checked').checked = true;
-  document.getElementById("transportModal").style.display = "flex";
-}
-
-// 5) Schließen-Funktionen
-function closeDischargeModal() {
-  document.getElementById("dischargeModal").style.display = "none";
-  _pendingDischargeId = null;
-}
-function closeTransportModal() {
-  document.getElementById("transportModal").style.display = "none";
-  _pendingTransportId = null;
-}
-
-// 6) Confirm-Handler
-function confirmDischarge() {
-  const form = document.getElementById("dischargeForm");
-  const type = form.dischargeType.value;
-  let text = type;
-  if (type === "sonstige") {
-    const other = document.getElementById("dischargeOther").value.trim();
-    if (!other) return alert("Bitte einen Text eingeben");
-    text = other;
-  }
-  // 1) Discharge-Feld setzen
-  updatePatientData(_pendingDischargeId, "discharge", text);
-  // 2) Status auf Entlassen
-  updatePatientData(_pendingDischargeId, "status", "Entlassen");
-  // 3) Trupps beenden
-  clearAssignments(_pendingDischargeId, "Entlassen");
-  closeDischargeModal();
-}
-
-function confirmTransport() {
-  const form = document.getElementById("transportForm");
-  const type = form.transportType.value;
-  let text = type;
-  if (type === "sonstige") {
-    const other = document.getElementById("transportOther").value.trim();
-    if (!other) return alert("Bitte einen Text eingeben");
-    text = other;
-  }
-  // 1) Transport-Feld setzen
-  updatePatientData(_pendingTransportId, "transport", text);
-  // 2) Status auf Transport in KH
-  updatePatientData(_pendingTransportId, "status", "Transport in KH");
-  // 3) Trupps beenden
-  clearAssignments(_pendingTransportId, "Transport in KH");
-  closeTransportModal();
-}
-
-// ==== Patient-Zuordnungs-Modal hinzufügen ====
-const patientAssignmentModalTemplate = `
-<div id="patientAssignmentModal" class="modal" style="display:none; z-index:2100">
-  <div class="modal-content">
-    <span class="close" onclick="closePatientAssignmentModal()">&times;</span>
-    <h2>Patient-Zuordnung</h2>
-    <p>Soll ein neuer Patient erstellt oder der Trupp einem bestehenden Patienten zugeordnet werden?</p>
-    
-    <div style="margin: 20px 0;">
-      <label style="display: block; margin-bottom: 10px;">
-        <input type="radio" name="assignmentType" value="new" checked> Neuen Patienten erstellen
-      </label>
-      <label style="display: block;">
-        <input type="radio" name="assignmentType" value="existing"> Bestehendem Patienten zuordnen
-      </label>
-    </div>
-
-    <div id="existingPatientSelection" style="display: none; margin: 20px 0;">
-      <label for="existingPatientSelect">Patient auswählen:</label>
-      <select id="existingPatientSelect" style="width: 100%; margin-top: 5px; padding: 8px;">
-        <option value="">Bitte Patient wählen...</option>
-      </select>
-    </div>
-
-    <div style="text-align: right; margin-top: 20px;">
-      <button onclick="closePatientAssignmentModal()">Abbrechen</button>
-      <button class="confirm-btn" onclick="confirmPatientAssignment()">Bestätigen</button>
-    </div>
-  </div>
-</div>
-`;
-
-document.body.insertAdjacentHTML("beforeend", patientAssignmentModalTemplate);
-
-// Globale Variablen für Patient-Zuordnung
-let _pendingTruppIndexForPatient = null;
-
-// Event-Listener für Radio-Button-Änderungen
-document.addEventListener('change', function(e) {
-  if (e.target.name === 'assignmentType') {
-    const showExisting = e.target.value === 'existing';
-    document.getElementById('existingPatientSelection').style.display = showExisting ? 'block' : 'none';
-    
-    if (showExisting) {
-      populateExistingPatients();
-    }
-  }
-});
-
-// Modal öffnen
-function openPatientAssignmentModal(truppIndex) {
-  _pendingTruppIndexForPatient = truppIndex;
-  
-  // Radio-Buttons zurücksetzen
-  document.querySelector('input[name="assignmentType"][value="new"]').checked = true;
-  document.getElementById('existingPatientSelection').style.display = 'none';
-  document.getElementById('existingPatientSelect').innerHTML = '<option value="">Bitte Patient wählen...</option>';
-  
-  document.getElementById('patientAssignmentModal').style.display = 'flex';
-}
-
-// Modal schließen
-function closePatientAssignmentModal() {
-  document.getElementById('patientAssignmentModal').style.display = 'none';
-  _pendingTruppIndexForPatient = null;
-}
-
-// Bestehende Patienten in Dropdown laden
-function populateExistingPatients() {
+function confirmEdit() {
+  // 1) EINMAL die Patientendaten laden
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
-  const select = document.getElementById('existingPatientSelect');
-  
-  // Nur aktive Patienten (nicht entlassen oder transportiert)
-  const activePatients = patients.filter(p => 
-    p.status !== "Entlassen" && p.status !== "Transport in KH"
-  );
-  
-  select.innerHTML = '<option value="">Bitte Patient wählen...</option>';
-  
-  activePatients.forEach(patient => {
-    const assignedTrupps = Array.isArray(patient.team) ? patient.team.join(", ") : "–";
-    const diagnosis = patient.diagnosis || "–";
-    const location = patient.location || "–";
-    
-    const option = document.createElement('option');
-    option.value = patient.id;
-    option.textContent = `Patient ${patient.id} - ${assignedTrupps} - ${diagnosis} - ${location}`;
-    select.appendChild(option);
-  });
-}
+  const patient = patients.find(x => x.id === editPatientId);
+  if (!patient) return alert("Kein Patient geladen");
 
-// Zuordnung bestätigen
-function confirmPatientAssignment() {
-  const assignmentType = document.querySelector('input[name="assignmentType"]:checked').value;
-  const trupp = trupps[_pendingTruppIndexForPatient];
-  
-  if (assignmentType === 'new') {
-    // Neuen Patienten erstellen (bisherige Logik)
-    createNewPatientForTrupp(_pendingTruppIndexForPatient);
-  } else {
-    // Bestehendem Patienten zuordnen
-    const selectedPatientId = parseInt(document.getElementById('existingPatientSelect').value);
-    if (!selectedPatientId) {
-      alert('Bitte einen Patienten auswählen.');
-      return;
-    }
-    
-    assignTruppToExistingPatient(_pendingTruppIndexForPatient, selectedPatientId);
+  // 2) ALLE Änderungen an diesem EINEN Objekt machen - KEINE updatePatientData() Aufrufe!
+  const timeStr = getCurrentTime();
+  if (!patient.history) patient.history = [];
+
+  // Gender
+  const g = document.querySelector('input[name="editGender"]:checked');
+  const genderValue = g ? g.value : "";
+  if (patient.gender !== genderValue) {
+    patient.gender = genderValue;
+    if (genderValue) patient.history.push(`${timeStr} Geschlecht: ${genderValue}`);
   }
   
-  closePatientAssignmentModal();
-}
-
-// Neue Funktion: Trupp einem bestehenden Patienten zuordnen
-function assignTruppToExistingPatient(truppIndex, patientId) {
-  const trupp = trupps[truppIndex];
-  const now = Date.now();
-  const timeStr = new Date(now).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
-  // 1) Trupp-Status und -Daten setzen
-  trupp.status = 3;
-  trupp.patientInput = patientId;
-  trupp.patientStart = now;
-  trupp.currentEinsatzStart = now;
-  trupp.currentPauseStart = null;
-  trupp.lastStatusChange = now;
-
-  // 2) Trupp-Historie ergänzen
-  if (!trupp.history) trupp.history = [];
-  trupp.history.push(`${timeStr} Status: 3`);
-
-  // 3) Patient-Daten aktualisieren
-  const patients = JSON.parse(localStorage.getItem("patients")) || [];
-  const patient = patients.find(p => p.id === patientId);
+  // Age
+  const age = document.getElementById("editAge").value.trim();
+  if (patient.age !== age) {
+    patient.age = age;
+    if (age) patient.history.push(`${timeStr} Alter: ${age}`);
+  }
   
-  if (patient) {
-    // Trupp zum Team hinzufügen
-    if (!Array.isArray(patient.team)) patient.team = [];
-    patient.team.push(trupp.name);
-    
-    // Patient-Historie ergänzen
-    if (!patient.history) patient.history = [];
-    patient.history.push(`${timeStr} Trupp ${trupp.name} zugeordnet`);
-    
-    // Status auf "disponiert" setzen, falls noch "gemeldet"
-    if (patient.status === "gemeldet") {
-      patient.status = "disponiert";
-      patient.history.push(`${timeStr} Status: disponiert`);
-    }
-    
-    localStorage.setItem("patients", JSON.stringify(patients));
-    
-    // Storage-Event für Patient-UI
-    window.dispatchEvent(
-      new StorageEvent("storage", {
-        key: "patients",
-        newValue: JSON.stringify(patients),
-      })
-    );
+  // Location
+  const loc = document.getElementById("editLocation").value.trim();
+  if (patient.location !== loc) {
+    patient.location = loc;
+    if (loc) patient.history.push(`${timeStr} Standort: ${loc}`);
+  }
+  
+  // Remarks
+  const rem = document.getElementById("editRemarks").value.trim();
+  if (patient.remarks !== rem) {
+    patient.remarks = rem;
+    if (rem) patient.history.push(`${timeStr} Bemerkungen: ${rem}`);
   }
 
-  // 4) Trupp-Daten speichern und UI aktualisieren
-  saveTrupps();
-  renderTrupps();
-}
+  // Stichwort-Diagnose
+  if (selectedCategory !== null && selectedKeyword !== null) {
+    const cfg = alarmConfig[selectedCategory].keywords[selectedKeyword];
+    let finalWord = cfg.word;
 
-// Neue Funktion: Neuen Patienten für Trupp erstellen (bisherige Logik)
-function createNewPatientForTrupp(truppIndex) {
-  const trupp = trupps[truppIndex];
-  const letzteOrt = trupp.currentOrt || trupp.einsatzHistorie.at(-1)?.ort || "";
-  const now = Date.now();
-  const timeStr = new Date(now).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+    if (document.getElementById("otherDetail").style.display === "block") {
+      const extra = document.getElementById("otherInput").value.trim();
+      if (!extra) {
+        return alert("Bitte die Art des Notfalls genauer beschreiben.");
+      }
+      finalWord += " – " + extra;
+    }
 
-  // Neuen Patienten erstellen
-  const pid = newPatient({
-    team: [trupp.name],
-    location: letzteOrt,
-    initialStatus: "disponiert",
-  });
+    // Diagnose und Ressourcen direkt setzen
+    patient.diagnosis = finalWord;
+    patient.suggestedResources = [...cfg.resources];
+    patient.history.push(`${timeStr} Verdachtsdiagnose: ${finalWord}`);
+    
+    // Disposition-Status zurücksetzen für neue Ressourcen
+    if (patient.dispositionStatus) {
+      const newDispositionStatus = {};
+      cfg.resources.forEach(resource => {
+        if (patient.dispositionStatus[resource] === 'dispatched') {
+          newDispositionStatus[resource] = 'dispatched';
+        }
+        if (patient.dispositionStatus[resource + '_ignored'] === true) {
+          newDispositionStatus[resource + '_ignored'] = true;
+        }
+      });
+      patient.dispositionStatus = newDispositionStatus;
+    }
+  }
 
-  // Trupp-Daten setzen
-  trupp.status = 3;
-  trupp.patientInput = pid;
-  trupp.patientStart = now;
-  trupp.currentEinsatzStart = now;
-  trupp.currentPauseStart = null;
-  trupp.lastStatusChange = now;
+  // 3) EINMAL speichern
+  localStorage.setItem("patients", JSON.stringify(patients));
 
-  // Trupp-Historie ergänzen
-  if (!trupp.history) trupp.history = [];
-  trupp.history.push(`${timeStr} Status: 3`);
+  // 4) Events auslösen
+  window.dispatchEvent(new StorageEvent("storage", {
+    key: "patients",
+    newValue: JSON.stringify(patients),
+  }));
 
-  // Patient-Historie ergänzen
-  addHistoryEntry(pid, `Trupp ${trupp.name} disponiert`);
+  // 5) Modal schließen & UI aktualisieren
+  closeEditModal();
+  loadPatients(editPatientId);
 
-  // Speichern und UI aktualisieren
-  saveTrupps();
-  renderTrupps();
-
-  // Edit-Modal für neuen Patienten öffnen
-  openEditModal(pid);
+  // Trupp-Cards neu laden
+  window.dispatchEvent(new StorageEvent('storage', {
+    key: 'trupps',
+    newValue: localStorage.getItem('trupps')
+  }));
+  
+  // Kombinierte Historie hinzufügen
+  addCombinedHistoryEntry(editPatientId);
 }

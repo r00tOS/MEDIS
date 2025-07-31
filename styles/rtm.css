@@ -1,4 +1,4 @@
-/* === css/trupp.css === */
+/* === styles/rtm.css === */
 
 /* 1. Max-Einsatzzeit-Widget ausblenden (nur patienten-Widget bleibt) */
 
@@ -30,8 +30,8 @@ body {
   gap: 16px;
 }
 
-/* 3. Trupp-Cards */
-.trupp {
+/* 3. RTM-Cards */
+.rtm {
   border: 2px solid #ccc;
   padding: 10px;
   border-radius: 10px;
@@ -42,18 +42,18 @@ body {
   flex-direction: column;
   gap: 6px;
 }
-.trupp.move-out {
+.rtm.move-out {
   transform: scale(0.9) translateX(100px);
   opacity: 0;
 }
 .status-select { margin-left:8px; font-size:1rem; }
-.trupp.move-in,
-.trupp.move-in-active {
+.rtm.move-in,
+.rtm.move-in-active {
   transform: none !important;
   opacity: 1 !important;
   transition: none !important;
 }
-.trupp.einsatz-beendet {
+.rtm.einsatz-beendet {
   border-left: 5px solid rebeccapurple;
   background: #fff;
 }
@@ -96,7 +96,7 @@ body {
 /* 4. Statusfarben */
 .einsatz {
   border-left: 5px solid #28a745;
-  background: #cce7c7;
+  /* ENTFERNT: background: #d4edda; - Das könnte mit dispatched-Symbolen kollidieren! */
 }
 .pause {
   border-left: 5px solid #007bff;
@@ -123,14 +123,14 @@ body {
   background: #ffe8cc;
 }
 
-/* 5. Trupp-Header */
-.trupp-header {
+/* 5. RTM-Header */
+.rtm-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 5px 10px;
   border-bottom: 2px solid #ccc;
-  font-size: 1.2rem;
+  font-size: 1rem;
   font-weight: bold;
   color: #333;
   background: #fff;
@@ -140,7 +140,7 @@ body {
 }
 
 /* 6. Texteingaben */
-.trupp input[type="text"] {
+.rtm input[type="text"] {
   margin-top: 5px;
   width: 100%;
 }
@@ -162,7 +162,7 @@ body {
   flex-direction: column;
   gap: 4px;
 }
-.trupp.show-status-buttons .status-buttons {
+.rtm.show-status-buttons .status-buttons {
   display: flex;
 }
 .status-display {
@@ -174,7 +174,7 @@ body {
   background: #fff;
   border: 1px solid #ccc;
 }
-.trupp.show-status-buttons .status-display {
+.rtm.show-status-buttons .status-display {
   background: #007bff;
   color: #fff;
   border-color: #0056b3;
@@ -218,7 +218,7 @@ body {
   justify-content: center;
   align-items: center;
 }
-/* ✂️ Zeilenumbruch nach „Trupp hinzufügen“ */
+/* ✂️ Zeilenumbruch nach „RTM hinzufügen“ */
 .button-row {
   display: flex;
   flex-wrap: wrap;
@@ -227,7 +227,7 @@ body {
   margin-bottom: 16px;
 }
 
-/* 1) nach dem 2. Kind (Trupp hinzufügen) eine volle Zeilenbreite „hinten anhängen“ → Zeilenumbruch */
+/* 1) nach dem 2. Kind (RTM hinzufügen) eine volle Zeilenbreite „hinten anhängen“ → Zeilenumbruch */
 .button-row > *:nth-child(2)::after {
   content: "";
   flex-basis: 100%;
@@ -312,25 +312,11 @@ body {
   text-align: center;
 }
 
-.trupp-header.u18 {
-  background-color: #fff9c4; /* helles Gelb hinter dem Header */
-}
-
-.badge-u18 {
-  display: inline-block;
-  margin-left: 0.4em;
-  padding: 0.1em 0.4em;
-  border: 1px solid #333;
-  border-radius: 3px;
-  font-size: 0.75em;
-  vertical-align: middle;
-}
 
 @keyframes blink {
   0%, 50% { opacity: 1; }
   51%, 100% { opacity: 0.3; }
 }
-
 
 /* Kontextmenü Styles */
 .context-menu {
@@ -386,3 +372,4 @@ body {
   background: #ddd;
   margin: 5px 0;
 }
+

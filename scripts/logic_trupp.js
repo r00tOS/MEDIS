@@ -21,6 +21,17 @@ function updateTrupp(index, status) {
   // 0) Scroll-Position merken
   const scrollEl = document.scrollingElement || document.documentElement;
   const scrollY = scrollEl.scrollTop;
+  
+  // Sicherstellen, dass trupps verfügbar ist
+  let trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+  if (!trupps[index]) {
+    console.error("Trupp-Index nicht gefunden:", index);
+    return;
+  }
+  
+  // nextMaxEinsatzTime aus localStorage laden oder Standard verwenden
+  const currentMaxEinsatzTime = parseInt(localStorage.getItem("nextMaxEinsatzTime"), 10) || 45;
+  
   status = Number(status);
   const patientKeepStatuses = ["3","4","7","8"];
   const trupp = trupps[index];
@@ -169,22 +180,91 @@ if (status === 11) {
         }
       }
     });
+    localStorage.setItem("patients", JSON.stringify(stored));
+    
+    // Sofortiges Storage-Event für Patient-Updates
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "patients",
+        newValue: JSON.stringify(stored),
+      })
+    );
   }
 
-  // 12) Speichern & neu rendern
-  saveTrupps();
+  // 12) Trupps zurück speichern
+  localStorage.setItem("trupps", JSON.stringify(trupps));
+  localStorage.setItem("nextMaxEinsatzTime", currentMaxEinsatzTime);
+  
+  // Storage-Event auslösen
+  window.dispatchEvent(
+    new StorageEvent("storage", {
+      key: "trupps",
+      newValue: JSON.stringify(trupps),
+    })
+  );
   
   // Wenn ein Trupp einem Patienten zugewiesen wurde, Disposition-Status aktualisieren
   if (status === 3 && trupp.patientInput) {
     updatePatientDispositionStatus(trupp.patientInput);
+    
+    // Disposition-Update auslösen
+    if (typeof triggerDispositionUpdate === 'function') {
+      triggerDispositionUpdate();
+    }
   }
   
-  renderTrupps();
-  window.scrollTo(0, scrollY);
+  // Renderer nur aufrufen wenn verfügbar
+  if (typeof renderTrupps === 'function') {
+    renderTrupps();
+  }
+  
+  // Scroll nur wenn im Trupp-Tracker
+  if (typeof window.trupps !== 'undefined') {
+    window.scrollTo(0, scrollY);
+  }
 }
 
-// Neue Hilfsfunktion für die Aktualisierung der Disposition-Status
-function updatePatientDispositionStatus(patientId) {
+// Neue Funktion für Status-Änderung nach Trupp-Name
+function updateTruppByName(truppName, status) {
+  const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+  const truppIndex = trupps.findIndex(t => t.name === truppName);
+  
+  if (truppIndex === -1) {
+    console.error("Trupp nicht gefunden:", truppName);
+    return;
+  }
+  
+  updateTrupp(truppIndex, status);
+}
+
+// EventListener für automatische Disposition-Updates
+window.addEventListener('storage', (e) => {
+  if (e.key === 'patients') {
+    // Trupps aus localStorage laden statt globale Variable zu verwenden
+    const currentTrupps = JSON.parse(localStorage.getItem("trupps")) || [];
+    
+    // Prüfe ob Disposition-relevante Änderungen vorliegen
+    const updatedPatients = JSON.parse(e.newValue || '[]');
+    
+    // Für jeden Patienten mit Dispositionsvorschlägen prüfen
+    updatedPatients.forEach(patient => {
+      if (patient.suggestedResources && patient.suggestedResources.length > 0) {
+        updatePatientDispositionStatusSilent(patient.id, currentTrupps);
+      }
+    });
+    
+    // Trupp-Karten neu rendern nach Disposition-Updates (nur wenn renderTrupps verfügbar)
+    if (typeof renderTrupps === 'function') {
+      renderTrupps();
+    }
+  }
+});
+
+// Neue Hilfsfunktion für die Aktualisierung der Disposition-Status (ohne Re-Render)
+function updatePatientDispositionStatusSilent(patientId, truppsArray = null) {
+  // Trupps aus Parameter oder localStorage laden
+  const currentTrupps = truppsArray || JSON.parse(localStorage.getItem("trupps")) || [];
+  
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
   const patient = patients.find(p => p.id === patientId);
   
@@ -195,7 +275,7 @@ function updatePatientDispositionStatus(patientId) {
   }
   
   // Alle Trupps finden, die diesem Patienten zugeordnet sind
-  const assignedTrupps = trupps.filter(t => t.patientInput === patientId && [3, 4, 7, 8].includes(t.status));
+  const assignedTrupps = currentTrupps.filter(t => t.patientInput === patientId && [3, 4, 7, 8].includes(t.status));
   
   // Trupp-Symbol auf dispatched setzen wenn mindestens ein Trupp zugeordnet
   if (assignedTrupps.length > 0 && patient.suggestedResources.includes('Trupp')) {
@@ -207,20 +287,19 @@ function updatePatientDispositionStatus(patientId) {
     patient.dispositionStatus['First Responder'] = 'dispatched';
   }
   
-  // Patienten-Daten zurück speichern
+  // Patienten-Daten zurück speichern (ohne Event auszulösen)
   localStorage.setItem("patients", JSON.stringify(patients));
-  
-  // Event für Aktualisierung auslösen
-  window.dispatchEvent(
-    new StorageEvent("storage", {
-      key: "patients",
-      newValue: JSON.stringify(patients),
-    })
-  );
+}
+
+// Vereinfachte Disposition-Update-Funktion (wird nur noch bei Trupp-Zuordnung verwendet)
+function updatePatientDispositionStatus(patientId) {
+  updatePatientDispositionStatusSilent(patientId);
 }
 
 function saveTrupps() {
-  localStorage.setItem("nextMaxEinsatzTime", nextMaxEinsatzTime);
+  // nextMaxEinsatzTime aus localStorage laden oder Standard verwenden
+  const currentMaxEinsatzTime = parseInt(localStorage.getItem("nextMaxEinsatzTime"), 10) || 45;
+  localStorage.setItem("nextMaxEinsatzTime", currentMaxEinsatzTime);
   localStorage.setItem("trupps", JSON.stringify(trupps));
 }
 
@@ -403,24 +482,6 @@ function addHistoryEntry(pid, entry) {
 }
 
 
-function toggleStatusDropdown(truppId) {
-  const prev = localStorage.getItem('openTruppId');
-  const next = prev === truppId ? null : truppId;
-  localStorage.setItem('openTruppId', next);
-  renderTrupps();
-}
-
-function closeStatusDropdown() {
-  localStorage.removeItem('openTruppId');
-  renderTrupps();
-}
-
-// Wird von jedem <li> aufgerufen, nachdem updateTrupp() ausgeführt wurde:
-function onStatusSelected(i, status, truppId) {
-  updateTrupp(i, status);
-  // schließe das Dropdown
-  closeStatusDropdown();
-}
 function toggleStatusDropdown(truppId) {
   const prev = localStorage.getItem('openTruppId');
   const next = prev === truppId ? null : truppId;

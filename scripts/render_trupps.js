@@ -1,4 +1,16 @@
+function formatTime(timestamp) {
+  return new Date(timestamp).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function renderTrupps() {
+  // Sicherheitsprüfung: trupps muss verfügbar sein
+  if (typeof trupps === 'undefined' || !Array.isArray(trupps)) {
+    return;
+  }
+  
   const scrollY = window.scrollY;
   const now = Date.now();
   const openId = localStorage.getItem("openTruppId");
@@ -39,6 +51,8 @@ window.addEventListener('storage', e => {
     div.className = "trupp";
     div.dataset.key = trupp.name;
     div.dataset.truppId = trupp.id;
+    div.dataset.truppIndex = i; // Für Kontextmenü
+    
     // wenn diese ID die gespeicherte offene ist, öffnen wir sie gleich
     const isOpen = trupp.id === openId;
     if (isOpen) div.classList.add('show-status-buttons');
@@ -162,20 +176,6 @@ div.innerHTML = `
       </button>
       ${[3,4,7,8].includes(trupp.status)
         ? `
-          <div class="end-buttons" style="display:inline-flex; gap:8px; margin-left:8px;">
-            <button
-              class="status-transport-in-kh"
-              onclick="transportPatient(${trupp.patientInput})"
-            >
-              Transport in KH
-            </button>
-            <button
-              class="status-entlassen"
-              onclick="dischargePatient(${trupp.patientInput})"
-            >
-              Entlassen
-            </button>
-          </div>
         `
         : ``
       }
@@ -201,9 +201,16 @@ ${(() => {
   const patient  = patients.find(p => p.id === trupp.patientInput);
   if (!patient) return "";
 
-  // DEBUG: Patientendaten loggen
-  console.log("Patient gefunden:", patient);
-  console.log("suggestedResources:", patient.suggestedResources);
+  // Debug-Ausgabe
+  console.log('Rendering disposition symbols for patient:', patient.id);
+  console.log('Patient disposition status:', patient.dispositionStatus);
+
+  // Disposition-Status aktualisieren (zentrale Funktion aus render_patients.js)
+  const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+  const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
+  if (typeof updatePatientDispositionStatus === 'function') {
+    updatePatientDispositionStatus(patient, trupps, rtms);
+  }
 
   // Hilfsfunktion für Ressourcen-Kürzel
   const getResourceAbbreviation = (resource) => {
@@ -234,12 +241,10 @@ ${(() => {
     return abbreviations[resource] || resource.substring(0, 3).toUpperCase();
   };
 
-  // Dispositionssymbole generieren - vereinfacht für Debugging
+  // Dispositionssymbole generieren - DEBUG VERSION
   let dispositionSymbols = '';
   
   if (patient.suggestedResources && Array.isArray(patient.suggestedResources) && patient.suggestedResources.length > 0) {
-    console.log("Generiere Dispositionssymbole für:", patient.suggestedResources);
-    
     dispositionSymbols = '<div class="disposition-symbols" style="display: flex; flex-direction: column; gap: 4px; margin: 8px 0;">' +
       '<span style="font-weight: bold; margin-bottom: 4px;">Dispositionsvorschlag:</span>' +
       '<div style="display: flex; flex-wrap: wrap; gap: 4px;">';
@@ -247,54 +252,36 @@ ${(() => {
     patient.suggestedResources.forEach(resource => {
       const abbrev = getResourceAbbreviation(resource);
       
-      // Status aus den Patientendaten abrufen (standardmäßig unavailable)
       if (!patient.dispositionStatus) {
         patient.dispositionStatus = {};
-        // Patientendaten zurück speichern, da wir das Objekt modifiziert haben
-        const allPatients = JSON.parse(localStorage.getItem("patients")) || [];
-        const patientIndex = allPatients.findIndex(p => p.id === patient.id);
-        if (patientIndex >= 0) {
-          allPatients[patientIndex] = patient;
-          localStorage.setItem("patients", JSON.stringify(allPatients));
-        }
-      }
-      
-      // Automatische Disposition-Status-Setzung
-      // 1. Prüfen ob ein Trupp diesem Patienten zugeordnet ist
-      const assignedTrupp = trupps.find(t => t.patientInput === patient.id && [3, 4, 7, 8].includes(t.status));
-      
-      // 2. Wenn ein Trupp zugeordnet ist und es sich um "Trupp" handelt, automatisch auf dispatched setzen
-      if (assignedTrupp && resource === 'Trupp') {
-        patient.dispositionStatus[resource] = 'dispatched';
-      }
-      
-      // 3. Prüfen ob mehrere Trupps zugeordnet sind → First Responder aktivieren
-      if (resource === 'First Responder') {
-        const assignedTrupps = trupps.filter(t => t.patientInput === patient.id && [3, 4, 7, 8].includes(t.status));
-        
-        // Wenn mehr als ein Trupp zugeordnet ist, First Responder automatisch auf dispatched setzen
-        if (assignedTrupps.length > 1) {
-          patient.dispositionStatus[resource] = 'dispatched';
-        }
       }
       
       const isDispatched = patient.dispositionStatus[resource] === 'dispatched';
       const isIgnored = patient.dispositionStatus[resource + '_ignored'] === true;
-      console.log(`Resource ${resource}: ${isDispatched ? 'dispatched' : 'required'}`);
       
-      dispositionSymbols += '<span class="disposition-symbol ' + (isDispatched ? 'dispatched' : 'required') + 
-             (isIgnored ? ' ignored' : '') +
-             '" style="display: inline-block; padding: 2px 6px; margin: 0; border: 1px solid #ccc; border-radius: 3px; cursor: pointer; white-space: nowrap;' +
-             (isDispatched || isIgnored ? '' : ' animation: blink 1.5s infinite;') + '"' +
-             ' onclick="toggleDispositionStatus(' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
-             ' oncontextmenu="toggleDispositionIgnore(event, ' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
-             ' title="' + resource + '">' +
-             abbrev + '</span>';
+      console.log(`Resource: ${resource}, isDispatched: ${isDispatched}, isIgnored: ${isIgnored}`);
+      
+      // CSS-Klassen mit klarer Priorität: dispatched > ignored > required
+      let cssClass = 'disposition-symbol ';
+      if (isDispatched) {
+        // Dispatched überschreibt alle anderen Status
+        cssClass += 'dispatched';
+        console.log(`Applied CSS class: ${cssClass}`);
+      } else if (isIgnored) {
+        cssClass += 'ignored';
+      } else {
+        cssClass += 'required';
+      }
+      
+      dispositionSymbols += '<span class="' + cssClass + '"' +
+        ' onclick="toggleDispositionStatus(' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
+        ' oncontextmenu="toggleDispositionIgnore(event, ' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
+        ' title="' + resource + '">' +
+        abbrev + '</span>';
     });
     
     dispositionSymbols += '</div></div>';
   } else {
-    console.log("Keine suggestedResources gefunden oder Array ist leer");
     dispositionSymbols = '<div style="margin: 8px 0; color: #666; font-style: italic;">Keine Dispositionsvorschläge verfügbar</div>';
   }
 
@@ -323,13 +310,6 @@ ${(() => {
     </tbody>
   </table>
   ${dispositionSymbols}
-
-  <button
-    class="meldung-btn edit-info-btn"
-    onclick="openEditModal(${patient.id})"
-  >
-    ✏️ Patientendaten bearbeiten
-  </button>
 </div>
   `;
 })()}
@@ -342,7 +322,7 @@ ${(() => {
 
           <p><strong>Einsatzorte:</strong><br>
             ${
-              trupp.einsatzHistorie.length
+              trupp.einsatzHistorie && trupp.einsatzHistorie.length
                 ? trupp.einsatzHistorie
                     .map(
                       (h) =>
@@ -354,7 +334,7 @@ ${(() => {
           </p>
           <p><strong>Patientennummern:</strong><br>
             ${
-              trupp.patientHistorie.length
+              trupp.patientHistorie && trupp.patientHistorie.length
                 ? trupp.patientHistorie
                     .map(
                       (h) =>
@@ -368,7 +348,16 @@ ${(() => {
           </p>
         `;
 
-const einsatzSort = 
+    // Kontextmenü für alle Trupps NACH dem innerHTML hinzufügen
+    setTimeout(() => {
+      div.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        showTruppContextMenu(e, i, trupp.patientInput);
+      });
+    }, 10);
+
+    const einsatzSort = 
   trupp.status === 12
     ? 99
     : [3, 4, 7, 8].includes(trupp.status)
@@ -477,94 +466,298 @@ cards.forEach(el => {
 });
 }
 
-function formatTime(ms) {
-  const d = new Date(ms);
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+// Kontextmenü anzeigen - verbesserte Version
+function showTruppContextMenu(event, truppIndex, patientId) {
+  
+  // Entferne existierendes Menü
+  hideTruppContextMenu();
+
+  const menu = document.createElement('ul');
+  menu.id = 'truppContextMenu';
+  menu.className = 'context-menu';
+  
+  // Patientenspezifische Optionen nur anzeigen wenn Patient zugewiesen
+  const hasPatient = patientId && [3, 4, 7, 8].includes(trupps[truppIndex].status);
+  
+  let menuHTML = '';
+  
+  if (hasPatient) {
+    menuHTML += `
+      <li><button onclick="transportPatient(${patientId}); hideTruppContextMenu()">Transport in KH</button></li>
+      <li><button onclick="dischargePatient(${patientId}); hideTruppContextMenu()">Entlassen</button></li>
+      <li class="context-menu-separator"></li>
+      <li><button onclick="promptAddEntry(${patientId}); hideTruppContextMenu()">Eintrag hinzufügen</button></li>
+      <li><button onclick="openEditModal(${patientId}); hideTruppContextMenu()">Patientendaten bearbeiten</button></li>
+      <li class="context-menu-separator"></li>
+      <li><button onclick="openTruppAssignmentModal(${patientId}); hideTruppContextMenu()">Trupp disponieren</button></li>
+      <li><button onclick="openRtmModal(${patientId}); hideTruppContextMenu()">RTM disponieren</button></li>
+      <li class="context-menu-separator"></li>`;
+  }
+  
+  // Name ändern immer verfügbar
+  menuHTML += `<li><button onclick="openTruppNameChangeModal(${truppIndex}); hideTruppContextMenu()">Name ändern</button></li>`;
+  
+  menu.innerHTML = menuHTML;
+
+  // Position berechnen
+  const x = event.clientX;
+  const y = event.clientY;
+  
+  document.body.appendChild(menu);
+  
+  // Menü sichtbar machen
+  menu.style.display = 'block';
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+
+  // Sicherstellen, dass das Menü im Viewport bleibt
+  const rect = menu.getBoundingClientRect();
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  if (rect.right > viewportWidth) {
+    menu.style.left = (x - rect.width) + 'px';
+  }
+  if (rect.bottom > viewportHeight) {
+    menu.style.top = (y - rect.height) + 'px';
+  }
+
+  // Klick außerhalb schließt das Menü
+  setTimeout(() => {
+    document.addEventListener('click', hideTruppContextMenu, { once: true });
+    document.addEventListener('contextmenu', hideTruppContextMenu, { once: true });
+  }, 100);
 }
 
-/**
- * Schaltet den Status einer Disposition (dispatched/required) um
- * @param {number} patientId - ID des Patienten
- * @param {string} resource - Name der Ressource
- */
-function toggleDispositionStatus(patientId, resource) {
-  // Alle Patienten aus localStorage abrufen
-  const patients = JSON.parse(localStorage.getItem("patients")) || [];
-  
-  // Den entsprechenden Patienten finden
-  const patient = patients.find(p => p.id === patientId);
-  if (!patient) return;
-  
-  // Disposition Status initialisieren falls nicht vorhanden
-  if (!patient.dispositionStatus) {
-    patient.dispositionStatus = {};
+function hideTruppContextMenu() {
+  const menu = document.getElementById('truppContextMenu');
+  if (menu) {
+    menu.remove();
   }
-  
-  // Status umschalten
-  const isCurrentlyDispatched = patient.dispositionStatus[resource] === 'dispatched';
-  if (isCurrentlyDispatched) {
-    delete patient.dispositionStatus[resource]; // 'required' ist der Standard
-  } else {
-    patient.dispositionStatus[resource] = 'dispatched';
-  }
-  
-  // Patienten-Daten zurück in localStorage speichern
-  localStorage.setItem("patients", JSON.stringify(patients));
-  
-  // Event für Aktualisierung auslösen
-  window.dispatchEvent(
-    new StorageEvent("storage", {
-      key: "patients",
-      newValue: JSON.stringify(patients),
-    })
-  );
-  
-  // Trupp-Karten neu rendern
-  renderTrupps();
 }
 
-/**
- * Schaltet die Ignorierung einer Disposition um (gelber Hintergrund)
- * @param {Event} event - Das Kontextmenü-Event
- * @param {number} patientId - ID des Patienten
- * @param {string} resource - Name der Ressource
- */
-function toggleDispositionIgnore(event, patientId, resource) {
-  event.preventDefault(); // Verhindert das Kontextmenü
+function openTruppAssignmentModal(patientId) {
+  // Verwende die neue Trupp-Assignment-Modal statt RTM-Modal
+  showTruppAssignmentModal(patientId);
+}
+
+// Neue Funktion für Trupp-Assignment Modal
+function showTruppAssignmentModal(patientId) {
+  // Entferne existierende Modal falls vorhanden
+  const existingModal = document.getElementById('truppAssignmentModal');
+  if (existingModal) {
+    existingModal.remove();
+  }
+
+  // Verfügbare Trupps laden (nicht im Einsatz)
+  const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+  const availableTrupps = trupps.filter(t => ![3, 4, 6, 7, 8, 12].includes(t.status));
+
+  // Modal HTML erstellen
+  const modalHTML = `
+    <div id="truppAssignmentModal" class="modal" style="display: flex; z-index: 2000;">
+      <div class="modal-content">
+        <span class="close" onclick="closeTruppAssignmentModal()">&times;</span>
+        <h2>Trupp disponieren</h2>
+        
+        <div style="margin: 20px 0;">
+          <label for="truppSelect">Verfügbare Trupps:</label><br>
+          <select id="truppSelect" style="width: 100%; margin-top: 5px; padding: 8px;">
+            <option value="">Bitte Trupp auswählen...</option>
+            ${availableTrupps.map(trupp => {
+              const statusDef = window.statusOptions?.find(o => o.status === trupp.status) || { text: 'Unbekannt' };
+              return `<option value="${trupp.name}">${trupp.name} (${statusDef.text})</option>`;
+            }).join('')}
+          </select>
+        </div>
+
+        <div style="text-align: right; margin-top: 20px;">
+          <button onclick="closeTruppAssignmentModal()">Abbrechen</button>
+          <button class="confirm-btn" onclick="confirmTruppAssignment(${patientId})">Bestätigen</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+function closeTruppAssignmentModal() {
+  const modal = document.getElementById('truppAssignmentModal');
+  if (modal) {
+    modal.remove();
+  }
+}
+
+function confirmTruppAssignment(patientId) {
+  const select = document.getElementById('truppSelect');
+  const selectedTrupp = select.value;
   
-  // Alle Patienten aus localStorage abrufen
+  if (!selectedTrupp) {
+    alert('Bitte einen Trupp auswählen.');
+    return;
+  }
+
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
-  
-  // Den entsprechenden Patienten finden
   const patient = patients.find(p => p.id === patientId);
-  if (!patient) return;
   
-  // Disposition Status initialisieren falls nicht vorhanden
-  if (!patient.dispositionStatus) {
-    patient.dispositionStatus = {};
+  if (!patient) {
+    alert('Patient nicht gefunden!');
+    return;
+  }
+
+  // Trupp zum Team hinzufügen
+  if (!Array.isArray(patient.team)) {
+    patient.team = [];
+  }
+  patient.team.push(selectedTrupp);
+
+  const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  
+  // Patient-Historie aktualisieren
+  if (!patient.history) patient.history = [];
+  patient.history.push(`${timeStr} Trupp ${selectedTrupp} disponiert`);
+  
+  // Status auf "disponiert" setzen, falls noch "gemeldet"
+  if (patient.status === "gemeldet") {
+    patient.status = "disponiert";
+    patient.history.push(`${timeStr} Status: disponiert`);
   }
   
-  // Ignore-Status umschalten
-  const ignoreKey = resource + '_ignored';
-  const isCurrentlyIgnored = patient.dispositionStatus[ignoreKey] === true;
-  
-  if (isCurrentlyIgnored) {
-    delete patient.dispositionStatus[ignoreKey];
-  } else {
-    patient.dispositionStatus[ignoreKey] = true;
-  }
-  
-  // Patienten-Daten zurück in localStorage speichern
+  // Patientendaten speichern
   localStorage.setItem("patients", JSON.stringify(patients));
   
-  // Event für Aktualisierung auslösen
-  window.dispatchEvent(
-    new StorageEvent("storage", {
-      key: "patients",
-      newValue: JSON.stringify(patients),
-    })
-  );
+  // Trupp-Status aktualisieren
+  const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+  const trupp = trupps.find(t => t.name === selectedTrupp);
+  if (trupp) {
+    const now = Date.now();
+    
+    // Aktuellen Einsatz beenden falls vorhanden
+    if (trupp.currentOrt && trupp.einsatzStartOrt) {
+      trupp.einsatzHistorie = trupp.einsatzHistorie || [];
+      trupp.einsatzHistorie.push({
+        ort: trupp.currentOrt,
+        von: trupp.einsatzStartOrt,
+        bis: now,
+      });
+      trupp.currentOrt = null;
+      trupp.einsatzStartOrt = null;
+    }
+    
+    // Trupp-Status auf Patient setzen
+    trupp.status = 3;
+    trupp.patientInput = patientId;
+    trupp.patientStart = now;
+    trupp.currentEinsatzStart = now;
+    trupp.currentPauseStart = null;
+    trupp.lastStatusChange = now;
+    
+    // Trupp-Historie aktualisieren
+    if (!trupp.history) trupp.history = [];
+    trupp.history.push(`${timeStr} Status: 3`);
+    
+    localStorage.setItem("trupps", JSON.stringify(trupps));
+    
+    // Storage-Events auslösen
+    window.dispatchEvent(new StorageEvent("storage", {
+      key: "trupps",
+      newValue: JSON.stringify(trupps),
+    }));
+  }
   
-  // Trupp-Karten neu rendern
-  renderTrupps();
+  // Storage-Event für Patienten auslösen
+  window.dispatchEvent(new StorageEvent("storage", {
+    key: "patients",
+    newValue: JSON.stringify(patients),
+  }));
+  
+  // Disposition-Update auslösen
+  if (typeof triggerDispositionUpdate === 'function') {
+    triggerDispositionUpdate();
+  }
+  
+  closeTruppAssignmentModal();
+  
+  // Patient-Liste neu laden falls verfügbar
+  if (typeof loadPatients === 'function') {
+    loadPatients(patientId);
+  }
+}
+
+function openTruppNameChangeModal(truppIndex) {
+  const trupp = trupps[truppIndex];
+  if (!trupp) return;
+  
+  const newName = prompt("Neuen Trupp-Namen eingeben:", trupp.name);
+  if (newName && newName.trim() && newName.trim() !== trupp.name) {
+    const oldName = trupp.name;
+    trupp.name = newName.trim();
+    
+    // Update patients that reference this trupp
+    const patients = JSON.parse(localStorage.getItem("patients") || "[]");
+    let patientsUpdated = false;
+    
+    patients.forEach(patient => {
+      if (Array.isArray(patient.team)) {
+        const index = patient.team.indexOf(oldName);
+        if (index !== -1) {
+          patient.team[index] = trupp.name;
+          if (!patient.history) patient.history = [];
+          const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          patient.history.push(`${timeStr} Trupp umbenannt: ${oldName} → ${trupp.name}`);
+          patientsUpdated = true;
+        }
+      }
+    });
+    
+    if (patientsUpdated) {
+      localStorage.setItem("patients", JSON.stringify(patients));
+      window.dispatchEvent(new StorageEvent("storage", {
+        key: "patients",
+        newValue: JSON.stringify(patients),
+      }));
+    }
+    
+    saveTrupps();
+    renderTrupps();
+  }
+}
+
+function renderDispositionSymbols(patient) {
+    console.log('Rendering disposition symbols for patient:', patient.id);
+    console.log('Patient disposition status:', patient.dispositionStatus);
+    
+    if (!patient.suggestedResources || !Array.isArray(patient.suggestedResources)) {
+        return '';
+    }
+
+    // ZENTRALE DISPOSITION UPDATE LOGIK - führt zur Endlosschleife, ist aber gewünscht
+    const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+    const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
+    updatePatientDispositionStatus(patient, trupps, rtms);
+
+    let symbolsHtml = '';
+    patient.suggestedResources.forEach(resource => {
+        const abbrev = getResourceAbbreviation(resource);
+        const isDispatched = patient.dispositionStatus && patient.dispositionStatus[resource] === 'dispatched';
+        const isIgnored = patient.dispositionStatus && patient.dispositionStatus[resource + '_ignored'] === true;
+        
+        console.log(`Resource: ${resource}, isDispatched: ${isDispatched}, isIgnored: ${isIgnored}`);
+        
+        let cssClass = 'disposition-symbol ' + (isDispatched ? 'dispatched' : 'required');
+        if (isIgnored) {
+            cssClass += ' ignored';
+        }
+        
+        console.log('Applied CSS class:', cssClass);
+        
+        symbolsHtml += '<span class="' + cssClass + '"' +
+                      ' onclick="toggleDispositionStatus(' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
+                      ' oncontextmenu="toggleDispositionIgnore(event, ' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
+                      ' title="' + resource + '">' +
+                      abbrev + '</span>';
+    });
+
+    return symbolsHtml;
 }

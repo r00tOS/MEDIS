@@ -79,9 +79,6 @@ describe('loadPatients', () => {
     expect(card.classList.contains('patient-card')).toBe(true);
     // Überschrift stimmt
     expect(card.querySelector('h2').textContent).toMatch(/Patient 1/);
-    // Timer wurde mit unserem Stub-Formatierungswert gefüllt
-    const timerText = card.querySelector('.timer.einsatzdauer').textContent.trim();
-    expect(timerText).toBe('XX:XX');
     // Highlight-Klasse slide-in wurde angehängt
     expect(card.classList.contains('slide-in')).toBe(true);
   });
