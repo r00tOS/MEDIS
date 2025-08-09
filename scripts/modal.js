@@ -169,10 +169,37 @@ function confirmDischarge() {
     if (!other) return alert("Bitte einen Text eingeben");
     text = other;
   }
-  // 1) Discharge-Feld setzen
-  updatePatientData(_pendingDischargeId, "discharge", text);
-  // 2) Status auf Entlassen
-  updatePatientData(_pendingDischargeId, "status", "Entlassen");
+  
+  // Direkt die Patienten-Daten holen
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  const patient = patients.find(p => p.id === _pendingDischargeId);
+  
+  if (!patient) {
+    alert("Patient nicht gefunden!");
+    closeDischargeModal();
+    return;
+  }
+  
+  // 1) Discharge-Feld direkt setzen
+  patient.discharge = text;
+  if (!patient.history) patient.history = [];
+  patient.history.push(`${getCurrentTime()} Entlassen: ${text}`);
+  
+  // 2) Status direkt auf Entlassen setzen
+  patient.status = "Entlassen";
+  patient.history.push(`${getCurrentTime()} Status: Entlassen`);
+  
+  // Änderungen speichern
+  localStorage.setItem("patients", JSON.stringify(patients));
+  
+  // Storage-Event für UI-Updates auslösen
+  window.dispatchEvent(
+    new StorageEvent("storage", {
+      key: "patients",
+      newValue: JSON.stringify(patients)
+    })
+  );
+  
   // 3) Trupps beenden
   clearAssignments(_pendingDischargeId, "Entlassen");
   closeDischargeModal();
@@ -187,10 +214,37 @@ function confirmTransport() {
     if (!other) return alert("Bitte einen Text eingeben");
     text = other;
   }
-  // 1) Transport-Feld setzen
-  updatePatientData(_pendingTransportId, "transport", text);
-  // 2) Status auf Transport in KH
-  updatePatientData(_pendingTransportId, "status", "Transport in KH");
+  
+  // Direkt die Patienten-Daten holen
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  const patient = patients.find(p => p.id === _pendingTransportId);
+  
+  if (!patient) {
+    alert("Patient nicht gefunden!");
+    closeTransportModal();
+    return;
+  }
+  
+  // 1) Transport-Feld direkt setzen
+  patient.transport = text;
+  if (!patient.history) patient.history = [];
+  patient.history.push(`${getCurrentTime()} Transport in KH: ${text}`);
+  
+  // 2) Status direkt auf Transport in KH setzen
+  patient.status = "Transport in KH";
+  patient.history.push(`${getCurrentTime()} Status: Transport in KH`);
+  
+  // Änderungen speichern
+  localStorage.setItem("patients", JSON.stringify(patients));
+  
+  // Storage-Event für UI-Updates auslösen
+  window.dispatchEvent(
+    new StorageEvent("storage", {
+      key: "patients",
+      newValue: JSON.stringify(patients)
+    })
+  );
+  
   // 3) Trupps beenden
   clearAssignments(_pendingTransportId, "Transport in KH");
   closeTransportModal();

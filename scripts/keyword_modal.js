@@ -427,8 +427,11 @@ function confirmNachforderungModal() {
     details.rtm = rtmKennung;
     
     // Status-Logik mit korrekter Timestamp-Behandlung
+    // WICHTIG: Finale Status nicht ändern
     const oldStatus = patient.status;
-    if (patient.status === "gemeldet") {
+    if (patient.status === "gemeldet" && 
+        oldStatus !== "Entlassen" && 
+        oldStatus !== "Transport in KH") {
       patient.status = "disponiert";
       patient.history = patient.history || [];
       patient.history.push(`${getCurrentTime()} Status: disponiert`);

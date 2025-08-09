@@ -623,9 +623,15 @@ function updatePatientData(id, field, value) {
   if (!patient) return;
   
   // WICHTIG: Finale Status schützen - keine Status-Änderungen von finalen Zuständen weg
+  // ABER: Erlaube Änderung ZU einem finalen Status
   if (field === "status" && (patient.status === "Entlassen" || patient.status === "Transport in KH")) {
-    console.log(`Status-Änderung von ${patient.status} zu ${value} blockiert für Patient ${id}`);
-    return; // Keine Status-Änderung von finalen Zuständen
+    // Erlaube Änderung nur wenn es auch ein finaler Status ist
+    if (value !== "Entlassen" && value !== "Transport in KH") {
+      console.log(`Status-Änderung von ${patient.status} zu ${value} blockiert für Patient ${id}`);
+      return; // Keine Status-Änderung von finalen Zuständen zu nicht-finalen Zuständen
+    }
+    // Ansonsten erlauben wir die Änderung zwischen finalen Zuständen
+    console.log(`Status-Änderung von ${patient.status} zu ${value} erlaubt für Patient ${id}`);
   }
   
   // History-Array initialisieren, falls nötig
