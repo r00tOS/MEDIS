@@ -107,11 +107,14 @@
 
           // 4) Entferne alle Trupp-Namen, die nicht mehr Status 3 haben
 patients.forEach((patient) => {
-  if (
-    patient.status === "Entlassen" ||
-    patient.status === "Transport in KH"
-  )
-    return;
+  // WICHTIG: Finale Status schützen - erweiterte Prüfung
+  const isFinalState = patient.status === "Entlassen" || 
+                      patient.status === "Transport in KH" ||
+                      patient.transport ||  // Hat Transport-Ziel
+                      patient.discharge;    // Hat Entlassungsort
+  
+  if (isFinalState) return;
+  
   if (!Array.isArray(patient.team)) return;
 
   const keepStatuses = [3, 4, 7, 8];              // diese Status sollen behalten werden
@@ -133,12 +136,16 @@ patients.forEach((patient) => {
           });
 
           // 5) Falls jetzt keine Trupps oder RTMs mehr dran hängen → zurück auf "gemeldet"
+          // ABER NUR wenn Patient nicht in finalem Status ist
           patients.forEach((patient) => {
-            if (
-              patient.status === "Entlassen" ||
-              patient.status === "Transport in KH"
-            )
-              return;
+            // WICHTIG: Finale Status schützen - erweiterte Prüfung
+            const isFinalState = patient.status === "Entlassen" || 
+                                patient.status === "Transport in KH" ||
+                                patient.transport ||  // Hat Transport-Ziel
+                                patient.discharge;    // Hat Entlassungsort
+            
+            if (isFinalState) return;
+            
             const noTrupp =
               !Array.isArray(patient.team) || patient.team.length === 0;
             const noRtm =
@@ -188,7 +195,5 @@ patients.forEach((patient) => {
       // Remove the save flag as well
       window.isSavingPatientData = false;
     </script>
-  </body>
-</html>
   </body>
 </html>

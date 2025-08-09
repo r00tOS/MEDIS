@@ -6,15 +6,33 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  btn.addEventListener("click", () => {
+  // Entferne vorherige Event-Listener um Duplikate zu vermeiden
+  btn.replaceWith(btn.cloneNode(true));
+  const newBtn = document.getElementById("confirmEinsatzort");
+
+  newBtn.addEventListener("click", () => {
     const ort = document.getElementById("customEinsatzort").value.trim();
-    if (!ort || _pendingTruppIndex === null) return;
-    const t = trupps[_pendingTruppIndex];
-    t.currentOrt = ort;
-    addHistoryEntry(t.patientInput, `Einsatzort gesetzt: ${ort}`);
-    saveTrupps();
-    renderTrupps();
-    closeEinsatzortModal();
+    if (!ort) return;
+    
+    // Prüfe ob wir im Trupp-Kontext sind
+    if (typeof _pendingTruppIndex !== 'undefined' && _pendingTruppIndex !== null && typeof trupps !== 'undefined') {
+      const t = trupps[_pendingTruppIndex];
+      if (!t) return;
+      
+      t.currentOrt = ort;
+      // Wichtig: einsatzStartOrt setzen für die Historie
+      t.einsatzStartOrt = Date.now();
+      console.log(`Einsatzort gesetzt für ${t.name}: ${ort}, Startzeit: ${new Date(t.einsatzStartOrt)}`);
+      
+      // Nur wenn ein Patient zugewiesen ist, History-Eintrag hinzufügen
+      if (t.patientInput && t.patientInput.trim()) {
+        addHistoryEntry(t.patientInput, `Einsatzort gesetzt: ${ort}`);
+      }
+      
+      saveTrupps();
+      renderTrupps();
+      closeEinsatzortModal();
+    }
   });
 });
 function updateTrupp(index, status) {
@@ -133,21 +151,26 @@ if (
 // 7b) Streife abschließen
 if (oldStatus === 11 && trupp.currentOrt && trupp.einsatzStartOrt) {
   const abgeschlossenerOrt = trupp.currentOrt;
+  
   // 1) In die Einsatz-Historie
+  if (!trupp.einsatzHistorie) trupp.einsatzHistorie = [];
   trupp.einsatzHistorie.push({
     ort: abgeschlossenerOrt,
     von: trupp.einsatzStartOrt,
     bis: now,
   });
+  
   // 2) In die Trupp-History (für Timeline-Log)
   if (!trupp.history) trupp.history = [];
-  const timeStr = new Date(now).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
   trupp.history.push(`${timeStr} Streife beendet am Ort: ${abgeschlossenerOrt}`);
+  
   // 3) Felder zurücksetzen
-  trupp.currentOrt = trupp.einsatzStartOrt = null;
+  trupp.currentOrt = null;
+  trupp.einsatzStartOrt = null;
+  
+  // 4) Sofort speichern um Datenverlust zu vermeiden
+  localStorage.setItem("trupps", JSON.stringify(trupps));
+  console.log(`Einsatzort-Historie gespeichert für ${trupp.name}: ${abgeschlossenerOrt}`);
 }
 
   // 8) Wechsel auf Patient → Modal für Zuordnung öffnen

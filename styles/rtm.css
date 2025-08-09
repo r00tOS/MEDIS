@@ -96,7 +96,7 @@ body {
 /* 4. Statusfarben */
 .einsatz {
   border-left: 5px solid #28a745;
-  /* ENTFERNT: background: #d4edda; - Das könnte mit dispatched-Symbolen kollidieren! */
+  background: #cce7c7;
 }
 .pause {
   border-left: 5px solid #007bff;

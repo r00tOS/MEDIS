@@ -250,15 +250,33 @@ function closeRTMCreationModal() {
 document.addEventListener("DOMContentLoaded", () => {
   const btn = document.getElementById("confirmEinsatzort");
   if (btn) {
-    btn.addEventListener("click", () => {
+    // Entferne vorherige Event-Listener um Duplikate zu vermeiden
+    btn.replaceWith(btn.cloneNode(true));
+    const newBtn = document.getElementById("confirmEinsatzort");
+    
+    newBtn.addEventListener("click", () => {
       const ort = document.getElementById("customEinsatzort").value.trim();
-      if (!ort || _pendingRTMIndex === null) return;
-      const rtm = rtms[_pendingRTMIndex];
-      rtm.currentOrt = ort;
-      addHistoryEntry(rtm.patientInput, `Einsatzort gesetzt: ${ort}`);
-      saveRTMs();
-      renderRTMs();
-      closeEinsatzortModal();
+      if (!ort) return;
+      
+      // Prüfe ob wir im RTM-Kontext sind
+      if (typeof _pendingRTMIndex !== 'undefined' && _pendingRTMIndex !== null && typeof rtms !== 'undefined') {
+        const rtm = rtms[_pendingRTMIndex];
+        if (!rtm) return;
+        
+        rtm.currentOrt = ort;
+        // Wichtig: einsatzStartOrt setzen für die Historie
+        rtm.einsatzStartOrt = Date.now();
+        console.log(`Einsatzort gesetzt für ${rtm.name}: ${ort}, Startzeit: ${new Date(rtm.einsatzStartOrt)}`);
+        
+        // Nur wenn ein Patient zugewiesen ist, History-Eintrag hinzufügen
+        if (rtm.patientInput && rtm.patientInput.trim()) {
+          addHistoryEntry(rtm.patientInput, `Einsatzort gesetzt: ${ort}`);
+        }
+        
+        saveRTMs();
+        renderRTMs();
+        closeEinsatzortModal();
+      }
     });
   }
 
@@ -389,21 +407,26 @@ if (
 // 7b) Streife abschließen
 if (oldStatus === 11 && rtm.currentOrt && rtm.einsatzStartOrt) {
   const abgeschlossenerOrt = rtm.currentOrt;
+  
   // 1) In die Einsatz-Historie
+  if (!rtm.einsatzHistorie) rtm.einsatzHistorie = [];
   rtm.einsatzHistorie.push({
     ort: abgeschlossenerOrt,
     von: rtm.einsatzStartOrt,
     bis: now,
   });
+  
   // 2) In die RTM-Historie (für Timeline-Log)
   if (!rtm.history) rtm.history = [];
-  const timeStr = new Date(now).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
   rtm.history.push(`${timeStr} Streife beendet am Ort: ${abgeschlossenerOrt}`);
+  
   // 3) Felder zurücksetzen
-  rtm.currentOrt = rtm.einsatzStartOrt = null;
+  rtm.currentOrt = null;
+  rtm.einsatzStartOrt = null;
+  
+  // 4) Sofort speichern um Datenverlust zu vermeiden
+  localStorage.setItem("rtms", JSON.stringify(rtms));
+  console.log(`Einsatzort-Historie gespeichert für ${rtm.name}: ${abgeschlossenerOrt}`);
 }
 
   // 8) Wechsel auf Patient → Modal für Zuordnung öffnen
@@ -471,7 +494,7 @@ if (status === 11) {
 function updateRTMByName(rtmName, status) {
   const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
   const rtmIndex = rtms.findIndex(r => r.name === rtmName);
-  
+
   if (rtmIndex === -1) {
     console.error("RTM nicht gefunden:", rtmName);
     return;

@@ -12,11 +12,14 @@ describe('clearAssignments', () => {
   beforeAll(() => {
     // 1) Stub für loadPatients
     global.loadPatients = jest.fn();
+    
+    // 2) Stub für getCurrentTime
+    global.getCurrentTime = jest.fn(() => '10:00');
 
-    // 2) Spy auf window.dispatchEvent
+    // 3) Spy auf window.dispatchEvent
     dispatchSpy = jest.spyOn(window, 'dispatchEvent');
 
-    // 3) categories.js in DOM ausführen (füllt window.alarmConfig.categories)
+    // 4) categories.js in DOM ausführen (füllt window.alarmConfig.categories)
     const categoriesCode = fs.readFileSync(
       path.resolve(__dirname, '../scripts/categories.js'),
       'utf8'
@@ -25,7 +28,7 @@ describe('clearAssignments', () => {
     catScript.textContent = categoriesCode;
     document.body.appendChild(catScript);
 
-    // 4) logic_patient.js in DOM ausführen
+    // 5) logic_patient.js in DOM ausführen
     const logicCode = fs.readFileSync(
       path.resolve(__dirname, '../scripts/logic_patient.js'),
       'utf8'
@@ -34,7 +37,7 @@ describe('clearAssignments', () => {
     logicScript.textContent = logicCode;
     document.body.appendChild(logicScript);
 
-    // 5) Jetzt liegt clearAssignments auf window
+    // 6) Jetzt liegt clearAssignments auf window
     clearAssignments = window.clearAssignments;
   });
 
@@ -43,24 +46,41 @@ describe('clearAssignments', () => {
     localStorage.clear();
   });
 
-  it('updates patient status, persists it, and calls loadPatients', () => {
+  it('updates patient status for final states, persists it, and calls loadPatients', () => {
     localStorage.setItem(
       'patients',
-      JSON.stringify([{ id: 'p1', status: 'active' }])
+      JSON.stringify([{ id: 'p1', status: 'active', history: [] }])
     );
     jest.spyOn(Date, 'now').mockReturnValue(1000);
 
-    clearAssignments('p1', 'finished');
+    // Test with final status
+    clearAssignments('p1', 'Entlassen');
 
     const patients = JSON.parse(localStorage.getItem('patients'));
-    expect(patients[0].status).toBe('finished');
+    expect(patients[0].status).toBe('Entlassen');
+    expect(patients[0].history).toContain('10:00 Status: Entlassen');
     expect(global.loadPatients).toHaveBeenCalledWith('p1');
   });
 
-  it('closes assignments on all matching trupps and fires storage event', () => {
+  it('does not update patient status for non-final states', () => {
     localStorage.setItem(
       'patients',
-      JSON.stringify([{ id: 'p1', status: 'active' }])
+      JSON.stringify([{ id: 'p1', status: 'active', history: [] }])
+    );
+    jest.spyOn(Date, 'now').mockReturnValue(1000);
+
+    // Test with non-final status
+    clearAssignments('p1', 'disponiert');
+
+    const patients = JSON.parse(localStorage.getItem('patients'));
+    expect(patients[0].status).toBe('active'); // Should remain unchanged
+    expect(global.loadPatients).toHaveBeenCalledWith('p1');
+  });
+
+  it('closes assignments on all matching trupps and fires storage events', () => {
+    localStorage.setItem(
+      'patients',
+      JSON.stringify([{ id: 'p1', status: 'active', history: [] }])
     );
     localStorage.setItem(
       'trupps',
@@ -68,21 +88,21 @@ describe('clearAssignments', () => {
         name: 'T1',
         patientInput: 'p1',
         patientStart: 500,
-        status: 3,             // numerischer Code für „Patient“
+        status: 3,             // numerischer Code für „Patient"
         patientHistorie: [],
         history: []
       }])
     );
     jest.spyOn(Date, 'now').mockReturnValue(1000);
 
-    clearAssignments('p1', 'finished');
+    clearAssignments('p1', 'Entlassen');
 
     const trupps = JSON.parse(localStorage.getItem('trupps'));
     const t = trupps[0];
     // patientInput und patientStart wurden zurückgesetzt
     expect(t.patientInput).toBeNull();
     expect(t.patientStart).toBeNull();
-    // Status wurde auf 0 („Einsatz beendet“) gesetzt
+    // Status wurde auf 0 („Einsatz beendet") gesetzt
     expect(t.status).toBe(0);
     // die Historie des Patienteneinsatzes wurde korrekt ergänzt
     expect(t.patientHistorie).toEqual([
@@ -93,11 +113,106 @@ describe('clearAssignments', () => {
       { when: 1000, event: 0 }
     ]);
 
-    // Storage‐Event wurde gefeuert
-    expect(dispatchSpy).toHaveBeenCalled();
-    const evt = dispatchSpy.mock.calls.find(
-      call => call[0] instanceof StorageEvent
-    )[0];
-    expect(evt.key).toBe('trupps');
+    // Multiple Storage‐Events wurden gefeuert (patients, trupps, rtms)
+    expect(dispatchSpy).toHaveBeenCalledTimes(3);
+    
+    // Check that all three storage events were dispatched
+    const storageEvents = dispatchSpy.mock.calls
+      .filter(call => call[0] instanceof StorageEvent)
+      .map(call => call[0].key);
+    
+    expect(storageEvents).toContain('patients');
+    expect(storageEvents).toContain('trupps');
+    expect(storageEvents).toContain('rtms');
+  });
+
+  it('closes assignments on matching RTMs via patientInput', () => {
+    localStorage.setItem(
+      'patients',
+      JSON.stringify([{ id: 'p1', status: 'active', history: [] }])
+    );
+    localStorage.setItem(
+      'rtms',
+      JSON.stringify([{
+        name: 'RTM1',
+        patientInput: 'p1',
+        patientStart: 500,
+        status: 3,
+        patientHistorie: [],
+        history: []
+      }])
+    );
+    jest.spyOn(Date, 'now').mockReturnValue(1000);
+
+    clearAssignments('p1', 'Transport in KH');
+
+    const rtms = JSON.parse(localStorage.getItem('rtms'));
+    const r = rtms[0];
+    expect(r.patientInput).toBeNull();
+    expect(r.patientStart).toBeNull();
+    expect(r.status).toBe(0);
+    expect(r.patientHistorie).toEqual([
+      { nummer: 'p1', von: 500, bis: 1000 }
+    ]);
+    expect(r.history).toEqual([
+      { when: 1000, event: 0 }
+    ]);
+  });
+
+  it('closes assignments on RTMs via patient.rtm array and removes them from patient', () => {
+    localStorage.setItem(
+      'patients',
+      JSON.stringify([{ 
+        id: 'p1', 
+        status: 'active', 
+        history: [],
+        rtm: ['RTM1'],
+        team: ['T1']
+      }])
+    );
+    localStorage.setItem(
+      'rtms',
+      JSON.stringify([{
+        name: 'RTM1',
+        patientInput: null, // Not linked via patientInput
+        patientStart: 500,
+        status: 4, // Active status
+        patientHistorie: [],
+        history: []
+      }])
+    );
+    localStorage.setItem(
+      'trupps',
+      JSON.stringify([{
+        name: 'T1',
+        patientInput: null, // Not linked via patientInput
+        patientStart: 500,
+        status: 4, // Active status
+        patientHistorie: [],
+        history: []
+      }])
+    );
+    jest.spyOn(Date, 'now').mockReturnValue(1000);
+
+    clearAssignments('p1', 'Entlassen');
+
+    // Check that RTMs and teams were cleared
+    const rtms = JSON.parse(localStorage.getItem('rtms'));
+    expect(rtms[0].status).toBe(0);
+    expect(rtms[0].patientInput).toBeNull();
+    expect(rtms[0].patientStart).toBeNull();
+
+    const trupps = JSON.parse(localStorage.getItem('trupps'));
+    expect(trupps[0].status).toBe(0);
+    expect(trupps[0].patientInput).toBeNull();
+    expect(trupps[0].patientStart).toBeNull();
+
+    // Check that patient arrays were cleared and history entries added
+    const patients = JSON.parse(localStorage.getItem('patients'));
+    expect(patients[0].rtm).toEqual([]);
+    expect(patients[0].team).toEqual([]);
+    expect(patients[0].history).toContain('10:00 RTM RTM1 entfernt');
+    expect(patients[0].history).toContain('10:00 Trupp T1 entfernt');
+    expect(patients[0].status).toBe('Entlassen');
   });
 });

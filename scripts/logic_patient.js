@@ -1,18 +1,41 @@
 function clearAssignments(patientId, finalStatus) {
   const now = Date.now();
+  
+  console.log(`=== CLEAR ASSIGNMENTS START ===`);
+  console.log(`Patient ID: ${patientId}, Final Status: ${finalStatus}`);
+  
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
   const patient = patients.find((p) => p.id === patientId);
-  if (!patient) return;
+  if (!patient) {
+    console.log(`ERROR: Patient ${patientId} not found!`);
+    return;
+  }
 
-  patient.status = finalStatus;
-  localStorage.setItem("patients", JSON.stringify(patients));
-  loadPatients(patientId); // neu rendern (Team bleibt erhalten)
+  console.log(`Patient before update:`, JSON.stringify(patient, null, 2));
 
-  // 2) Trupp-Tracker updaten: alle Trupps, die patientInput === patientId haben,
-  //    bekommen ihren Einsatz beendet
+  // WICHTIG: Bei finalen Status IMMER überschreiben
+  if (finalStatus === "Entlassen" || finalStatus === "Transport in KH") {
+    console.log(`Setting patient status to final: ${finalStatus}`);
+    patient.status = finalStatus;
+    // Sicherstellen dass der finale Status auch in der Historie steht (falls nicht schon da)
+    if (!patient.history.some(h => h.includes(`Status: ${finalStatus}`))) {
+      patient.history.push(`${getCurrentTime()} Status: ${finalStatus}`);
+      console.log(`Added status history entry: Status: ${finalStatus}`);
+    }
+  }
+
+  // 2) Trupp-Tracker updaten - BEIDE Wege: über patientInput UND über patient.team Namen
   const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+  console.log(`Found ${trupps.length} trupps in storage`);
+  
+  let truppUpdates = 0;
+  
+  // 2a) Trupps über patientInput finden
   trupps.forEach((t) => {
-    if (t.patientInput === patientId) {
+    if (t.patientInput === patientId || t.patientInput === String(patientId)) {
+      console.log(`Clearing trupp ${t.name} via patientInput for patient ${patientId}`);
+      truppUpdates++;
+      
       // a) Patienteneinsatz abschließen
       if (t.patientStart) {
         t.patientHistorie = t.patientHistorie || [];
@@ -37,15 +60,195 @@ function clearAssignments(patientId, finalStatus) {
       });
     }
   });
+  
+  // 2b) ZUSÄTZLICH: Trupps auch über patient.team Namen-Liste finden
+  if (Array.isArray(patient.team) && patient.team.length > 0) {
+    console.log(`Patient has ${patient.team.length} teams in team array:`, patient.team);
+    
+    patient.team.forEach(teamName => {
+      const trupp = trupps.find(t => t.name === teamName);
+      if (trupp) {
+        console.log(`Found Trupp ${teamName} in storage with status ${trupp.status}`);
+        
+        // Trupp auf Status 0 setzen, UNABHÄNGIG vom aktuellen Status
+        if (trupp.status !== 0) {
+          console.log(`Clearing Trupp ${teamName} via patient.team list for patient ${patientId}`);
+          truppUpdates++;
+          
+          // a) Patienteneinsatz abschließen (falls nicht schon gemacht)
+          if (trupp.patientStart && trupp.patientInput) {
+            trupp.patientHistorie = trupp.patientHistorie || [];
+            trupp.patientHistorie.push({
+              nummer: patientId,
+              von: trupp.patientStart,
+              bis: now,
+            });
+          }
+          // b) Input­Felder zurücksetzen
+          trupp.patientInput = null;
+          trupp.patientStart = null;
 
-  // 3) Speichern & Storage‐Event feuern
+          // c) Status auf 0 setzen
+          trupp.status = 0;
+
+          // d) Eigene Historie ergänzen
+          trupp.history = trupp.history || [];
+          trupp.history.push({
+            when: now,
+            event: 0,
+          });
+        }
+      } else {
+        console.log(`Trupp ${teamName} NOT FOUND in storage!`);
+      }
+    });
+  }
+  console.log(`Updated ${truppUpdates} trupps`);
+
+  // 3) RTM-Tracker updaten - ALLE RTMs durchgehen
+  const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
+  console.log(`Found ${rtms.length} RTMs in storage`);
+  
+  let rtmUpdates = 0;
+  
+  // 3a) RTMs über patientInput finden
+  rtms.forEach((r) => {
+    if (r.patientInput === patientId || r.patientInput === String(patientId)) {
+      console.log(`Clearing RTM ${r.name} via patientInput for patient ${patientId}`);
+      rtmUpdates++;
+      
+      // a) Patienteneinsatz abschließen
+      if (r.patientStart) {
+        r.patientHistorie = r.patientHistorie || [];
+        r.patientHistorie.push({
+          nummer: patientId,
+          von: r.patientStart,
+          bis: now,
+        });
+      }
+      // b) Input­Felder zurücksetzen
+      r.patientInput = null;
+      r.patientStart = null;
+
+      // c) Status auf 0 setzen
+      r.status = 0;
+
+      // d) Eigene Historie ergänzen
+      r.history = r.history || [];
+      r.history.push({
+        when: now,
+        event: 0,
+      });
+    }
+  });
+  
+  // 3b) ZUSÄTZLICH: RTMs auch über patient.rtm Namen-Liste finden
+  if (Array.isArray(patient.rtm) && patient.rtm.length > 0) {
+    console.log(`Patient has ${patient.rtm.length} RTMs in rtm array:`, patient.rtm);
+    
+    patient.rtm.forEach(rtmName => {
+      const rtm = rtms.find(r => r.name === rtmName);
+      if (rtm) {
+        console.log(`Found RTM ${rtmName} in storage with status ${rtm.status}`);
+        
+        // RTM auf Status 0 setzen, UNABHÄNGIG vom aktuellen Status
+        if (rtm.status !== 0) {
+          console.log(`Clearing RTM ${rtmName} via patient.rtm list for patient ${patientId}`);
+          rtmUpdates++;
+          
+          // a) Patienteneinsatz abschließen (falls nicht schon gemacht)
+          if (rtm.patientStart && rtm.patientInput) {
+            rtm.patientHistorie = rtm.patientHistorie || [];
+            rtm.patientHistorie.push({
+              nummer: patientId,
+              von: rtm.patientStart,
+              bis: now,
+            });
+          }
+          // b) Input­Felder zurücksetzen
+          rtm.patientInput = null;
+          rtm.patientStart = null;
+
+          // c) Status auf 0 setzen
+          rtm.status = 0;
+
+          // d) Eigene Historie ergänzen
+          rtm.history = rtm.history || [];
+          rtm.history.push({
+            when: now,
+            event: 0,
+          });
+        }
+      } else {
+        console.log(`RTM ${rtmName} NOT FOUND in storage!`);
+      }
+    });
+  }
+  console.log(`Updated ${rtmUpdates} RTMs total`);
+
+  // 4) Bei finalen Status: RTMs und Teams IMMER aus patient Arrays entfernen
+  if (finalStatus === "Entlassen" || finalStatus === "Transport in KH") {
+    console.log(`Removing all RTMs and teams from patient ${patientId} due to final status`);
+    
+    if (Array.isArray(patient.rtm) && patient.rtm.length > 0) {
+      const rtmCount = patient.rtm.length;
+      patient.rtm.forEach(rtmName => {
+        patient.history = patient.history || [];
+        patient.history.push(`${getCurrentTime()} RTM ${rtmName} entfernt`);
+      });
+      patient.rtm = []; // Alle RTMs entfernen
+      console.log(`Removed ${rtmCount} RTMs from patient`);
+    }
+    
+    if (Array.isArray(patient.team) && patient.team.length > 0) {
+      const teamCount = patient.team.length;
+      patient.team.forEach(teamName => {
+        patient.history = patient.history || [];
+        patient.history.push(`${getCurrentTime()} Trupp ${teamName} entfernt`);
+      });
+      patient.team = []; // Alle Teams entfernen
+      console.log(`Removed ${teamCount} teams from patient`);
+    }
+  }
+
+  console.log(`Patient after update:`, JSON.stringify(patient, null, 2));
+
+  // 5) Alles speichern
+  localStorage.setItem("patients", JSON.stringify(patients));
   localStorage.setItem("trupps", JSON.stringify(trupps));
+  localStorage.setItem("rtms", JSON.stringify(rtms));
+  
+  console.log(`Saved data to localStorage`);
+  
+  // 6) Storage‐Events feuern
+  window.dispatchEvent(
+    new StorageEvent("storage", {
+      key: "patients",
+      newValue: JSON.stringify(patients),
+    })
+  );
   window.dispatchEvent(
     new StorageEvent("storage", {
       key: "trupps",
       newValue: JSON.stringify(trupps),
     })
   );
+  window.dispatchEvent(
+    new StorageEvent("storage", {
+      key: "rtms",
+      newValue: JSON.stringify(rtms),
+    })
+  );
+
+  console.log(`Dispatched storage events`);
+
+  // 7) UI neu laden
+  if (typeof loadPatients === 'function') {
+    loadPatients(patientId);
+    console.log(`Called loadPatients(${patientId})`);
+  }
+  
+  console.log(`=== CLEAR ASSIGNMENTS END ===`);
 }
 
 
@@ -75,25 +278,291 @@ function dischargePatient(id) {
   const location = prompt("Wohin wurde der Patient entlassen?");
   if (!location) return;
 
-  // 1) Discharge-Feld
-  updatePatientData(id, "discharge", location);
-  // 2) Status auf Entlassen
-  updatePatientData(id, "status", "Entlassen");
-
-  // 3) Noch einmal sicherstellen, dass der Trupp beendet wird:
-  clearAssignments(id, "Entlassen");
+  // STEP 1: Patient-Daten DIREKT modifizieren
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  const patient = patients.find((p) => p.id === id);
+  if (!patient) return;
+  
+  // Discharge und Status SOFORT setzen
+  patient.discharge = location;
+  patient.status = "Entlassen";
+  if (!patient.history) patient.history = [];
+  patient.history.push(`${getCurrentTime()} Entlassen: ${location}`);
+  patient.history.push(`${getCurrentTime()} Status: Entlassen`);
+  
+  // STEP 2: ALLE Trupps die zu diesem Patienten gehören auf Status 0 setzen
+  const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+  const now = Date.now();
+  
+  // A) Trupps über patientInput finden
+  trupps.forEach(trupp => {
+    if (trupp.patientInput === id || trupp.patientInput === String(id)) {
+      if (trupp.patientStart) {
+        trupp.patientHistorie = trupp.patientHistorie || [];
+        trupp.patientHistorie.push({
+          nummer: id,
+          von: trupp.patientStart,
+          bis: now
+        });
+      }
+      trupp.patientInput = null;
+      trupp.patientStart = null;
+      trupp.status = 0;
+      trupp.history = trupp.history || [];
+      trupp.history.push({ when: now, event: 0 });
+    }
+  });
+  
+  // B) Trupps über patient.team Array finden
+  if (Array.isArray(patient.team)) {
+    patient.team.forEach(teamName => {
+      const trupp = trupps.find(t => t.name === teamName);
+      if (trupp && [3, 4, 7, 8].includes(trupp.status)) {
+        if (trupp.patientStart) {
+          trupp.patientHistorie = trupp.patientHistorie || [];
+          trupp.patientHistorie.push({
+            nummer: id,
+            von: trupp.patientStart,
+            bis: now
+          });
+        }
+        trupp.patientInput = null;
+        trupp.patientStart = null;
+        trupp.status = 0;
+        trupp.history = trupp.history || [];
+        trupp.history.push({ when: now, event: 0 });
+      }
+    });
+  }
+  
+  // STEP 3: ALLE RTMs die zu diesem Patienten gehören auf Status 0 setzen
+  const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
+  
+  // A) RTMs über patientInput finden
+  rtms.forEach(rtm => {
+    if (rtm.patientInput === id || rtm.patientInput === String(id)) {
+      if (rtm.patientStart) {
+        rtm.patientHistorie = rtm.patientHistorie || [];
+        rtm.patientHistorie.push({
+          nummer: id,
+          von: rtm.patientStart,
+          bis: now
+        });
+      }
+      rtm.patientInput = null;
+      rtm.patientStart = null;
+      rtm.status = 0;
+      rtm.history = rtm.history || [];
+      rtm.history.push({ when: now, event: 0 });
+    }
+  });
+  
+  // B) RTMs über patient.rtm Array finden
+  if (Array.isArray(patient.rtm)) {
+    patient.rtm.forEach(rtmName => {
+      const rtm = rtms.find(r => r.name === rtmName);
+      if (rtm && [3, 4, 7, 8].includes(rtm.status)) {
+        if (rtm.patientStart) {
+          rtm.patientHistorie = rtm.patientHistorie || [];
+          rtm.patientHistorie.push({
+            nummer: id,
+            von: rtm.patientStart,
+            bis: now
+          });
+        }
+        rtm.patientInput = null;
+        rtm.patientStart = null;
+        rtm.status = 0;
+        rtm.history = rtm.history || [];
+        rtm.history.push({ when: now, event: 0 });
+      }
+    });
+  }
+  
+  // STEP 4: Teams und RTMs aus Patient-Arrays entfernen
+  if (Array.isArray(patient.team)) {
+    patient.team.forEach(teamName => {
+      patient.history.push(`${getCurrentTime()} Trupp ${teamName} entfernt`);
+    });
+    patient.team = [];
+  }
+  
+  if (Array.isArray(patient.rtm)) {
+    patient.rtm.forEach(rtmName => {
+      patient.history.push(`${getCurrentTime()} RTM ${rtmName} entfernt`);
+    });
+    patient.rtm = [];
+  }
+  
+  // STEP 5: ALLES SPEICHERN
+  localStorage.setItem("patients", JSON.stringify(patients));
+  localStorage.setItem("trupps", JSON.stringify(trupps));
+  localStorage.setItem("rtms", JSON.stringify(rtms));
+  
+  // STEP 6: Events auslösen
+  window.dispatchEvent(new StorageEvent("storage", {
+    key: "patients",
+    newValue: JSON.stringify(patients)
+  }));
+  window.dispatchEvent(new StorageEvent("storage", {
+    key: "trupps", 
+    newValue: JSON.stringify(trupps)
+  }));
+  window.dispatchEvent(new StorageEvent("storage", {
+    key: "rtms",
+    newValue: JSON.stringify(rtms)
+  }));
+  
+  // STEP 7: UI neu laden
+  if (typeof loadPatients === 'function') {
+    loadPatients(id);
+  }
 }
 
-// ✈️ Prompt für Transport-Ziel und Statuswechsel
+// ✈️ Prompt für Transport-Ziel und Statuswechsel - KOMPLETT NEU
 function transportPatient(id) {
   const ziel = prompt("Bitte Zielklinik eingeben:");
   if (!ziel) return;
-  // 1) Ziel speichern und in die Historie schreiben
-  updatePatientData(id, "transport", ziel);
-  // 2) Statuswechsel auslösen
-  updatePatientData(id, "status", "Transport in KH");
-  // 3) Trupp-Zuordnung beenden
-  clearAssignments(id, "Transport in KH");
+  
+  // STEP 1: Patient-Daten DIREKT modifizieren
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  const patient = patients.find((p) => p.id === id);
+  if (!patient) return;
+  
+  // Transport und Status SOFORT setzen
+  patient.transport = ziel;
+  patient.status = "Transport in KH";
+  if (!patient.history) patient.history = [];
+  patient.history.push(`${getCurrentTime()} Transport in KH: ${ziel}`);
+  patient.history.push(`${getCurrentTime()} Status: Transport in KH`);
+  
+  // STEP 2: ALLE Trupps die zu diesem Patienten gehören auf Status 0 setzen
+  const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+  const now = Date.now();
+  
+  // A) Trupps über patientInput finden
+  trupps.forEach(trupp => {
+    if (trupp.patientInput === id || trupp.patientInput === String(id)) {
+      if (trupp.patientStart) {
+        trupp.patientHistorie = trupp.patientHistorie || [];
+        trupp.patientHistorie.push({
+          nummer: id,
+          von: trupp.patientStart,
+          bis: now
+        });
+      }
+      trupp.patientInput = null;
+      trupp.patientStart = null;
+      trupp.status = 0;
+      trupp.history = trupp.history || [];
+      trupp.history.push({ when: now, event: 0 });
+    }
+  });
+  
+  // B) Trupps über patient.team Array finden
+  if (Array.isArray(patient.team)) {
+    patient.team.forEach(teamName => {
+      const trupp = trupps.find(t => t.name === teamName);
+      if (trupp && [3, 4, 7, 8].includes(trupp.status)) {
+        if (trupp.patientStart) {
+          trupp.patientHistorie = trupp.patientHistorie || [];
+          trupp.patientHistorie.push({
+            nummer: id,
+            von: trupp.patientStart,
+            bis: now
+          });
+        }
+        trupp.patientInput = null;
+        trupp.patientStart = null;
+        trupp.status = 0;
+        trupp.history = trupp.history || [];
+        trupp.history.push({ when: now, event: 0 });
+      }
+    });
+  }
+  
+  // STEP 3: ALLE RTMs die zu diesem Patienten gehören auf Status 0 setzen
+  const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
+  
+  // A) RTMs über patientInput finden
+  rtms.forEach(rtm => {
+    if (rtm.patientInput === id || rtm.patientInput === String(id)) {
+      if (rtm.patientStart) {
+        rtm.patientHistorie = rtm.patientHistorie || [];
+        rtm.patientHistorie.push({
+          nummer: id,
+          von: rtm.patientStart,
+          bis: now
+        });
+      }
+      rtm.patientInput = null;
+      rtm.patientStart = null;
+      rtm.status = 0;
+      rtm.history = rtm.history || [];
+      rtm.history.push({ when: now, event: 0 });
+    }
+  });
+  
+  // B) RTMs über patient.rtm Array finden
+  if (Array.isArray(patient.rtm)) {
+    patient.rtm.forEach(rtmName => {
+      const rtm = rtms.find(r => r.name === rtmName);
+      if (rtm && [3, 4, 7, 8].includes(rtm.status)) {
+        if (rtm.patientStart) {
+          rtm.patientHistorie = rtm.patientHistorie || [];
+          rtm.patientHistorie.push({
+            nummer: id,
+            von: rtm.patientStart,
+            bis: now
+          });
+        }
+        rtm.patientInput = null;
+        rtm.patientStart = null;
+        rtm.status = 0;
+        rtm.history = rtm.history || [];
+        rtm.history.push({ when: now, event: 0 });
+      }
+    });
+  }
+  
+  // STEP 4: Teams und RTMs aus Patient-Arrays entfernen
+  if (Array.isArray(patient.team)) {
+    patient.team.forEach(teamName => {
+      patient.history.push(`${getCurrentTime()} Trupp ${teamName} entfernt`);
+    });
+    patient.team = [];
+  }
+  
+  if (Array.isArray(patient.rtm)) {
+    patient.rtm.forEach(rtmName => {
+      patient.history.push(`${getCurrentTime()} RTM ${rtmName} entfernt`);
+    });
+    patient.rtm = [];
+  }
+  
+  // STEP 5: ALLES SPEICHERN
+  localStorage.setItem("patients", JSON.stringify(patients));
+  localStorage.setItem("trupps", JSON.stringify(trupps));
+  localStorage.setItem("rtms", JSON.stringify(rtms));
+  
+  // STEP 6: Events auslösen
+  window.dispatchEvent(new StorageEvent("storage", {
+    key: "patients",
+    newValue: JSON.stringify(patients)
+  }));
+  window.dispatchEvent(new StorageEvent("storage", {
+    key: "trupps", 
+    newValue: JSON.stringify(trupps)
+  }));
+  window.dispatchEvent(new StorageEvent("storage", {
+    key: "rtms",
+    newValue: JSON.stringify(rtms)
+  }));
+  
+  // STEP 7: UI neu laden
+  if (typeof loadPatients === 'function') {
+    loadPatients(id);
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -152,6 +621,13 @@ function updatePatientData(id, field, value) {
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
   const patient = patients.find((p) => p.id === id);
   if (!patient) return;
+  
+  // WICHTIG: Finale Status schützen - keine Status-Änderungen von finalen Zuständen weg
+  if (field === "status" && (patient.status === "Entlassen" || patient.status === "Transport in KH")) {
+    console.log(`Status-Änderung von ${patient.status} zu ${value} blockiert für Patient ${id}`);
+    return; // Keine Status-Änderung von finalen Zuständen
+  }
+  
   // History-Array initialisieren, falls nötig
   if (!patient.history) patient.history = [];
 
@@ -783,8 +1259,13 @@ function updatePatientStatusBasedOnResourceStatus(resourceName, newStatus, resou
   let patientsUpdated = false;
   
   patients.forEach(patient => {
-    // Skip if patient is already in final states
-    if (patient.status === "Entlassen" || patient.status === "Transport in KH") {
+    // Skip if patient is already in final states - WICHTIG: Finale Status schützen (erweitert)
+    const isFinalState = patient.status === "Entlassen" || 
+                        patient.status === "Transport in KH" ||
+                        patient.transport ||  // Hat Transport-Ziel
+                        patient.discharge;    // Hat Entlassungsort
+    
+    if (isFinalState) {
       return;
     }
     

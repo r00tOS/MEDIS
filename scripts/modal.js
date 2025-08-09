@@ -33,24 +33,45 @@ document.addEventListener("DOMContentLoaded", () => {
       const ort = document.getElementById("customEinsatzort").value.trim();
       if (!ort || _pendingTruppIndex === null) return;
 
-      const t = trupps[_pendingTruppIndex];
       const now = Date.now();
       const timeStr = new Date(now).toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
       });
 
-      // 1) Ort setzen
-      t.currentOrt = ort;
-      t.einsatzStartOrt = now;
+      // Prüfen ob wir mit Trupps oder RTMs arbeiten
+      const isRTMMode = typeof rtms !== 'undefined' && Array.isArray(rtms);
+      const isTruppMode = typeof trupps !== 'undefined' && Array.isArray(trupps);
 
-      // 2) Trupp-Historie ergänzen
-      if (!t.history) t.history = [];
-      t.history.push(`${timeStr} Einsatzort gesetzt: ${ort}`);
+      if (isRTMMode) {
+        const r = rtms[_pendingTruppIndex];
+        
+        // 1) Ort setzen
+        r.currentOrt = ort;
+        r.einsatzStartOrt = now;
 
-      // 3) Speichern & neu rendern
-      saveTrupps();
-      renderTrupps();
+        // 2) RTM-Historie ergänzen
+        if (!r.history) r.history = [];
+        r.history.push(`${timeStr} Einsatzort gesetzt: ${ort}`);
+
+        // 3) Speichern & neu rendern
+        saveRTMs();
+        renderRTMs();
+      } else if (isTruppMode) {
+        const t = trupps[_pendingTruppIndex];
+        
+        // 1) Ort setzen
+        t.currentOrt = ort;
+        t.einsatzStartOrt = now;
+
+        // 2) Trupp-Historie ergänzen
+        if (!t.history) t.history = [];
+        t.history.push(`${timeStr} Einsatzort gesetzt: ${ort}`);
+
+        // 3) Speichern & neu rendern
+        saveTrupps();
+        renderTrupps();
+      }
 
       // 4) Modal schließen
       closeEinsatzortModal();
