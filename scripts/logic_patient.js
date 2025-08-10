@@ -569,9 +569,11 @@ document.addEventListener("DOMContentLoaded", () => {
   // nur binden, wenn das Element wirklich da ist
 
   // loadPatients nur aufrufen, wenn die Patienten‐Container existieren
-
   if (document.getElementById("activePatients")) {
     loadPatients();
+    
+    // Beim Start auch alle dispositionStatus Einträge aktualisieren
+    updateDispositionStatusFromAssignedResources();
   }
 });
 
@@ -806,21 +808,38 @@ function assignResource(id, type) {
       
       console.log(`Processing RTM: ${rtmName} (${rtmLower})`);
       
+      // KORRIGIERTE LOGIK: Bei Fahrzeugnummern ist die MITTLERE Nummer entscheidend
+      // XX-83-XX = RTW
+      // XX-82-XX = NEF
+      
       // Prüfe ob RTM zu bekannten Ressourcen passt und aktualisiere alle passenden
-      if (rtmLower.includes('rtw')) {
+      if (rtmLower.includes('rtw') || 
+          rtmLower.includes('rettungswagen') ||
+          /-83-/.test(rtmName) ||     // Standard RTW (XX-83-XX)
+          /\b83\/\d+/.test(rtmName) || // Alternative Notation 83/XX
+          /\b83\b/.test(rtmName)) {    // Einfache Nennung der 83
         patient.dispositionStatus['RTW'] = 'dispatched';
-        console.log('Set RTW to dispatched');
+        console.log('Set RTW to dispatched - matched RTW pattern (83)');
       }
-      if (rtmLower.includes('nef')) {
+      
+      if (rtmLower.includes('nef') || 
+          rtmLower.includes('notarzteinsatzfahrzeug') ||
+          /-82-/.test(rtmName) ||     // Standard NEF (XX-82-XX) 
+          /\b82\/\d+/.test(rtmName) || // Alternative Notation 82/XX
+          /\b82\b/.test(rtmName)) {    // Einfache Nennung der 82
         patient.dispositionStatus['NEF'] = 'dispatched';
         patient.dispositionStatus['UHS-Notarzt oder NEF'] = 'dispatched';
-        console.log('Set NEF and UHS-Notarzt oder NEF to dispatched');
+        patient.dispositionStatus['Ggf. UHS-Notarzt oder NEF'] = 'dispatched';
+        console.log('Set NEF and UHS-Notarzt oder NEF to dispatched - matched NEF pattern (82)');
       }
+      
       if (rtmLower.includes('rettungsdienst') || rtmLower.includes('rd')) {
         patient.dispositionStatus['RTW'] = 'dispatched';
       }
+      
       if (rtmLower.includes('notarzt') || rtmLower.includes('na')) {
         patient.dispositionStatus['UHS-Notarzt oder NEF'] = 'dispatched';
+        patient.dispositionStatus['Ggf. UHS-Notarzt oder NEF'] = 'dispatched';
       }
     });
     
@@ -847,19 +866,8 @@ function assignResource(id, type) {
     
     // Stelle sicher dass die Disposition-Status-Updates auch in der gespeicherten Version sind
     if (type === "rtm") {
-      const rtmList = value.split(',').map(rtm => rtm.trim()).filter(rtm => rtm.length > 0);
-      rtmList.forEach(rtmName => {
-        const rtmLower = rtmName.toLowerCase();
-        if (rtmLower.includes('rtw')) {
-          p2.dispositionStatus = p2.dispositionStatus || {};
-          p2.dispositionStatus['RTW'] = 'dispatched';
-        }
-        if (rtmLower.includes('nef')) {
-          p2.dispositionStatus = p2.dispositionStatus || {};
-          p2.dispositionStatus['NEF'] = 'dispatched';
-          p2.dispositionStatus['UHS-Notarzt oder NEF'] = 'dispatched';
-        }
-      });
+      // Korrekte Patterns für zugewiesene RTMs anwenden
+      updateDispositionStatusFromAssignedResources();
     }
     
     localStorage.setItem("patients", JSON.stringify(updated));
@@ -1465,4 +1473,307 @@ function copyPatientData(patientId) {
   // Patient-ID als String für copyToClipboard übergeben
   // Der Typ 'patient' wird als neue Entität für copyToClipboard verwendet
   copyToClipboard(String(patientId), 'patient');
+}
+
+/**
+ * Entlässt einen Trupp aus seinem aktuellen Einsatz/Patientenzuordnung
+ * @param {string} truppName - Name des Trupps
+ * @param {string|number} patientId - ID des Patienten
+ */
+function releaseTruppFromAssignment(truppName, patientId) {
+  if (!confirm(`Soll ${truppName} wirklich aus dem Einsatz entlassen werden?`)) return;
+
+  console.log(`Entlasse Trupp ${truppName} von Patient ${patientId}`);
+  
+  // 1) Patient finden und Trupp aus team-Array entfernen
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  const patient = patients.find(p => p.id === patientId || p.id === String(patientId));
+  
+  if (!patient || !Array.isArray(patient.team)) {
+    console.error(`Patient ${patientId} nicht gefunden oder hat kein team-Array`);
+    return;
+  }
+  
+  const truppIndex = patient.team.indexOf(truppName);
+  if (truppIndex === -1) {
+    console.error(`Trupp ${truppName} nicht im team-Array von Patient ${patientId} gefunden`);
+    return;
+  }
+  
+  // Trupp aus Array entfernen
+  patient.team.splice(truppIndex, 1);
+  
+  // Historieneintrag hinzufügen
+  if (!patient.history) patient.history = [];
+  const timeStr = getCurrentTime();
+  patient.history.push(`${timeStr} Trupp ${truppName} entfernt`);
+  
+  // Patientendaten speichern
+  localStorage.setItem("patients", JSON.stringify(patients));
+  
+  // 2) Trupp im Trupp-Tracker aktualisieren
+  const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+  const trupp = trupps.find(t => t.name === truppName);
+  
+  if (trupp) {
+    const now = Date.now();
+    
+    // Patienteneinsatz abschließen falls vorhanden
+    if (trupp.patientInput && trupp.patientStart) {
+      trupp.patientHistorie = trupp.patientHistorie || [];
+      trupp.patientHistorie.push({
+        nummer: trupp.patientInput,
+        von: trupp.patientStart,
+        bis: now,
+      });
+    }
+    
+    // Patientendaten zurücksetzen
+    trupp.patientInput = null;
+    trupp.patientStart = null;
+    
+    // Status auf "Einsatz beendet" setzen
+    trupp.status = 0;
+    
+    // Historieneintrag hinzufügen
+    trupp.history = trupp.history || [];
+    trupp.history.push({
+      when: now,
+      event: 0,
+    });
+    
+    // Trupp-Daten speichern
+    localStorage.setItem("trupps", JSON.stringify(trupps));
+    
+    // Storage-Event auslösen
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "trupps",
+        newValue: JSON.stringify(trupps),
+      })
+    );
+  }
+  
+  // 3) Disposition-Status aktualisieren und UI neu laden
+  if (typeof triggerDispositionUpdate === 'function') {
+    triggerDispositionUpdate();
+  }
+  
+  // UI aktualisieren
+  loadPatients();
+}
+
+/**
+ * Entlässt ein RTM aus seinem aktuellen Einsatz/Patientenzuordnung
+ * @param {string} rtmName - Name des RTM
+ * @param {string|number} patientId - ID des Patienten
+ */
+function releaseRtmFromAssignment(rtmName, patientId) {
+  if (!confirm(`Soll ${rtmName} wirklich aus dem Einsatz entlassen werden?`)) return;
+
+  console.log(`Entlasse RTM ${rtmName} von Patient ${patientId}`);
+  
+  // 1) Patient finden und RTM aus rtm-Array entfernen
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  const patient = patients.find(p => p.id === patientId || p.id === String(patientId));
+  
+  if (!patient || !Array.isArray(patient.rtm)) {
+    console.error(`Patient ${patientId} nicht gefunden oder hat kein rtm-Array`);
+    return;
+  }
+  
+  const rtmIndex = patient.rtm.indexOf(rtmName);
+  if (rtmIndex === -1) {
+    console.error(`RTM ${rtmName} nicht im rtm-Array von Patient ${patientId} gefunden`);
+    return;
+  }
+  
+  // RTM aus Array entfernen
+  patient.rtm.splice(rtmIndex, 1);
+  
+  // Historieneintrag hinzufügen
+  if (!patient.history) patient.history = [];
+  const timeStr = getCurrentTime();
+  patient.history.push(`${timeStr} RTM ${rtmName} entfernt`);
+  
+  // Patientendaten speichern
+  localStorage.setItem("patients", JSON.stringify(patients));
+  
+  // 2) RTM im RTM-Tracker aktualisieren
+  const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
+  const rtm = rtms.find(r => r.name === rtmName);
+  
+  if (rtm) {
+    const now = Date.now();
+    
+    // Patienteneinsatz abschließen falls vorhanden
+    if (rtm.patientInput && rtm.patientStart) {
+      rtm.patientHistorie = rtm.patientHistorie || [];
+      rtm.patientHistorie.push({
+        nummer: rtm.patientInput,
+        von: rtm.patientStart,
+        bis: now,
+      });
+    }
+    
+    // Patientendaten zurücksetzen
+    rtm.patientInput = null;
+    rtm.patientStart = null;
+    
+    // Status auf "Einsatz beendet" setzen
+    rtm.status = 0;
+    
+    // Historieneintrag hinzufügen
+    rtm.history = rtm.history || [];
+    const formattedTime = new Date(now).toLocaleTimeString([], { 
+      hour: "2-digit", 
+      minute: "2-digit" 
+    });
+    rtm.history.push(`${formattedTime} Status: 0`);
+    
+    // RTM-Daten speichern
+    localStorage.setItem("rtms", JSON.stringify(rtms));
+    
+    // Storage-Event auslösen
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "rtms",
+        newValue: JSON.stringify(rtms),
+      })
+    );
+  }
+  
+  // 3) Disposition-Status aktualisieren und UI neu laden
+  if (typeof triggerDispositionUpdate === 'function') {
+    triggerDispositionUpdate();
+  }
+  
+  // UI aktualisieren
+  loadPatients();
+}
+
+/**
+ * Aktualisiert für alle Patienten die dispositionStatus basierend auf den zugewiesenen RTMs
+ * Wichtig, um bereits zugewiesene RTMs korrekt zu erkennen (z.B. mit Nummern wie 10-83-XX)
+ */
+function updateDispositionStatusFromAssignedResources() {
+  console.log("Updating disposition status from assigned resources...");
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  let updatesCount = 0;
+  
+  patients.forEach(patient => {
+    // Überspringe Patienten ohne RTMs oder ohne suggestedResources
+    if (!Array.isArray(patient.rtm) || !Array.isArray(patient.suggestedResources)) {
+      return;
+    }
+    
+    // Stelle sicher, dass dispositionStatus existiert
+    if (!patient.dispositionStatus) {
+      patient.dispositionStatus = {};
+    }
+    
+    // Für Trupp immer einfach setzen, wenn vorhanden
+    if (Array.isArray(patient.team) && patient.team.length > 0 && 
+        patient.suggestedResources.includes('Trupp')) {
+      patient.dispositionStatus['Trupp'] = 'dispatched';
+      updatesCount++;
+    }
+    
+    // Alle zugewiesenen RTMs durchgehen und erkennen
+    patient.rtm.forEach(rtmName => {
+      const rtmLower = rtmName.toLowerCase();
+      let updates = 0;
+      
+      // Debug-Log für das Pattern-Matching
+      console.log(`Analyzing RTM: ${rtmName} (${rtmLower})`);
+      console.log(`Pattern check: contains '-83-'?: ${/-83-/.test(rtmName)}`);
+      
+      // RTW Erkennung
+      if (rtmLower.includes('rtw') || 
+          rtmLower.includes('rettungswagen') ||
+          /-83-/.test(rtmName) ||      // Standard RTW (XX-83-XX)
+          /\b83\/\d+/.test(rtmName) ||  // Alternative Notation 83/XX
+          /\b83\b/.test(rtmName)) {     // Einfache Nennung der 83
+        
+        if (patient.suggestedResources.includes('RTW') && 
+            patient.dispositionStatus['RTW'] !== 'dispatched') {
+          patient.dispositionStatus['RTW'] = 'dispatched';
+          updates++;
+          console.log(`Set RTW to dispatched for patient ${patient.id} based on RTM ${rtmName}`);
+        }
+      }
+      
+      // NEF Erkennung
+      if (rtmLower.includes('nef') || 
+          rtmLower.includes('notarzteinsatzfahrzeug') ||
+          /-82-/.test(rtmName) ||       // Standard NEF (XX-82-XX) 
+          /\b82\/\d+/.test(rtmName) ||   // Alternative Notation 82/XX
+          /\b82\b/.test(rtmName)) {      // Einfache Nennung der 82
+        
+        const notarztResources = [
+          'NEF', 
+          'UHS-Notarzt oder NEF', 
+          'Ggf. UHS-Notarzt oder NEF'
+        ];
+        
+        notarztResources.forEach(resource => {
+          if (patient.suggestedResources.includes(resource) && 
+              patient.dispositionStatus[resource] !== 'dispatched') {
+            patient.dispositionStatus[resource] = 'dispatched';
+            updates++;
+            console.log(`Set ${resource} to dispatched for patient ${patient.id} based on RTM ${rtmName}`);
+          }
+        });
+      }
+      
+      // Allgemeine RD Erkennung
+      if (rtmLower.includes('rettungsdienst') || rtmLower.includes('rd')) {
+        if (patient.suggestedResources.includes('RTW') && 
+            patient.dispositionStatus['RTW'] !== 'dispatched') {
+          patient.dispositionStatus['RTW'] = 'dispatched';
+          updates++;
+          console.log(`Set RTW to dispatched for patient ${patient.id} based on general RD mention in ${rtmName}`);
+        }
+      }
+      
+      // Notarzt Erkennung
+      if (rtmLower.includes('notarzt') || rtmLower.includes('na')) {
+        const notarztResources = [
+          'UHS-Notarzt oder NEF', 
+          'Ggf. UHS-Notarzt oder NEF'
+        ];
+        
+        notarztResources.forEach(resource => {
+          if (patient.suggestedResources.includes(resource) && 
+              patient.dispositionStatus[resource] !== 'dispatched') {
+            patient.dispositionStatus[resource] = 'dispatched';
+            updates++;
+            console.log(`Set ${resource} to dispatched for patient ${patient.id} based on NA mention in ${rtmName}`);
+          }
+        });
+      }
+      
+      updatesCount += updates;
+    });
+  });
+  
+  // Wenn es Änderungen gab, speichern und events auslösen
+  if (updatesCount > 0) {
+    console.log(`Updated ${updatesCount} disposition status entries`);
+    localStorage.setItem("patients", JSON.stringify(patients));
+    
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "patients",
+        newValue: JSON.stringify(patients),
+      })
+    );
+    
+    // UI neu laden
+    if (typeof loadPatients === 'function') {
+      loadPatients();
+    }
+  } else {
+    console.log("No disposition status updates needed");
+  }
 }

@@ -452,7 +452,7 @@ cards.forEach(el => {
 });
 }
 
-// Kontextmenü anzeigen
+// Kontextmenü anzeigen - verbesserte Version
 function showRTMContextMenu(event, rtmIndex, patientId) {
   const existingMenu = document.getElementById('rtmContextMenu');
   if (existingMenu) {
@@ -470,19 +470,64 @@ function showRTMContextMenu(event, rtmIndex, patientId) {
   
   if (hasPatient) {
     menuHTML += `
-      <li><button onclick="transportPatient(${patientId}); hideRTMContextMenu()">Transport in KH</button></li>
-      <li><button onclick="dischargePatient(${patientId}); hideRTMContextMenu()">Entlassen</button></li>
-      <li class="context-menu-separator"></li>
-      <li><button onclick="promptAddEntry(${patientId}); hideRTMContextMenu()">Eintrag hinzufügen</button></li>
-      <li><button onclick="openEditModal(${patientId}); hideRTMContextMenu()">Patientendaten bearbeiten</button></li>
-      <li class="context-menu-separator"></li>
-      <li><button onclick="openTruppAssignmentModalForRTM(${patientId}); hideRTMContextMenu()">Trupp disponieren</button></li>
-      <li><button onclick="openRtmModal(${patientId}); hideRTMContextMenu()">RTM disponieren</button></li>
-      <li class="context-menu-separator"></li>`;
+      <div class="menu-group">
+        <div class="menu-group-title">Patientenmanagement</div>
+        <li>
+          <button class="primary" onclick="transportPatient(${patientId}); hideRTMContextMenu()">
+            <span class="icon">🚑</span>Transport in KH
+          </button>
+        </li>
+        <li>
+          <button class="success" onclick="dischargePatient(${patientId}); hideRTMContextMenu()">
+            <span class="icon">✅</span>Entlassen
+          </button>
+        </li>
+      </div>
+      
+      <div class="menu-group">
+        <div class="menu-group-title">Dokumentation</div>
+        <li>
+          <button onclick="promptAddEntry(${patientId}); hideRTMContextMenu()">
+            <span class="icon">📝</span>Eintrag hinzufügen
+          </button>
+        </li>
+        <li>
+          <button onclick="openEditModal(${patientId}); hideRTMContextMenu()">
+            <span class="icon">✏️</span>Patientendaten bearbeiten
+          </button>
+        </li>
+      </div>
+      
+      <div class="menu-group">
+        <div class="menu-group-title">Ressourcen</div>
+        <li>
+          <button onclick="openTruppAssignmentModalForRTM(${patientId}); hideRTMContextMenu()">
+            <span class="icon">👥</span>Trupp disponieren
+          </button>
+        </li>
+        <li>
+          <button onclick="openRtmModal(${patientId}); hideRTMContextMenu()">
+            <span class="icon">🚗</span>RTM disponieren
+          </button>
+        </li>
+        <li>
+          <button class="warning" onclick="releaseRtmFromAssignment('${rtms[rtmIndex].name}', ${patientId}); hideRTMContextMenu()">
+            <span class="icon">⚠️</span>Einheit aus Einsatz entlassen
+          </button>
+        </li>
+      </div>`;
   }
   
   // Name ändern immer verfügbar
-  menuHTML += `<li><button onclick="openRTMNameChangeModal(${rtmIndex}); hideRTMContextMenu()">Name ändern</button></li>`;
+  menuHTML += `
+    <div class="menu-group">
+      <div class="menu-group-title">Einstellungen</div>
+      <li>
+        <button onclick="openRTMNameChangeModal(${rtmIndex}); hideRTMContextMenu()">
+          <span class="icon">🔄</span>Name ändern
+        </button>
+      </li>
+    </div>`;
   
   menu.innerHTML = menuHTML;
 
@@ -509,16 +554,33 @@ function showRTMContextMenu(event, rtmIndex, patientId) {
     menu.style.top = (y - rect.height) + 'px';
   }
 
+  // Animation hinzufügen
+  menu.style.opacity = '0';
+  menu.style.transform = 'scale(0.95)';
+  menu.style.transition = 'opacity 0.1s ease, transform 0.1s ease';
+  
+  requestAnimationFrame(() => {
+    menu.style.opacity = '1';
+    menu.style.transform = 'scale(1)';
+  });
+
   // Klick außerhalb schließt das Menü
   setTimeout(() => {
     document.addEventListener('click', hideRTMContextMenu, { once: true });
   }, 10);
 }
 
+// Verbesserte Version der hideContextMenu Funktion
 function hideRTMContextMenu() {
   const menu = document.getElementById('rtmContextMenu');
   if (menu) {
-    menu.remove();
+    // Animation beim Schließen
+    menu.style.opacity = '0';
+    menu.style.transform = 'scale(0.95)';
+    
+    setTimeout(() => {
+      menu.remove();
+    }, 100);
   }
 }
 

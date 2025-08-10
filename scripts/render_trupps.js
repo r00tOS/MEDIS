@@ -483,19 +483,64 @@ function showTruppContextMenu(event, truppIndex, patientId) {
   
   if (hasPatient) {
     menuHTML += `
-      <li><button onclick="transportPatient(${patientId}); hideTruppContextMenu()">Transport in KH</button></li>
-      <li><button onclick="dischargePatient(${patientId}); hideTruppContextMenu()">Entlassen</button></li>
-      <li class="context-menu-separator"></li>
-      <li><button onclick="promptAddEntry(${patientId}); hideTruppContextMenu()">Eintrag hinzufügen</button></li>
-      <li><button onclick="openEditModal(${patientId}); hideTruppContextMenu()">Patientendaten bearbeiten</button></li>
-      <li class="context-menu-separator"></li>
-      <li><button onclick="openTruppAssignmentModal(${patientId}); hideTruppContextMenu()">Trupp disponieren</button></li>
-      <li><button onclick="openRtmModal(${patientId}); hideTruppContextMenu()">RTM disponieren</button></li>
-      <li class="context-menu-separator"></li>`;
+      <div class="menu-group">
+        <div class="menu-group-title">Patientenmanagement</div>
+        <li>
+          <button class="primary" onclick="transportPatient(${patientId}); hideTruppContextMenu()">
+            <span class="icon">🚑</span>Transport in KH
+          </button>
+        </li>
+        <li>
+          <button class="success" onclick="dischargePatient(${patientId}); hideTruppContextMenu()">
+            <span class="icon">✅</span>Entlassen
+          </button>
+        </li>
+      </div>
+      
+      <div class="menu-group">
+        <div class="menu-group-title">Dokumentation</div>
+        <li>
+          <button onclick="promptAddEntry(${patientId}); hideTruppContextMenu()">
+            <span class="icon">📝</span>Eintrag hinzufügen
+          </button>
+        </li>
+        <li>
+          <button onclick="openEditModal(${patientId}); hideTruppContextMenu()">
+            <span class="icon">✏️</span>Patientendaten bearbeiten
+          </button>
+        </li>
+      </div>
+      
+      <div class="menu-group">
+        <div class="menu-group-title">Ressourcen</div>
+        <li>
+          <button onclick="openTruppAssignmentModal(${patientId}); hideTruppContextMenu()">
+            <span class="icon">👥</span>Trupp disponieren
+          </button>
+        </li>
+        <li>
+          <button onclick="openRtmModal(${patientId}); hideTruppContextMenu()">
+            <span class="icon">🚗</span>RTM disponieren
+          </button>
+        </li>
+        <li>
+          <button class="warning" onclick="releaseTruppFromAssignment('${trupps[truppIndex].name}', ${patientId}); hideTruppContextMenu()">
+            <span class="icon">⚠️</span>Einheit aus Einsatz entlassen
+          </button>
+        </li>
+      </div>`;
   }
   
   // Name ändern immer verfügbar
-  menuHTML += `<li><button onclick="openTruppNameChangeModal(${truppIndex}); hideTruppContextMenu()">Name ändern</button></li>`;
+  menuHTML += `
+    <div class="menu-group">
+      <div class="menu-group-title">Einstellungen</div>
+      <li>
+        <button onclick="openTruppNameChangeModal(${truppIndex}); hideTruppContextMenu()">
+          <span class="icon">🔄</span>Name ändern
+        </button>
+      </li>
+    </div>`;
   
   menu.innerHTML = menuHTML;
 
@@ -522,6 +567,16 @@ function showTruppContextMenu(event, truppIndex, patientId) {
     menu.style.top = (y - rect.height) + 'px';
   }
 
+  // Animation hinzufügen
+  menu.style.opacity = '0';
+  menu.style.transform = 'scale(0.95)';
+  menu.style.transition = 'opacity 0.1s ease, transform 0.1s ease';
+  
+  requestAnimationFrame(() => {
+    menu.style.opacity = '1';
+    menu.style.transform = 'scale(1)';
+  });
+
   // Klick außerhalb schließt das Menü
   setTimeout(() => {
     document.addEventListener('click', hideTruppContextMenu, { once: true });
@@ -529,10 +584,17 @@ function showTruppContextMenu(event, truppIndex, patientId) {
   }, 100);
 }
 
+// Verbesserte Version der hideContextMenu Funktion
 function hideTruppContextMenu() {
   const menu = document.getElementById('truppContextMenu');
   if (menu) {
-    menu.remove();
+    // Animation beim Schließen
+    menu.style.opacity = '0';
+    menu.style.transform = 'scale(0.95)';
+    
+    setTimeout(() => {
+      menu.remove();
+    }, 100);
   }
 }
 

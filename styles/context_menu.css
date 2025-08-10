@@ -1,0 +1,89 @@
+/* Verbesserte Styles für das Kontextmenü */
+.context-menu {
+  position: fixed;
+  z-index: 1500;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  padding: 6px 0;
+  min-width: 220px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  list-style: none;
+  margin: 0;
+  overflow: hidden;
+}
+
+.context-menu li {
+  margin: 0;
+  padding: 0;
+}
+
+.context-menu button {
+  width: 100%;
+  text-align: left;
+  padding: 8px 16px 8px 12px;
+  border: none;
+  background: none;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  color: #333;
+  transition: background-color 0.15s ease;
+}
+
+.context-menu button:hover {
+  background-color: #f5f5f5;
+}
+
+.context-menu button:active {
+  background-color: #e8e8e8;
+}
+
+.context-menu .icon {
+  margin-right: 10px;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Verbesserte Formatierung für Menü-Überschriften */
+.context-menu .menu-group-title {
+  font-size: 11px;
+  color: #4285f4;
+  padding: 8px 16px 4px 12px;
+  margin-top: 5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: linear-gradient(to right, rgba(66, 133, 244, 0.05), transparent);
+  border-left: 2px solid #4285f4;
+  user-select: none;
+}
+
+.context-menu .menu-group:not(:first-child) {
+  border-top: 1px solid #e8e8e8;
+  margin-top: 4px;
+  padding-top: 4px;
+}
+
+/* Button-Varianten */
+.context-menu button.danger {
+  color: #e74c3c;
+}
+
+.context-menu button.primary {
+  color: #3498db;
+}
+
+.context-menu button.success {
+  color: #2ecc71;
+}
+
+.context-menu button.warning {
+  color: #f39c12;
+}
