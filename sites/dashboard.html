@@ -161,6 +161,23 @@
         background: #d0e6ff;
       }
 
+      /* U18 Badge Styling */
+      .badge-u18 {
+        display: inline-block;
+        background-color: #fff9c4;
+        margin-left: 0.4em;
+        padding: 0.1em 0.4em;
+        border: 1px solid #333;
+        border-radius: 3px;
+        font-size: 0.75em;
+        vertical-align: middle;
+}
+      td.trupp-name {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      
       /* Responsive adjustments */
       @media (max-width: 1200px) {
         .grid-patient {
@@ -216,13 +233,13 @@
       <!-- Übersichten für Trupps und RTMs nebeneinander -->
       <div class="overview-container">
         <div class="overview-section">
-          <h2>Trupps Übersicht</h2>
+          <h2>Trupp Übersicht</h2>
           <table class="overview-table">
             <thead>
               <tr>
                 <th>Trupp</th>
                 <th>Status</th>
-                <th>Patient</th>
+                <th>Patient/Einsatzort</th>
               </tr>
             </thead>
             <tbody id="trupp-overview">
@@ -240,7 +257,7 @@
               <tr>
                 <th>RTM</th>
                 <th>Status</th>
-                <th>Patient</th>
+                <th>Patient/Einsatzort</th>
               </tr>
             </thead>
             <tbody id="rtm-overview">
@@ -291,6 +308,9 @@
       }
 
       function renderDashboard() {
+        // Load the U18 list
+        const u18List = JSON.parse(localStorage.getItem('u18Trupps') || '[]');
+        
         // Trupp-Übersicht
         const trupps = JSON.parse(localStorage.getItem("trupps") || "[]");
         const truppOverview = document.getElementById("trupp-overview");
@@ -299,13 +319,26 @@
         } else {
           truppOverview.innerHTML = trupps
             .sort((a, b) => a.name.localeCompare(b.name))
-            .map((t) => `
+            .map((t) => {
+              const isU18 = u18List.includes(t.name);
+              
+              // Determine what to show in the third column based on status
+              let thirdColumn = t.patientInput || "–";
+              if (t.status === 11 && t.currentOrt) {
+                thirdColumn = `<span title="Einsatzort">🚩 ${t.currentOrt}</span>`;
+              }
+              
+              return `
               <tr>
-                <td>${t.name}</td>
+                <td class="trupp-name">
+                  ${t.name}
+                  ${isU18 ? '<span class="badge-u18">U18</span>' : ''}
+                </td>
                 <td class="status-cell" style="background-color: ${getStatusColor(t.status)};">${getStatusText(t.status)}</td>
-                <td>${t.patientInput || "–"}</td>
+                <td>${thirdColumn}</td>
               </tr>
-            `).join("");
+            `;})
+            .join("");
         }
 
         // RTM-Übersicht
@@ -324,11 +357,18 @@
               ));
               const statusText = getStatusText(r.status) || "–";
               const statusColor = r.status !== undefined ? getStatusColor(r.status) : '#ffffff';
+              
+              // Determine what to show in the third column based on status
+              let thirdColumn = patient ? patient.id : "–";
+              if (r.status === 11 && r.currentOrt) {
+                thirdColumn = `<span title="Einsatzort">🚩 ${r.currentOrt}</span>`;
+              }
+              
               return `
                 <tr>
                   <td>${r.name}</td>
                   <td class="status-cell" style="background-color: ${statusColor};">${statusText}</td>
-                  <td>${patient ? patient.id : "–"}</td>
+                  <td>${thirdColumn}</td>
                 </tr>
               `;
             }).join("");
