@@ -398,30 +398,49 @@ function deleteTrupp(index) {
   }
 }
 
-function copyToClipboard(truppName) {
-  const trupp = trupps.find((t) => t.name === truppName);
-  if (!trupp) return;
-
+function copyToClipboard(entityName, entityType = null) {
+  console.log(`copyToClipboard called with: ${entityName}, type: ${entityType}`);
   let textToCopy = "";
-
-  // Für alle Patienten-Status (3,4,7,8): Patientendaten holen
-  if ([3, 4, 7, 8].includes(trupp.status)) {
+  
+  // Auto-detect entity type if not specified
+  if (!entityType) {
+    // Check if entity exists in trupps
+    const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+    const isTrupp = trupps.some(t => t.name === entityName);
+    
+    // Check if entity exists in RTMs
+    const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
+    const isRtm = rtms.some(r => r.name === entityName);
+    
+    if (isTrupp) {
+      entityType = 'trupp';
+    } else if (isRtm) {
+      entityType = 'rtm';
+    } else {
+      console.error(`Entity "${entityName}" nicht gefunden - weder als Trupp noch als RTM`);
+      return;
+    }
+    console.log(`Entity type auto-detected as: ${entityType}`);
+  }
+  
+  // Handle Patient case
+  if (entityType === 'patient') {
     const patients = JSON.parse(localStorage.getItem("patients")) || [];
-    const patient = patients.find((p) => p.id === trupp.patientInput);
-    if (!patient) return;
-
-    const teamList = Array.isArray(patient.team)
-      ? patient.team.join(", ")
-      : "–";
-    const rtmList = Array.isArray(patient.rtm)
-      ? patient.rtm.join(", ")
-      : "–";
+    const patient = patients.find(p => p.id === entityName || p.id === Number(entityName));
+    
+    if (!patient) {
+      console.error(`Patient mit ID "${entityName}" nicht gefunden`);
+      return;
+    }
+    
+    const teamList = Array.isArray(patient.team) ? patient.team.join(", ") : "–";
+    const rtmList = Array.isArray(patient.rtm) ? patient.rtm.join(", ") : "–";
     const nachf = (patient.history || [])
-      .filter((e) => /nachgefordert/.test(e))
+      .filter(e => /nachgefordert/.test(e))
       .join("\n") || "–";
     const remarks = patient.remarks || "–";
     const historyText = (patient.history || []).join("\n") || "–";
-
+    
     textToCopy = `Patient Nr.: ${patient.id}
 Trupp: ${teamList}
 RTM: ${rtmList}
@@ -436,27 +455,132 @@ Bemerkung: ${remarks}
 Patienten-Historie:
 ${historyText}`;
   }
-  else {
-    switch (trupp.status) {
-      case 2:
-        textToCopy = `${trupp.name} einsatzbereit in UHS`;
-        break;
-      case 6:
-        textToCopy = `${trupp.name} nicht einsatzbereit`;
-        break;
-      case 11:
-        textToCopy = `${trupp.name} übernimmt Streifengebiet ${trupp.currentOrt || "[Ort]"}`;
-        break;
-      case 12:
-        const alle = trupps
-          .filter((t) => t.status === 12)
-          .map((t) => t.name)
-          .join(", ");
-        textToCopy = `${alle} Spielfeldrand erreicht`;
-        break;
-      default:
-        textToCopy = `${trupp.name}: ${trupp.status}`;
+  // Handle Trupp case
+  else if (entityType === 'trupp') {
+    // Load trupps from localStorage instead of relying on global variable
+    const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+    const trupp = trupps.find((t) => t.name === entityName);
+    if (!trupp) {
+      console.error(`Trupp "${entityName}" nicht gefunden`);
+      return;
     }
+
+    // Für alle Patienten-Status (3,4,7,8): Patientendaten holen
+    if ([3, 4, 7, 8].includes(trupp.status)) {
+      const patients = JSON.parse(localStorage.getItem("patients")) || [];
+      const patient = patients.find((p) => p.id === trupp.patientInput);
+      if (!patient) {
+        console.error(`Patient (ID: ${trupp.patientInput}) nicht gefunden`);
+        textToCopy = `${trupp.name} zugewiesen zu Patient ${trupp.patientInput} (Patient nicht gefunden)`;
+      } else {
+        const teamList = Array.isArray(patient.team)
+          ? patient.team.join(", ")
+          : "–";
+        const rtmList = Array.isArray(patient.rtm)
+          ? patient.rtm.join(", ")
+          : "–";
+        const nachf = (patient.history || [])
+          .filter((e) => /nachgefordert/.test(e))
+          .join("\n") || "–";
+        const remarks = patient.remarks || "–";
+        const historyText = (patient.history || []).join("\n") || "–";
+
+        textToCopy = `Patient Nr.: ${patient.id}
+Trupp: ${teamList}
+RTM: ${rtmList}
+Standort: ${patient.location || "–"}
+Alter: ${patient.age || "–"}
+Geschlecht: ${patient.gender || "–"}
+Verdachtsdiagnose: ${patient.diagnosis || "–"}
+Nachforderungen:
+${nachf}
+Bemerkung: ${remarks}
+
+Patienten-Historie:
+${historyText}`;
+      }
+    }
+    else {
+      switch (trupp.status) {
+        case 2:
+          textToCopy = `${trupp.name} einsatzbereit in UHS`;
+          break;
+        case 6:
+          textToCopy = `${trupp.name} nicht einsatzbereit`;
+          break;
+        case 11:
+          textToCopy = `${trupp.name} übernimmt Streifengebiet ${trupp.currentOrt || "[Ort]"}`;
+          break;
+        case 12:
+          const alleTrupps = trupps
+            .filter((t) => t.status === 12)
+            .map((t) => t.name)
+            .join(", ");
+          textToCopy = `${alleTrupps} Spielfeldrand erreicht`;
+          break;
+        default:
+          textToCopy = `${trupp.name}: ${trupp.status}`;
+      }
+    }
+  }
+  // Handle RTM case
+  else if (entityType === 'rtm') {
+    const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
+    const rtm = rtms.find((r) => r.name === entityName);
+    if (!rtm) {
+      console.error(`RTM "${entityName}" nicht gefunden im localStorage`);
+      return;
+    }
+
+    console.log(`RTM gefunden:`, rtm);
+
+    // Check if RTM has a patient assigned
+    if (rtm.patientInput) {
+      const patients = JSON.parse(localStorage.getItem("patients")) || [];
+      const patient = patients.find((p) => p.id === rtm.patientInput);
+      if (patient) {
+        const teamList = Array.isArray(patient.team)
+          ? patient.team.join(", ")
+          : "–";
+        const rtmList = Array.isArray(patient.rtm)
+          ? patient.rtm.join(", ")
+          : "–";
+        const nachf = (patient.history || [])
+          .filter((e) => /nachgefordert/.test(e))
+          .join("\n") || "–";
+        const remarks = patient.remarks || "–";
+        const historyText = (patient.history || []).join("\n") || "–";
+
+        textToCopy = `Patient Nr.: ${patient.id}
+Trupp: ${teamList}
+RTM: ${rtmList}
+Standort: ${patient.location || "–"}
+Alter: ${patient.age || "–"}
+Geschlecht: ${patient.gender || "–"}
+Verdachtsdiagnose: ${patient.diagnosis || "–"}
+Nachforderungen:
+${nachf}
+Bemerkung: ${remarks}
+
+Patienten-Historie:
+${historyText}`;
+      } else {
+        textToCopy = `${rtm.name} zugewiesen zu Patient ${rtm.patientInput} (Patient nicht gefunden)`;
+      }
+    } else {
+      // Basic RTM info if no patient assigned
+      const statusText = rtm.status ? String(rtm.status) : 'unbekannt';
+      textToCopy = `RTM: ${rtm.name}, Status: ${statusText}`;
+    }
+  } else {
+    console.error(`Unbekannter Entity-Typ: ${entityType}`);
+    return;
+  }
+
+  // Don't try to copy empty text
+  if (!textToCopy) {
+    console.error("Nichts zu kopieren");
+    return;
   }
 
   navigator.clipboard

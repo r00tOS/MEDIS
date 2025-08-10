@@ -1375,6 +1375,7 @@ function updatePatientStatusBasedOnResourceStatus(resourceName, newStatus, resou
     }));
   }
 }
+
 /**
  * Zeigt einen Prompt an, um einen benutzerdefinierten Eintrag zur Patienten-Historie hinzuzufügen
  * @param {string|number} patientId - ID des Patienten
@@ -1445,4 +1446,23 @@ function addCustomHistory(id, message) {
   patient.history.push(`${getCurrentTime()} ${message}`);
   localStorage.setItem("patients", JSON.stringify(patients));
   loadPatients();
+}
+
+/**
+ * Kopiert die Patientendaten in die Zwischenablage
+ * @param {string|number} patientId - ID des Patienten
+ */
+function copyPatientData(patientId) {
+  // Patientendaten aus localStorage laden
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  const patient = patients.find(p => p.id === patientId);
+  
+  if (!patient) {
+    console.error(`Patient mit ID ${patientId} nicht gefunden!`);
+    return;
+  }
+  
+  // Patient-ID als String für copyToClipboard übergeben
+  // Der Typ 'patient' wird als neue Entität für copyToClipboard verwendet
+  copyToClipboard(String(patientId), 'patient');
 }
