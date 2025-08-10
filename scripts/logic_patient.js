@@ -975,13 +975,57 @@ function removeRtm(id, index) {
   if (!confirm("Soll dieses RTM wirklich entfernt werden?")) return;
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
   const patient = patients.find((p) => p.id === id);
+  
   if (Array.isArray(patient.rtm)) {
     const removed = patient.rtm.splice(index, 1);
+    const removedRtmName = removed[0];
+    
     if (!patient.history) patient.history = [];
-    patient.history.push(`${getCurrentTime()} RTM ${removed[0]} entfernt`);
+    patient.history.push(`${getCurrentTime()} RTM ${removedRtmName} entfernt`);
+    
+    // Save patient changes
     localStorage.setItem("patients", JSON.stringify(patients));
     
-    // Disposition-Update NUR bei RTM-Entfernung auslösen
+    // Now update the RTM in the RTM tracker
+    const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
+    const rtm = rtms.find(r => r.name === removedRtmName);
+    
+    if (rtm) {
+      const now = Date.now();
+      
+      // Record patient association in history if active
+      if (rtm.patientInput && rtm.patientStart) {
+        rtm.patientHistorie = rtm.patientHistorie || [];
+        rtm.patientHistorie.push({
+          nummer: rtm.patientInput,
+          von: rtm.patientStart,
+          bis: now
+        });
+      }
+      
+      // Reset RTM status and patient data
+      rtm.patientInput = null;
+      rtm.patientStart = null;
+      rtm.status = 0;
+      
+      // Add entry to RTM history
+      rtm.history = rtm.history || [];
+      const timeStr = new Date(now).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      rtm.history.push(`${timeStr} Status: 0`);
+      
+      // Save RTM changes
+      localStorage.setItem("rtms", JSON.stringify(rtms));
+      
+      // Dispatch event for RTM tracker
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: "rtms",
+          newValue: JSON.stringify(rtms),
+        })
+      );
+    }
+    
+    // Disposition-Update for UI refresh
     if (typeof triggerDispositionUpdate === 'function') {
       triggerDispositionUpdate();
     }
@@ -1330,4 +1374,75 @@ function updatePatientStatusBasedOnResourceStatus(resourceName, newStatus, resou
       newValue: JSON.stringify(patients)
     }));
   }
+}
+/**
+ * Zeigt einen Prompt an, um einen benutzerdefinierten Eintrag zur Patienten-Historie hinzuzufügen
+ * @param {string|number} patientId - ID des Patienten
+ */
+function promptAddEntry(patientId) {
+  // Patienten aus dem localStorage laden
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  
+  // Sicherstellen, dass patientId korrekt verglichen wird (als String)
+  const strPatientId = String(patientId);
+  const patient = patients.find((p) => String(p.id) === strPatientId);
+  
+  if (!patient) {
+    console.error(`Patient mit ID ${patientId} nicht gefunden!`);
+    return;
+  }
+
+  // Eingabeaufforderung für den neuen Eintrag
+  const newEntry = prompt("Bitte geben Sie einen neuen Eintrag für die Patienten-Historie ein:");
+  
+  // Abbrechen bei leerem Eintrag
+  if (!newEntry || !newEntry.trim()) return;
+  
+  // History-Array sicherstellen
+  if (!patient.history) patient.history = [];
+  
+  // Aktuellen Zeitstempel holen - mit Fallback
+  let timeStr;
+  try {
+    timeStr = getCurrentTime();
+  } catch (e) {
+    timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    console.warn("getCurrentTime() nicht verfügbar, verwende Fallback");
+  }
+  
+  // Eintrag zur Historie hinzufügen
+  patient.history.push(`${timeStr} ${newEntry.trim()}`);
+  
+  console.log(`Hinzufügen von Eintrag zu Patient ${patientId}:`, patient.history);
+  
+  // Zurück in localStorage speichern
+  localStorage.setItem("patients", JSON.stringify(patients));
+  
+  // Storage-Event auslösen für UI-Updates in anderen Fenstern/Tabs
+  window.dispatchEvent(
+    new StorageEvent("storage", {
+      key: "patients",
+      newValue: JSON.stringify(patients),
+    })
+  );
+  
+  // UI aktualisieren - auch hier ID als String übergeben
+  if (typeof loadPatients === 'function') {
+    console.log(`loadPatients(${strPatientId}) wird aufgerufen`);
+    loadPatients(strPatientId);
+  } else {
+    console.warn("loadPatients() nicht verfügbar");
+  }
+  
+  console.log(`Eintrag hinzugefügt für Patient ${patientId}: ${newEntry.trim()}`);
+}
+
+function addCustomHistory(id, message) {
+  if (!message.trim()) return;
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  const patient = patients.find((p) => p.id === id);
+  if (!patient.history) patient.history = [];
+  patient.history.push(`${getCurrentTime()} ${message}`);
+  localStorage.setItem("patients", JSON.stringify(patients));
+  loadPatients();
 }
