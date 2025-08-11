@@ -1,455 +1,277 @@
 function renderRTMs() {
+  // Sicherheitsprüfung: rtms muss verfügbar sein
+  if (typeof rtms === 'undefined' || !Array.isArray(rtms)) {
+    return;
+  }
+  
   const scrollY = window.scrollY;
   const now = Date.now();
   const openId = localStorage.getItem("openRTMId");
 
   const prevRects = new Map();
-  document.querySelectorAll(".rtm").forEach((el) => {
+  document.querySelectorAll(".rtm-row").forEach((el) => {
     if (el.dataset.key)
       prevRects.set(el.dataset.key, el.getBoundingClientRect());
   });
 
-  einsatzContainer.innerHTML =
-    pauseContainer.innerHTML =
-    nichtContainer.innerHTML =
-      "";
-  const einsatz = [],
-    pause = [],
-    nicht = [];
+  // Clear containers and prepare data
+  einsatzContainer.innerHTML = pauseContainer.innerHTML = nichtContainer.innerHTML = "";
+  const einsatz = [], pause = [], nicht = [];
 
   rtms.forEach((rtm, i) => {
     if (!rtm.id)
       rtm.id = "rtm_" + Math.random().toString(36).substring(2, 10);
-    const div = document.createElement("div");
+    
     const statusDefs = window.statusOptions;
     const currentDef = statusDefs.find(o => o.status === rtm.status) || statusDefs[0];
     const opt = window.statusOptions.find(o => o.status === rtm.status);
-    const statusLabel = opt
-    ? `${rtm.status} – ${opt.text}`
-    : String(rtm.status);
-
-    div.className = "rtm";
-    div.dataset.key = rtm.name;
-    div.dataset.rtmId = rtm.id;
-    div.dataset.rtmIndex = i; // Für Kontextmenü
     
-    // Rechtsklick-Event für Kontextmenü hinzufügen
-    div.addEventListener('contextmenu', (event) => {
-      event.preventDefault();
-      // Kontextmenü immer anzeigen, nicht nur bei Patient-Status
-      showRTMContextMenu(event, i, rtm.patientInput);
-    });
-    
-    // wenn diese ID die gespeicherte offene ist, öffnen wir sie gleich
-    const isOpen = rtm.id === openId;
-    if (isOpen) div.classList.add('show-status-buttons');
-
     const einsatzzeit = rtm.einsatzzeit || 0;
     let pausenzeit = rtm.pausenzeit || 0;
     let totalPause = rtm.totalPauseTime || 0;
 
-    if (rtm.currentEinsatzStart && einsatzzeit > nextMaxEinsatzTime * 60000)
-      div.classList.add("ueberzogen");
-    if (rtm.status === 61)
-      div.classList.add("rueckhaltung");
-    if (rtm.status === 12) div.classList.add("spielfeldrand");
-    if ([3, 4, 7, 8].includes(rtm.status))
-      div.classList.add("patient");
-    // 1)gemeinsame Einsatz-Gruppe
-    if (
-      [11, 12, 0].includes(
-        rtm.status
-      )
-    ) {
-      div.classList.add("einsatz");
-      // und wenn es genau 0 ist, den lila Style
-      if (rtm.status === 0) {
-        div.classList.add("einsatz-beendet");
-      }
-    }
-    // 2) Pause-Status
-    else if (
-      [1, 2, 61].includes(rtm.status)
-    ) {
-      div.classList.add("pause");
-    }
-    // 3) alle anderen → nicht einsatzbereit
-    else {
-      div.classList.add("nicht-einsatzbereit");
-    }
-
     const min = (ms) => Math.floor(ms / 60000);
-    const timeDisplay =
-      rtm.currentEinsatzStart &&
-      rtm.status !== 61
-        ? `Aktuelle Einsatzzeit: ${min(einsatzzeit)} Min`
-        : `Aktuelle Pausenzeit: ${min(pausenzeit)} Min${
-            rtm.status === 61
-              ? " (Rückhaltung zählt als Pause)"
-              : ""
-          }`;
+    const timeDisplay = rtm.currentEinsatzStart && rtm.status !== 61
+        ? `${min(einsatzzeit)} Min`
+        : `${min(pausenzeit)} Min`;
 
-    const gesamtPause = `Gesamte Pausenzeit: ${min(totalPause)} Min`;
-
-    const progress =
-      rtm.currentEinsatzStart &&
-      rtm.status !== 61
+    const progress = rtm.currentEinsatzStart && rtm.status !== 61
         ? Math.min(einsatzzeit / (nextMaxEinsatzTime * 60000), 1)
         : 0;
-    const progressBar =
-      rtm.currentEinsatzStart &&
-      rtm.status !== 61
-        ? `<div style='background:#ccc;height:8px;border-radius:4px;margin-top:4px;'>
-     <div style='height:8px;width:${Math.floor(
-       progress * 100
-     )}%;background:#28a745;border-radius:4px;'></div>
-   </div>`
-        : "";
-div.innerHTML = `
-<div class="rtm-header">
-  <h3>
-    ${rtm.name}
-  </h3>
-  ${rtm.status === 6
-    ? `<button class="delete-btn" onclick="deleteRTM(${i})">×</button>`
-    : ''}
-  </div>
 
- <div class="status-dropdown">
-  <button
-    class="status-toggle"
-    onclick="toggleRTMStatusDropdown('${rtm.id}')"
-  >
-    <span
-    class="status-code"
-    style="
-      background: ${currentDef.color};
-      border: 1px solid ${currentDef.color};
-    "
-    >
-    ${currentDef.status}
-    </span>
-    ${currentDef.text} ▾
-  </button>
+    const isOpen = rtm.id === openId;
 
-  <ul class="status-menu${rtm.id === openId ? ' open' : ''}">
-    ${statusDefs.map(o => `
-    <li
-      class="${o.status === currentDef.status ? 'active' : ''}"
-      onclick="onRTMStatusSelected(${i}, ${o.status}, '${rtm.id}')"
-    >
-      <span
-      class="status-code"
-      style="
-        background: ${o.color};
-        border: 1px solid ${o.color};
-      "
-      >
-      ${o.status}
-      </span>
-      ${o.text}
-    </li>
-    `).join('')}
-  </ul>
-  </div>
+    // Create table row
+    const row = document.createElement("tr");
+    row.className = "rtm-row";
+    row.dataset.key = rtm.name;
+    row.dataset.rtmId = rtm.id;
+    row.dataset.rtmIndex = i;
 
-  ${![61, 1].includes(rtm.status)
-  ? `
-    <button class="meldung-btn" onclick="copyToClipboard('${rtm.name}')">
-    Meldung
-    </button>
-    ${[3,4,7,8].includes(rtm.status)
-    ? `
-    `
-    : ``
+    // Add status classes for styling
+    if (rtm.currentEinsatzStart && einsatzzeit > nextMaxEinsatzTime * 60000) row.classList.add("ueberzogen");
+    if (rtm.status === 61) row.classList.add("rueckhaltung");
+    if (rtm.status === 12) row.classList.add("spielfeldrand");
+    if ([3, 4, 7, 8].includes(rtm.status)) row.classList.add("patient");
+    
+    if ([11, 12, 0].includes(rtm.status)) {
+      row.classList.add("einsatz");
+      if (rtm.status === 0) row.classList.add("einsatz-beendet");
+    } else if ([1, 2, 61].includes(rtm.status)) {
+      row.classList.add("pause");
+    } else {
+      row.classList.add("nicht-einsatzbereit");
     }
-  `
-  : ``
-  }
-</div>
 
+    // Patient information
+    let patientInfo = '';
+    if ([3, 4, 7, 8].includes(rtm.status) && rtm.patientInput) {
+      const patients = JSON.parse(localStorage.getItem("patients")) || [];
+      const patient = patients.find(p => p.id === rtm.patientInput || p.id === String(rtm.patientInput));
+      if (patient) {
+        // Update disposition status
+        const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+        const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
+        if (typeof updatePatientDispositionStatus === 'function') {
+          updatePatientDispositionStatus(patient, trupps, rtms);
+        }
 
-      ${
-    rtm.status === 11
-      ? `<p><strong>${
-        rtm.currentOrt || "kein Einsatzort"
-      }</strong> <button onclick="editOrt(${i})">✎</button></p>`
-      : ""
-    }
-${(() => {
-  // nur für Patient-Status 3, 4, 7, 8
-  if (![3, 4, 7, 8].includes(rtm.status)) {
-    return "";
-  }
+        // Generate disposition symbols - Simplified version without frame and title
+        let dispositionSymbols = '';
+        if (patient.suggestedResources && Array.isArray(patient.suggestedResources) && patient.suggestedResources.length > 0) {
+          dispositionSymbols = '<div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">';
+          
+          patient.suggestedResources.forEach(resource => {
+            const abbrev = getResourceAbbreviation(resource);
+            
+            if (!patient.dispositionStatus) {
+              patient.dispositionStatus = {};
+            }
+            
+            const isDispatched = patient.dispositionStatus[resource] === 'dispatched';
+            const isIgnored = patient.dispositionStatus[resource + '_ignored'] === true;
+            
+            // CSS-Klassen mit Priorität: dispatched überschreibt alles
+            let cssClass = 'disposition-symbol ';
+            if (isDispatched) {
+              cssClass += 'dispatched';
+            } else if (isIgnored) {
+              cssClass += 'ignored';
+            } else {
+              cssClass += 'required';
+            }
+            
+            dispositionSymbols += '<span class="' + cssClass + '"' +
+                   ' onclick="toggleDispositionStatus(' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
+                   ' oncontextmenu="toggleDispositionIgnore(event, ' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
+                   ' title="' + resource + '">' +
+                   abbrev + '</span>';
+          });
+          
+          dispositionSymbols += '</div>';
+        }
 
-  // Check if rtm.patientInput exists
-  if (!rtm.patientInput) {
-    return "";
-  }
-
-  // passenden Patient holen
-  const patients = JSON.parse(localStorage.getItem("patients")) || [];
-  const patient = patients.find(p => p.id === rtm.patientInput || p.id === String(rtm.patientInput));
-  if (!patient) {
-    return '<div style="margin: 8px 0; color: #f00; font-style: italic;">Patient nicht gefunden (ID: ' + rtm.patientInput + ')</div>';
-  }
-
-
-  // Disposition-Status aktualisieren (zentrale Funktion aus render_patients.js)
-  const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
-  const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
-  if (typeof updatePatientDispositionStatus === 'function') {
-    updatePatientDispositionStatus(patient, trupps, rtms);
-  }
-
-  // Hilfsfunktion für Ressourcen-Kürzel
-  const getResourceAbbreviation = (resource) => {
-    const abbreviations = {
-      'Trupp': 'T',
-      'RTW': 'RTW',
-      'RTM': 'RTM',
-      'UHS-Notarzt oder NEF': 'NA',
-      'NEF': 'NEF',
-      'First Responder': 'FR',
-      'Info an ASL': 'ASL',
-      'Ordnungsdienst hinzuziehen': 'OD',
-      'Polizei hinzuziehen': 'POL',
-      'Ggf. Ordnungsdienst hinzuziehen': 'OD?',
-      'Ggf. Polizei hinzuziehen': 'POL?'
-    };
-    
-    // Für alle anderen "Ggf. ..." Ressourcen automatisch behandeln
-    if (resource.startsWith('Ggf. ') && !abbreviations[resource]) {
-      const baseResource = resource.replace('Ggf. ', '');
-      const baseAbbrev = abbreviations[baseResource];
-      if (baseAbbrev) {
-        return baseAbbrev + '?';
-      }
-      // Fallback: erste 3 Zeichen + ?
-      return baseResource.substring(0, 3).toUpperCase() + '?';
-    }
-    
-    return abbreviations[resource] || resource.substring(0, 3).toUpperCase();
-  };
-
-  // Dispositionssymbole generieren - DEBUG VERSION (wie in render_trupps.js)
-  let dispositionSymbols = '';
-  
-  if (patient.suggestedResources && Array.isArray(patient.suggestedResources) && patient.suggestedResources.length > 0) {
-    // Debug-Ausgabe
-    console.log('Rendering disposition symbols for patient:', patient.id);
-    console.log('Patient disposition status:', patient.dispositionStatus);
-    
-    dispositionSymbols = '<div class="disposition-symbols" style="display: flex; flex-direction: column; gap: 4px; margin: 8px 0;">' +
-      '<span style="font-weight: bold; margin-bottom: 4px;">Dispositionsvorschlag:</span>' +
-      '<div style="display: flex; flex-wrap: wrap; gap: 4px;">';
-    
-    patient.suggestedResources.forEach(resource => {
-      const abbrev = getResourceAbbreviation(resource);
-      
-      if (!patient.dispositionStatus) {
-        patient.dispositionStatus = {};
-      }
-      
-      const isDispatched = patient.dispositionStatus[resource] === 'dispatched';
-      const isIgnored = patient.dispositionStatus[resource + '_ignored'] === true;
-      
-      console.log(`Resource: ${resource}, isDispatched: ${isDispatched}, isIgnored: ${isIgnored}`);
-      
-      // CSS-Klassen mit klarer Priorität: dispatched > ignored > required
-      let cssClass = 'disposition-symbol ';
-      if (isDispatched) {
-        // Dispatched überschreibt alle anderen Status
-        cssClass += 'dispatched';
-        console.log(`Applied CSS class: ${cssClass}`);
-      } else if (isIgnored) {
-        cssClass += 'ignored';
+        patientInfo = `
+          <div class="patient-info">
+            <strong>Patient ${patient.id}</strong>
+            <small>${patient.age || "–"} | ${patient.gender || "–"} | ${patient.diagnosis || "–"} | ${patient.location || "–"}</small>
+            ${dispositionSymbols}
+          </div>
+        `;
       } else {
-        cssClass += 'required';
+        patientInfo = `<div style="color: #f00; font-style: italic;">Patient nicht gefunden (ID: ${rtm.patientInput})</div>`;
       }
-      
-      dispositionSymbols += '<span class="' + cssClass + '"' +
-        ' onclick="toggleDispositionStatus(' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
-        ' oncontextmenu="toggleDispositionIgnore(event, ' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
-        ' title="' + resource + '">' +
-        abbrev + '</span>';
-    });
-    
-    dispositionSymbols += '</div></div>';
-  } else {
-    dispositionSymbols = '<div style="margin: 8px 0; color: #666; font-style: italic;">Keine Dispositionsvorschläge verfügbar</div>';
-  }
+    }
 
-  // jetzt das Markup mit <table> und <caption>
-  return `
-<div class="patient-summary">
-  <table class="patient-summary-table">
-    <caption>Patient ${rtm.patientInput}</caption>
-    <thead>
-      <tr>
-        <th>Diagnose</th>
-        <th>Alter</th>
-        <th>Geschl.</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>${patient.diagnosis || "–"}</td>
-        <td>${patient.age       || "–"}</td>
-        <td>${patient.gender    || "–"}</td>
-      </tr>
-      <tr>
-        <th>Standort</th>
-        <td colspan="2">${patient.location || "–"}</td>
-      </tr>
-    </tbody>
-  </table>
-  ${dispositionSymbols}
-</div>
-  `;
-})()}
-
-
-
-      <p>${timeDisplay}</p>
-      ${progressBar}
-      <p>${gesamtPause}</p>
-
-      <p><strong>Einsatzorte:</strong><br>
-      ${
-        rtm.einsatzHistorie.length
-        ? rtm.einsatzHistorie
-          .map(
-            (h) =>
-            `${h.ort} (${formatTime(h.von)} - ${formatTime(h.bis)})`
-          )
-          .join("<br>")
-        : "–"
-      }
-      </p>
-      <p><strong>Patientennummern:</strong><br>
-      ${
-        rtm.patientHistorie.length
-        ? rtm.patientHistorie
-          .map(
-            (h) =>
-            `${h.nummer} (${formatTime(h.von)} - ${formatTime(
-              h.bis
-            )})`
-          )
-          .join("<br>")
-        : "–"
-      }
-      </p>
+    // Build row HTML
+    row.innerHTML = `
+      <td class="rtm-name">
+        <strong>${rtm.name}</strong>
+        ${rtm.status === 6 ? `<button class="delete-btn" onclick="deleteRTM(${i})">×</button>` : ''}
+      </td>
+      <td class="status-cell">
+        <div class="status-dropdown">
+          <button class="status-toggle" onclick="toggleRTMStatusDropdown('${rtm.id}')">
+            <span class="status-code" style="background: ${currentDef.color}; border: 1px solid ${currentDef.color};">
+              ${currentDef.status}
+            </span>
+            ${currentDef.text} ▾
+          </button>
+          <ul class="status-menu${rtm.id === openId ? ' open' : ''}">
+            ${statusDefs.map(o => `
+              <li class="${o.status === currentDef.status ? 'active' : ''}" onclick="onRTMStatusSelected(${i}, ${o.status}, '${rtm.id}')">
+                <span class="status-code" style="background: ${o.color}; border: 1px solid ${o.color};">
+                  ${o.status}
+                </span>
+                ${o.text}
+              </li>
+            `).join('')}
+          </ul>
+        </div>
+      </td>
+      <td class="location-patient-cell">
+        ${rtm.status === 11 ? 
+          `<div style="display: flex; align-items: center; gap: 8px;">
+             <strong>${rtm.currentOrt || "kein Einsatzort"}</strong> 
+             <button onclick="editOrt(${i})" class="edit-btn">✎</button>
+           </div>` : 
+          [3, 4, 7, 8].includes(rtm.status) && patientInfo ? 
+            patientInfo : '–'}
+      </td>
+      <td class="time-cell">
+        <div class="time-display">${timeDisplay}</div>
+        ${rtm.currentEinsatzStart && rtm.status !== 61 ? 
+          `<div class="progress-bar">
+            <div class="progress-fill" style="width: ${Math.floor(progress * 100)}%" data-progress="${Math.floor(progress * 10)}"></div>
+           </div>` : ''}
+        <small>Gesamt Pause: ${min(totalPause)} Min</small>
+      </td>
     `;
 
-const einsatzSort = 
-  rtm.status === 12
-    ? 99
-    : [3, 4, 7, 8].includes(rtm.status)
-      ? 2
-      : rtm.status === 0
-        ? 1
-        : 0;
-    if (
-      [11, 3, 12, 0, 4, 7, 8].includes(
-        rtm.status
-      )
-    )
-      einsatz.push({ el: div, sort: einsatzSort });
-    else if (
-      [2, 1].includes(rtm.status)
-    )
-      pause.push({ el: div, sort: pausenzeit });
-    else if (rtm.status === 61)
-      pause.push({ el: div, sort: -1 });
-    else nicht.push({ el: div, sort: pausenzeit });
+    // Add context menu
+    setTimeout(() => {
+      row.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        showRTMContextMenu(e, i, rtm.patientInput);
+      });
+    }, 10);
+
+    // Sorting logic
+    const einsatzSort = 
+      rtm.status === 12 ? 99 : 
+      [3, 4, 7, 8].includes(rtm.status) ? 2 : 
+      rtm.status === 0 ? 1 : 0;
+
+    if ([11, 3, 12, 0, 4, 7, 8].includes(rtm.status)) {
+      einsatz.push({ el: row, sort: einsatzSort });
+    } else if ([2, 1].includes(rtm.status)) {
+      pause.push({ el: row, sort: pausenzeit });
+    } else if (rtm.status === 61) {
+      pause.push({ el: row, sort: -1 });
+    } else {
+      nicht.push({ el: row, sort: pausenzeit });
+    }
   });
 
-  // 1) Im Einsatz: sortiere absteigend nach aktueller Einsatzzeit
-  // --- am Ende von renderRTM(), statt deiner jetzigen drei .sort-Blöcke ---
+  // Create tables for each section
+  function createTable(container, title) {
+    container.innerHTML = `
+      <table class="rtms-table">
+        <thead>
+          <tr>
+            <th>RTM</th>
+            <th>Status</th>
+            <th>Einsatzort/Patient</th>
+            <th>Zeit</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    `;
+    return container.querySelector('tbody');
+  }
 
-  // 1) IM EINSATZ: erst nach Status-Priorität (sort), dann nach Einsatzzeit absteigend
-  einsatz
-    .sort((a, b) => {
-      if (a.sort !== b.sort) return a.sort - b.sort;
-      const tA =
-        rtms.find((t) => t.name === a.el.dataset.key).einsatzzeit || 0;
-      const tB =
-        rtms.find((t) => t.name === b.el.dataset.key).einsatzzeit || 0;
-      return tB - tA; // längste Einsatzzeit zuerst
-    })
-    .forEach((t) => einsatzContainer.appendChild(t.el));
+  const einsatzTable = createTable(einsatzContainer, 'Im Einsatz');
+  const pauseTable = createTable(pauseContainer, 'In Pause');
+  const nichtTable = createTable(nichtContainer, 'Nicht Einsatzbereit');
 
-  // 2) IN PAUSE: erst nach Pausen-Priorität (hier pausenstatus, wir haben kein sort dafür,
-  //    also überspringen wir stattdessen direkt die Zeit-Sortierung)
-  pause
-    .sort((a, b) => {
-      const statusOrder = [
-        2,
-        1,
-        61,
-      ];
-      const trA = rtms.find((t) => t.name === a.el.dataset.key);
-      const trB = rtms.find((t) => t.name === b.el.dataset.key);
-      const ordA = statusOrder.indexOf(trA.status);
-      const ordB = statusOrder.indexOf(trB.status);
-      if (ordA !== ordB) return ordA - ordB;
-      // gleiche Gruppe → längste Pausenzeit zuerst
-      return (trB.pausenzeit || 0) - (trA.pausenzeit || 0);
-    })
-    .forEach((t) => pauseContainer.appendChild(t.el));
+  // Sort and append rows
+  einsatz.sort((a, b) => {
+    if (a.sort !== b.sort) return a.sort - b.sort;
+    const tA = rtms.find((t) => t.name === a.el.dataset.key).einsatzzeit || 0;
+    const tB = rtms.find((t) => t.name === b.el.dataset.key).einsatzzeit || 0;
+    return tB - tA;
+  }).forEach((t) => einsatzTable.appendChild(t.el));
 
-  // 3) NICHT EINSATZBEREIT: weiter unverändert, nach Pausenzeit
-  nicht
-    .sort((a, b) => {
-      const pA =
-        rtms.find((t) => t.name === a.el.dataset.key).pausenzeit || 0;
-      const pB =
-        rtms.find((t) => t.name === b.el.dataset.key).pausenzeit || 0;
-      return pB - pA;
-    })
-    .forEach((t) => nichtContainer.appendChild(t.el));
+  pause.sort((a, b) => {
+    const statusOrder = [2, 1, 61];
+    const trA = rtms.find((t) => t.name === a.el.dataset.key);
+    const trB = rtms.find((t) => t.name === b.el.dataset.key);
+    const ordA = statusOrder.indexOf(trA.status);
+    const ordB = statusOrder.indexOf(trB.status);
+    if (ordA !== ordB) return ordA - ordB;
+    return (trB.pausenzeit || 0) - (trA.pausenzeit || 0);
+  }).forEach((t) => pauseTable.appendChild(t.el));
 
-// am Ende von renderRTM(), kurz vor dem schließenden '}':
+  nicht.sort((a, b) => {
+    const pA = rtms.find((t) => t.name === a.el.dataset.key).pausenzeit || 0;
+    const pB = rtms.find((t) => t.name === b.el.dataset.key).pausenzeit || 0;
+    return pB - pA;
+  }).forEach((t) => nichtTable.appendChild(t.el));
 
-// 1) Scroll zurücksetzen
-window.scrollTo(0, scrollY);
+  // Restore scroll and FLIP animation
+  window.scrollTo(0, scrollY);
 
-// 2) FLIP: First
-const cards = Array.from(document.querySelectorAll(".rtm"));
-const newRects = new Map();
-cards.forEach(el => {
-  newRects.set(el.dataset.key, el.getBoundingClientRect());
-});
+  const rows = Array.from(document.querySelectorAll(".rtm-row"));
+  const newRects = new Map();
+  rows.forEach(el => {
+    newRects.set(el.dataset.key, el.getBoundingClientRect());
+  });
 
-// 3) Invert + Play
-cards.forEach(el => {
-  const key = el.dataset.key;
-  const oldRect = prevRects.get(key);
-  const newRect = newRects.get(key);
-  if (!oldRect || !newRect) return;
+  rows.forEach(el => {
+    const key = el.dataset.key;
+    const oldRect = prevRects.get(key);
+    const newRect = newRects.get(key);
+    if (!oldRect || !newRect) return;
 
-  const dx = oldRect.left - newRect.left;
-  const dy = oldRect.top  - newRect.top;
-  if (dx === 0 && dy === 0) return;
+    const dx = oldRect.left - newRect.left;
+    const dy = oldRect.top - newRect.top;
+    if (dx === 0 && dy === 0) return;
 
-  // a) Übergang abschalten und sofort in alte Position versetzen
-  el.style.transition = "none";
-  el.style.transform  = `translate(${dx}px, ${dy}px)`;
-  el.style.willChange = "transform";
+    el.style.transition = "none";
+    el.style.transform = `translate(${dx}px, ${dy}px)`;
+    el.style.willChange = "transform";
 
-  // b) Im nächsten Frame Übergang aktivieren und Transform zurücksetzen
-  requestAnimationFrame(() => {
-    el.style.transition = "transform 0.4s ease";
-    el.style.transform  = "";
-    // c) Cleanup nach Ende der Transition
-    el.addEventListener("transitionend", function cleanup() {
-      el.style.transition = el.style.transform = el.style.willChange = "";
-      el.removeEventListener("transitionend", cleanup);
+    requestAnimationFrame(() => {
+      el.style.transition = "transform 0.4s ease";
+      el.style.transform = "";
+      el.addEventListener("transitionend", function cleanup() {
+        el.style.transition = el.style.transform = el.style.willChange = "";
+        el.removeEventListener("transitionend", cleanup);
+      });
     });
   });
-});
 }
 
 // Kontextmenü anzeigen - verbesserte Version
@@ -496,6 +318,17 @@ function showRTMContextMenu(event, rtmIndex, patientId) {
             <span class="icon">✏️</span>Patientendaten bearbeiten
           </button>
         </li>
+        ${![61, 1].includes(rtms[rtmIndex].status) ? 
+          `<li>
+            <button onclick="copyToClipboard('${rtms[rtmIndex].name}', 'rtm'); hideRTMContextMenu()">
+              <span class="icon">📋</span>Meldung kopieren
+            </button>
+          </li>` : ''}
+        <li>
+          <button onclick="showRTMHistorie(${rtmIndex}); hideRTMContextMenu()">
+            <span class="icon">📊</span>Historie anzeigen
+          </button>
+        </li>
       </div>
       
       <div class="menu-group">
@@ -516,6 +349,35 @@ function showRTMContextMenu(event, rtmIndex, patientId) {
           </button>
         </li>
       </div>`;
+  } else {
+    // Wenn kein Patient zugewiesen, nur Dokumentation mit Meldung kopieren
+    if (![61, 1].includes(rtms[rtmIndex].status)) {
+      menuHTML += `
+        <div class="menu-group">
+          <div class="menu-group-title">Dokumentation</div>
+          <li>
+            <button onclick="copyToClipboard('${rtms[rtmIndex].name}', 'rtm'); hideRTMContextMenu()">
+              <span class="icon">📋</span>Meldung kopieren
+            </button>
+          </li>
+          <li>
+            <button onclick="showRTMHistorie(${rtmIndex}); hideRTMContextMenu()">
+              <span class="icon">📊</span>Historie anzeigen
+            </button>
+          </li>
+        </div>`;
+    } else {
+      // Auch bei Status 61/1 Historie verfügbar machen
+      menuHTML += `
+        <div class="menu-group">
+          <div class="menu-group-title">Dokumentation</div>
+          <li>
+            <button onclick="showRTMHistorie(${rtmIndex}); hideRTMContextMenu()">
+              <span class="icon">📊</span>Historie anzeigen
+            </button>
+          </li>
+        </div>`;
+    }
   }
   
   // Name ändern immer verfügbar
@@ -574,7 +436,7 @@ function showRTMContextMenu(event, rtmIndex, patientId) {
 function hideRTMContextMenu() {
   const menu = document.getElementById('rtmContextMenu');
   if (menu) {
-    // Animation beim Schließen
+    // Animation beim schließen
     menu.style.opacity = '0';
     menu.style.transform = 'scale(0.95)';
     
@@ -705,4 +567,67 @@ function openRTMNameChangeModal(rtmIndex) {
   
   updateRTMPreview();
   document.getElementById('rtmCreationModal').style.display = 'flex';
+}
+
+// Neue Funktion für RTM-Historie-Modal
+function showRTMHistorie(rtmIndex) {
+  const rtm = rtms[rtmIndex];
+  if (!rtm) return;
+  
+  // Modal HTML erstellen
+  const modalHTML = `
+    <div id="rtmHistorieModal" class="modal" style="display: flex; z-index: 2000;">
+      <div class="modal-content" style="max-width: 700px; max-height: 85vh; overflow-y: auto;">
+        <span class="close" onclick="closeRTMHistorieModal()">&times;</span>
+        <h2>Historie: ${rtm.name}</h2>
+        
+        <div style="margin: 20px 0;">
+          <h3>Einsatzorte:</h3>
+          <div style="max-height: 150px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; border-radius: 4px; background: #f9f9f9;">
+            ${rtm.einsatzHistorie && rtm.einsatzHistorie.length ?
+              rtm.einsatzHistorie.map(h => 
+                `<div style="margin-bottom: 8px; padding: 6px; border-left: 3px solid #007bff; background: white; border-radius: 3px;">
+                  <strong style="font-size: 1em;">${h.ort}</strong><br>
+                  <small style="font-size: 0.9em;">${formatTime(h.von)} - ${formatTime(h.bis)}</small>
+                </div>`
+              ).join("") : "<em>Keine Einsatzorte erfasst</em>"}
+          </div>
+          
+          <h3 style="margin-top: 20px;">Patientennummern:</h3>
+          <div style="max-height: 150px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; border-radius: 4px; background: #f9f9f9;">
+            ${rtm.patientHistorie && rtm.patientHistorie.length ?
+              rtm.patientHistorie.map(h => 
+                `<div style="margin-bottom: 8px; padding: 6px; border-left: 3px solid #28a745; background: white; border-radius: 3px;">
+                  <strong style="font-size: 1em;">Patient ${h.nummer}</strong><br>
+                  <small style="font-size: 0.9em;">${formatTime(h.von)} - ${formatTime(h.bis)}</small>
+                </div>`
+              ).join("") : "<em>Keine Patienten erfasst</em>"}
+          </div>
+          
+          <h3 style="margin-top: 20px;">Status-Historie:</h3>
+          <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; border-radius: 4px; background: #f9f9f9;">
+            ${rtm.history && rtm.history.length ?
+              rtm.history.map(entry => 
+                `<div style="margin-bottom: 6px; padding: 4px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 0.95em; line-height: 1.3; background: white; border-radius: 3px; border-left: 2px solid #6c757d;">
+                  ${entry}
+                </div>`
+              ).join("") : "<em>Keine Status-Änderungen erfasst</em>"}
+          </div>
+        </div>
+
+        <div style="text-align: right; margin-top: 20px;">
+          <button onclick="closeRTMHistorieModal()">Schließen</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+function closeRTMHistorieModal() {
+  const modal = document.getElementById('rtmHistorieModal');
+  if (modal) {
+    modal.remove();
+  }
 }

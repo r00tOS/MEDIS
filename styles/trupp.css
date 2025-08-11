@@ -60,18 +60,23 @@ body {
 
 .status-dropdown { position: relative; display: inline-block; }
 .status-menu {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  margin: 4px 0 0;
+  position: fixed; /* Changed from absolute to fixed */
+  margin: 2px 0 0;
   padding: 0;
   list-style: none;
   background: white;
-  border: 1px solid #ccc;
-  display: none;
-  z-index: 10;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  display: none !important; /* Force hidden by default */
+  z-index: 9999; /* Increased z-index significantly */
+  min-width: 200px; /* Ensure minimum width */
+  max-height: 300px; /* Increased max height */
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25); /* Enhanced shadow */
 }
-.status-menu.open { display: block; }
+.status-menu.open {
+  display: block !important; /* Force visible when open */
+}
 .status-menu li {
   padding: 4px 8px;
   cursor: pointer;
@@ -385,4 +390,247 @@ body {
   height: 1px;
   background: #ddd;
   margin: 5px 0;
+}
+
+/* Table Styles */
+.trupps-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  background: white;
+  border-radius: 8px;
+  overflow: visible; /* Changed from hidden to visible */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.trupps-table thead {
+  background: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.trupps-table th {
+  padding: 12px 8px;
+  text-align: left;
+  font-weight: 600;
+  color: #495057;
+  border-right: 1px solid #dee2e6;
+}
+
+.trupps-table th:last-child {
+  border-right: none;
+}
+
+.trupps-table td {
+  padding: 10px 8px;
+  vertical-align: top;
+  border-bottom: 1px solid #dee2e6;
+  border-right: 1px solid #dee2e6;
+}
+
+.trupps-table td:last-child {
+  border-right: none;
+}
+
+.trupp-row {
+  transition: transform 0.4s ease, opacity 0.4s ease;
+}
+
+.trupp-row:hover {
+  background: #f8f9fa;
+}
+
+/* Status row coloring */
+.trupp-row.einsatz {
+  border-left: 4px solid #28a745;
+  background: #f8fff9;
+}
+
+.trupp-row.einsatz-beendet {
+  border-left: 4px solid rebeccapurple;
+  background: #faf8ff;
+}
+
+.trupp-row.pause {
+  border-left: 4px solid #007bff;
+  background: #f8fbff;
+}
+
+.trupp-row.nicht-einsatzbereit {
+  border-left: 4px solid #6c757d;
+  background: #f8f9fa;
+}
+
+.trupp-row.ueberzogen {
+  background: #ffe6e6 !important;
+  border-left: 4px solid #dc3545 !important;
+}
+
+.trupp-row.rueckhaltung {
+  background: #fff9e6 !important;
+  border-left: 4px solid #ffc107 !important;
+  opacity: 0.7;
+}
+
+.trupp-row.patient {
+  background: #ffebee !important;
+  border-left: 4px solid #f44336 !important;
+}
+
+.trupp-row.spielfeldrand {
+  background: #fff3e0 !important;
+  border-left: 4px solid #ff9800 !important;
+}
+
+/* Column specific styles */
+.trupp-name {
+  font-weight: 600;
+  min-width: 120px;
+}
+
+.trupp-name.u18 {
+  background: linear-gradient(90deg, #fff9c4 0%, transparent 100%);
+}
+
+.status-cell {
+  min-width: 180px;
+}
+
+.location-patient-cell {
+  min-width: 250px;
+}
+
+.time-cell {
+  min-width: 120px;
+}
+
+/* Patient info styling */
+.patient-info {
+  padding: 4px 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border-left: 3px solid #007bff;
+}
+
+.patient-info strong {
+  color: #495057;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.patient-info small {
+  color: #6c757d;
+}
+
+/* Disposition symbols - copied from patient.css */
+.disposition-symbols {
+  margin-top: 10px;
+}
+
+.disposition-symbols > div:first-child {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.disposition-symbols .disposition-symbol {
+  font-size: 0.8em;
+  padding: 2px 4px;
+  border-radius: 3px;
+  border: 1px solid #ccc;
+  background: #fff;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  display: inline-block;
+  min-width: 20px;
+  white-space: nowrap;
+  margin-right: 4px;
+  margin-bottom: 2px;
+}
+
+.disposition-symbols .disposition-symbol.required {
+  background: #fff3cd;
+  border-color: #ffc107;
+  color: #856404;
+}
+
+.disposition-symbols .disposition-symbol.dispatched {
+  background: #d4edda;
+  border-color: #28a745;
+  color: #155724;
+}
+
+.disposition-symbols .disposition-symbol.ignored {
+  background: #f8d7da;
+  border-color: #dc3545;
+  color: #721c24;
+  opacity: 0.6;
+}
+
+.disposition-symbols .disposition-symbol:hover {
+  transform: scale(1.1);
+  z-index: 10;
+  position: relative;
+}
+
+/* Progress Bar Styles */
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  margin: 4px 0;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+/* Dynamic progress colors based on progress percentage */
+.progress-fill[data-progress="0"] { background: #28a745; }
+.progress-fill[data-progress="1"] { background: #28a745; }
+.progress-fill[data-progress="2"] { background: #28a745; }
+.progress-fill[data-progress="3"] { background: #32cd32; }
+.progress-fill[data-progress="4"] { background: #9acd32; }
+.progress-fill[data-progress="5"] { background: #adff2f; }
+.progress-fill[data-progress="6"] { background: #ffd700; }
+.progress-fill[data-progress="7"] { background: #ffc107; }
+.progress-fill[data-progress="8"] { background: #ff8c00; }
+.progress-fill[data-progress="9"] { background: #ff6b6b; }
+.progress-fill[data-progress="10"] { background: #dc3545; }
+
+.time-display {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+/* Responsive design */
+@media (max-width: 1200px) {
+  .history-cell {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .trupps-table {
+    font-size: 0.9em;
+  }
+  
+  .trupps-table th,
+  .trupps-table td {
+    padding: 8px 4px;
+  }
+}
+
+@media (max-width: 600px) {
+  .location-patient-cell {
+    display: none;
+  }
+  
+  .trupps-table {
+    font-size: 0.8em;
+  }
 }

@@ -83,7 +83,10 @@
 
     <div class="container" style="overflow: auto">
       <div class="tab-content active" id="tab1">
-        <iframe src="sites/trupp_status_tracker.html"></iframe>
+        <div style="display: flex; height: 100%; gap: 10px;">
+          <iframe src="sites/trupp_status_tracker.html" style="flex: 1; border: none; height: 100%;"></iframe>
+          <iframe src="sites/rtm_tracker.html" style="flex: 1; border: none; height: 100%;"></iframe>
+        </div>
       </div>
       <div class="tab-content" id="tab2">
         <iframe src="sites/rtm_tracker.html"></iframe>
