@@ -78,7 +78,7 @@ describe('PDF Export', () => {
     expect(docMock.text).toHaveBeenCalledWith('Truppübersicht', 10, 10);
     // Assert: save() mit timestamp-basiertem Namen
     expect(docMock.save).toHaveBeenCalledWith(
-      expect.stringMatching(/^trupp_uebersicht_24_05_2025_12_34\.pdf$/)
+      expect.stringMatching(/^trupp_rtm_uebersicht_24_05_2025_12_34\.pdf$/)
     );
   });
 
