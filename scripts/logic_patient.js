@@ -1777,3 +1777,17 @@ function updateDispositionStatusFromAssignedResources() {
     console.log("No disposition status updates needed");
   }
 }
+
+function deletePatient(id) {
+  if (!confirm("Soll Patient " + id + " wirklich gelöscht werden?")) return;
+  // aus localStorage holen
+  const patients = JSON.parse(localStorage.getItem("patients")) || [];
+  // Patient finden und entfernen
+  const idx = patients.findIndex((p) => p.id === id);
+  if (idx > -1) {
+    patients.splice(idx, 1);
+    localStorage.setItem("patients", JSON.stringify(patients));
+    // neu rendern
+    loadPatients();
+  }
+}
