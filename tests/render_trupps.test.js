@@ -12,24 +12,25 @@ describe('renderTrupps', () => {
 
     // Stubs für externe Helfer, passend zu render_trupps.js
     window.deleteTrupp           = jest.fn();
-    window.toggleStatusDropdown  = jest.fn();  // hier richtig benennen
+    window.toggleStatusDropdown  = jest.fn();
     window.copyToClipboard       = jest.fn();
     window.updateTrupp           = jest.fn();
     window.editOrt               = jest.fn();
     window.editPatient           = jest.fn();
+    window.showTruppContextMenu  = jest.fn();
 
     // nextMaxEinsatzTime bereitstellen
     window.nextMaxEinsatzTime = 45;
 
-    // **Neu:** Ein minimaler Stub für statusOptions, damit .find() nicht abstürzt
+    // statusOptions mit allen nötigen Properties
     window.statusOptions = [
-      { status: 0,  text: 'Einsatz beendet' },
-      { status: 2,  text: 'Einsatzbereit in UHS' },
-      { status: 3,  text: 'Patient' },
-      { status: 6,  text: 'Nicht einsatzbereit' },
-      { status: 11, text: 'Streife' },
-      { status: 12, text: 'Spielfeldrand' },
-      // bei Bedarf weitere Status hier ergänzen…
+      { status: 0,  text: 'Einsatz beendet', color: '#6c757d' },
+      { status: 1,  text: 'Einsatzbereit auf Wache', color: '#007bff' },
+      { status: 2,  text: 'Einsatzbereit in UHS', color: '#007bff' },
+      { status: 3,  text: 'Patient', color: '#dc3545' },
+      { status: 6,  text: 'Nicht einsatzbereit', color: '#6c757d' },
+      { status: 11, text: 'Streife', color: '#28a745' },
+      { status: 12, text: 'Spielfeldrand', color: '#fd7e14' },
     ];
 
     // Script injizieren
@@ -49,7 +50,7 @@ describe('renderTrupps', () => {
   });
 
   beforeEach(() => {
-    // Container anlegen
+    // Container anlegen mit table structure
     document.body.innerHTML = `
       <div id="einsatzContainer"></div>
       <div id="pauseContainer"></div>
@@ -76,13 +77,19 @@ describe('renderTrupps', () => {
 
     const eins = document.getElementById('einsatzContainer');
     expect(eins.children).toHaveLength(1);
-    const div = eins.firstElementChild;
-    // Status 3 → nur "patient", aber kein extra "einsatz"-Label
-    expect(div.classList.contains('patient')).toBe(true);
-    expect(div.classList.contains('einsatz')).toBe(false);
-    expect(div.querySelector('h3').textContent.trim()).toBe('T1');
-    // Kein Einsatzort → formatMS nicht aufgerufen
-    expect(formatMS).not.toHaveBeenCalled();
+    
+    // Check if table was created
+    const table = eins.querySelector('.trupps-table');
+    expect(table).not.toBeNull();
+    
+    // Check if row exists
+    const row = table.querySelector('tbody tr');
+    expect(row).not.toBeNull();
+    expect(row.classList.contains('patient')).toBe(true);
+    
+    // Check trupp name
+    const nameCell = row.querySelector('.trupp-name strong');
+    expect(nameCell.textContent.trim()).toBe('T1');
   });
 
   it('ordnet Pause-Status (status 2) in PauseContainer und zeigt Pausenzeit', () => {
@@ -99,9 +106,17 @@ describe('renderTrupps', () => {
 
     const pause = document.getElementById('pauseContainer');
     expect(pause.children).toHaveLength(1);
-    const div = pause.firstElementChild;
-    expect(div.classList.contains('pause')).toBe(true);
-    expect(div.textContent).toMatch(/Aktuelle Pausenzeit: 20 Min/);
+    
+    const table = pause.querySelector('.trupps-table');
+    expect(table).not.toBeNull();
+    
+    const row = table.querySelector('tbody tr');
+    expect(row).not.toBeNull();
+    expect(row.classList.contains('pause')).toBe(true);
+    
+    // Check if pause time is displayed
+    const timeCell = row.querySelector('.time-cell');
+    expect(timeCell.textContent).toMatch(/20 Min/);
   });
 
   it('ordnet Nicht-einsatzbereit (status 6) in NichtContainer und zeigt Lösch-Button', () => {
@@ -118,9 +133,14 @@ describe('renderTrupps', () => {
 
     const nicht = document.getElementById('nichtContainer');
     expect(nicht.children).toHaveLength(1);
-    const div = nicht.firstElementChild;
-    expect(div.classList.contains('nicht-einsatzbereit')).toBe(true);
-    expect(div.querySelector('.delete-btn')).not.toBeNull();
+    
+    const table = nicht.querySelector('.trupps-table');
+    expect(table).not.toBeNull();
+    
+    const row = table.querySelector('tbody tr');
+    expect(row).not.toBeNull();
+    expect(row.classList.contains('nicht-einsatzbereit')).toBe(true);
+    expect(row.querySelector('.delete-btn')).not.toBeNull();
   });
 
   it('sortiert EinsatzContainer Streife (status 11) vor Patient (status 3)', () => {
@@ -150,9 +170,43 @@ describe('renderTrupps', () => {
 
     renderTrupps();
 
-    const kids = Array.from(document.getElementById('einsatzContainer').children);
-    // A (Streife) kommt vor B (Patient)
-    expect(kids[0].dataset.key).toBe('A');
-    expect(kids[1].dataset.key).toBe('B');
+    const table = document.getElementById('einsatzContainer').querySelector('.trupps-table tbody');
+    const rows = Array.from(table.querySelectorAll('tr'));
+    
+    // Check that we have 2 rows
+    expect(rows).toHaveLength(2);
+    
+    // Check the names in the trupp-name cells
+    const firstTruppName = rows[0].querySelector('.trupp-name strong').textContent.trim();
+    const secondTruppName = rows[1].querySelector('.trupp-name strong').textContent.trim();
+    
+    // A (Streife) should come before B (Patient) based on sorting logic
+    expect(firstTruppName).toBe('A');
+    expect(secondTruppName).toBe('B');
+  });
+
+  it('creates proper table structure', () => {
+    window.trupps = [{
+      name: 'Test',
+      status: 11,
+      einsatzzeit: 0,
+      pausenzeit: 0,
+      totalPauseTime: 0,
+      einsatzHistorie: [],
+      patientHistorie: [],
+    }];
+
+    renderTrupps();
+
+    const eins = document.getElementById('einsatzContainer');
+    const table = eins.querySelector('.trupps-table');
+    
+    expect(table).not.toBeNull();
+    expect(table.querySelector('thead')).not.toBeNull();
+    expect(table.querySelector('tbody')).not.toBeNull();
+    
+    // Check header structure
+    const headers = table.querySelectorAll('thead th');
+    expect(headers).toHaveLength(4); // Trupp, Status, Einsatzort/Patient, Zeit
   });
 });

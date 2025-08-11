@@ -29,7 +29,6 @@ body {
  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
   gap: 16px;
 }
-
 /* 3. RTM-Cards */
 .rtm {
   border: 2px solid #ccc;
@@ -465,7 +464,10 @@ body {
 /* Column specific styles */
 .rtm-name {
   font-weight: 600;
-  min-width: 120px;
+  min-width: 180px; /* Increased from 120px */
+  white-space: nowrap; /* Prevent line breaks in RTM names */
+  overflow: hidden;
+  text-overflow: ellipsis; /* Show ellipsis if name is still too long */
 }
 
 .status-cell {
@@ -553,7 +555,6 @@ body {
   .rtms-table {
     font-size: 0.8em;
   }
-}
   .patient-cell {
     display: none;
   }
@@ -571,3 +572,4 @@ body {
   }
 
 
+}
