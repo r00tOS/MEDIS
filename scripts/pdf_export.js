@@ -2,6 +2,7 @@ async function exportTruppPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
   const teams = JSON.parse(localStorage.getItem("trupps")) || [];
+  const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
   const formatTime = (timestamp) => {
     if (!timestamp) return "–";
     const date = new Date(timestamp);
@@ -17,6 +18,7 @@ async function exportTruppPDF() {
   doc.text("Truppübersicht", 10, y);
   y += 10;
 
+  // Trupps
   teams.forEach((team) => {
     // Gesamte Pausenzeit direkt aus totalPauseTime (in ms) in Minuten umrechnen
     const totalPause = Math.floor((team.totalPauseTime || 0) / 60000);
@@ -63,12 +65,68 @@ async function exportTruppPDF() {
     }
   });
 
+  // RTM Sektion
+  if (rtms.length > 0) {
+    doc.addPage();
+    y = 10;
+
+    doc.setFontSize(14);
+    doc.text("RTM-Übersicht", 10, y);
+    y += 10;
+
+    rtms.forEach((rtm) => {
+      // Gesamte Pausenzeit direkt aus totalPauseTime (in ms) in Minuten umrechnen
+      const totalPause = Math.floor((rtm.totalPauseTime || 0) / 60000);
+
+      if (y > 240) {
+        doc.addPage();
+        y = 10;
+      }
+
+      doc.setFontSize(12);
+      doc.text(`RTM: ${rtm.name}`, 10, y);
+      y += 6;
+      doc.text(`Gesamte Pausenzeit: ${totalPause} Min`, 10, y);
+      y += 6;
+
+      const einsatzHistorie = rtm.einsatzHistorie?.length
+        ? rtm.einsatzHistorie.map(
+            (e) => `• ${e.ort} (${formatTime(e.von)} - ${formatTime(e.bis)})`
+          )
+        : ["–"];
+      doc.text("Einsatzorte:", 10, y);
+      y += 6;
+      einsatzHistorie.forEach((line) => {
+        doc.text(line, 15, y);
+        y += 6;
+      });
+
+      const patientHistorie = rtm.patientHistorie?.length
+        ? rtm.patientHistorie.map(
+            (p) => `• ${p.nummer} (${formatTime(p.von)} - ${formatTime(p.bis)})`
+          )
+        : ["–"];
+      doc.text("Patientennummern:", 10, y);
+      y += 6;
+      patientHistorie.forEach((line) => {
+        doc.text(line, 15, y);
+        y += 6;
+      });
+
+      y += 8;
+      if (y > 270) {
+        doc.addPage();
+        y = 10;
+      }
+    });
+  }
+
   const now = new Date();
   const pad = (n) => String(n).padStart(2, "0");
   const ts = `${pad(now.getDate())}_${pad(
     now.getMonth() + 1
   )}_${now.getFullYear()}_${pad(now.getHours())}_${pad(now.getMinutes())}`;
-  const filename = `trupp_uebersicht_${ts}.pdf`;
+  const filename = `trupp_rtm_uebersicht_${ts}.pdf`;
 
   doc.save(filename);
 }

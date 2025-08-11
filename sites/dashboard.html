@@ -351,17 +351,43 @@
           rtmOverview.innerHTML = rtms
             .sort((a, b) => a.name.localeCompare(b.name))
             .map((r) => {
-              const patient = patients.find(p => p.rtm && (
-                (typeof p.rtm === 'string' && p.rtm.includes(r.name)) ||
-                (Array.isArray(p.rtm) && p.rtm.includes(r.name))
-              ));
               const statusText = getStatusText(r.status) || "–";
               const statusColor = r.status !== undefined ? getStatusColor(r.status) : '#ffffff';
               
               // Determine what to show in the third column based on status
-              let thirdColumn = patient ? patient.id : "–";
-              if (r.status === 11 && r.currentOrt) {
+              let thirdColumn = "–";
+
+              // First priority: Use patientInput if available AND the patient is still active
+              if (r.patientInput) {
+                // Find the patient to verify they're still active
+                const patient = patients.find(p => 
+                  (p.id === r.patientInput || p.id === parseInt(r.patientInput)) &&
+                  p.status !== "Entlassen" && 
+                  p.status !== "Transport in KH"
+                );
+                
+                if (patient) {
+                  thirdColumn = r.patientInput;
+                }
+              }
+              // Second priority: For status 11 (Streife), show location
+              else if (r.status === 11 && r.currentOrt) {
                 thirdColumn = `<span title="Einsatzort">🚩 ${r.currentOrt}</span>`;
+              }
+              // Fallback: Try to find active patient with this RTM in their rtm field
+              else {
+                const patient = patients.find(p => 
+                  p.rtm && 
+                  (
+                    (typeof p.rtm === 'string' && p.rtm.includes(r.name)) ||
+                    (Array.isArray(p.rtm) && p.rtm.includes(r.name))
+                  ) &&
+                  p.status !== "Entlassen" && 
+                  p.status !== "Transport in KH"
+                );
+                if (patient) {
+                  thirdColumn = patient.id;
+                }
               }
               
               return `

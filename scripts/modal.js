@@ -115,9 +115,9 @@ const transportModalHTML = `
     <span class="close" onclick="closeTransportModal()">&times;</span>
     <h2>Patient transportieren</h2>
     <form id="transportForm">
-      <label><input type="radio" name="transportType" value="an rtw übergeben" checked> an RTW übergeben</label><br>
-      <label><input type="radio" name="transportType" value="an nef übergeben"> an NEF übergeben</label><br>
-      <label><input type="radio" name="transportType" value="an ktw übergeben"> an KTW übergeben</label><br>
+      <label><input type="radio" name="transportType" value="uksh kiel" checked> UKSH Kiel</label><br>
+      <label><input type="radio" name="transportType" value="städtisches krankenhaus kiel"> Städtisches Krankenhaus Kiel</label><br>
+      <label><input type="radio" name="transportType" value="lubinus klinik"> Lubinus Klinik</label><br>
       <label><input type="radio" name="transportType" value="sonstige"> sonstige:</label>
       <input type="text" id="transportOther" placeholder="Bitte Text eingeben…" style="width:100%; margin-top:4px;">
       <div style="text-align:right; margin-top:12px">

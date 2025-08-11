@@ -316,7 +316,33 @@ function updateRTM(index, status) {
     minute: "2-digit",
   });
 
-    if (oldStatus === 3 && status === 4 && rtm.patientInput) {
+  // Wichtig: Streife-Historie IMMER speichern, bevor wir mögliche early returns haben
+  if (oldStatus === 11 && rtm.currentOrt && rtm.einsatzStartOrt) {
+    const abgeschlossenerOrt = rtm.currentOrt;
+    
+    // 1) In die Einsatz-Historie
+    if (!rtm.einsatzHistorie) rtm.einsatzHistorie = [];
+    rtm.einsatzHistorie.push({
+      ort: abgeschlossenerOrt,
+      von: rtm.einsatzStartOrt,
+      bis: now,
+    });
+    
+    // 2) In die RTM-Historie (für Timeline-Log)
+    if (!rtm.history) rtm.history = [];
+    rtm.history.push(`${timeStr} Streife beendet am Ort: ${abgeschlossenerOrt}`);
+    
+    // 3) Felder zurücksetzen
+    rtm.currentOrt = null;
+    rtm.einsatzStartOrt = null;
+    
+    // 4) Sofort speichern um Datenverlust zu vermeiden
+    localStorage.setItem("rtms", JSON.stringify(rtms));
+    console.log(`Einsatzort-Historie gespeichert für ${rtm.name}: ${abgeschlossenerOrt}`);
+  }
+
+  // Normale Statusupdates folgen hier...
+  if (oldStatus === 3 && status === 4 && rtm.patientInput) {
     // …dann setze im zugehörigen Patientendatensatz den Status auf "in Behandlung"
     updatePatientData(rtm.patientInput, 'status', 'in Behandlung');
   }
@@ -436,10 +462,11 @@ if (oldStatus === 11 && rtm.currentOrt && rtm.einsatzStartOrt) {
   }
 
   // 9) Bei Streife → neuen Ort abfragen
-if (status === 11) {
-  openEinsatzortModal(index);
-  // restliche Logik übernimmt dann confirmEinsatzort()
-}
+  if (status === 11) {
+    openEinsatzortModal(index);
+    // restliche Logik übernimmt dann confirmEinsatzort()
+  }
+  
   // 10) Status übernehmen
   rtm.status = status;
   rtm.lastStatusChange = now;

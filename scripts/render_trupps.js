@@ -255,6 +255,59 @@ window.addEventListener('storage', e => {
     const pB = trupps.find((t) => t.name === b.el.dataset.key).pausenzeit || 0;
     return pB - pA;
   }).forEach((t) => nichtTable.appendChild(t.el));
+  
+  // Reopen status menu if it was open before page reload
+  if (openId) {
+    setTimeout(() => {
+      const truppRow = document.querySelector(`.trupp-row[data-trupp-id="${openId}"]`);
+      const menu = document.getElementById(`status-menu-${openId}`);
+      const button = truppRow?.querySelector('.status-toggle');
+      
+      if (menu && button) {
+        // Position the menu relative to the button
+        const buttonRect = button.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const viewportWidth = window.innerWidth;
+        
+        // Show menu temporarily to measure its dimensions
+        menu.style.visibility = 'hidden';
+        menu.classList.add('open'); // Add class to make it visible for measurement
+        const menuRect = menu.getBoundingClientRect();
+        menu.classList.remove('open'); // Remove class after measurement
+        menu.style.visibility = 'visible';
+        
+        // Calculate position
+        let top = buttonRect.bottom + 2;
+        let left = buttonRect.left;
+        
+        // Adjust position if menu would go off-screen
+        if (top + menuRect.height > viewportHeight) {
+          // Show above button if there's more space
+          const spaceAbove = buttonRect.top;
+          const spaceBelow = viewportHeight - buttonRect.bottom;
+          
+          if (spaceAbove > spaceBelow && spaceAbove > 200) {
+            top = buttonRect.top - menuRect.height - 2;
+          } else {
+            // Keep below but adjust height
+            top = buttonRect.bottom + 2;
+            menu.style.maxHeight = (viewportHeight - top - 10) + 'px';
+          }
+        }
+        
+        // Adjust horizontal position if needed
+        if (left + menuRect.width > viewportWidth) {
+          left = viewportWidth - menuRect.width - 10;
+        }
+        
+        // Apply positioning and open the menu
+        menu.style.top = top + 'px';
+        menu.style.left = left + 'px';
+        menu.style.minWidth = buttonRect.width + 'px';
+        menu.classList.add('open');
+      }
+    }, 50); // Small delay to ensure DOM is ready
+  }
 
   // Restore scroll and FLIP animation
   window.scrollTo(0, scrollY);
@@ -825,7 +878,8 @@ function showTruppHistorie(truppIndex) {
             ${trupp.einsatzHistorie && trupp.einsatzHistorie.length ?
               trupp.einsatzHistorie.map(h => 
                 `<div style="margin-bottom: 8px; padding: 6px; border-left: 3px solid #007bff; background: white; border-radius: 3px;">
-                  <strong style="font-size: 1em;">${h.ort}</strong><br>
+                  <strong style="font-size: 1em;">${h.ort}</strong>
+                  <br>
                   <small style="font-size: 0.9em;">${formatTime(h.von)} - ${formatTime(h.bis)}</small>
                 </div>`
               ).join("") : "<em>Keine Einsatzorte erfasst</em>"}
@@ -836,7 +890,8 @@ function showTruppHistorie(truppIndex) {
             ${trupp.patientHistorie && trupp.patientHistorie.length ?
               trupp.patientHistorie.map(h => 
                 `<div style="margin-bottom: 8px; padding: 6px; border-left: 3px solid #28a745; background: white; border-radius: 3px;">
-                  <strong style="font-size: 1em;">Patient ${h.nummer}</strong><br>
+                  <strong style="font-size: 1em;">Patient ${h.nummer}</strong>
+                  <br>
                   <small style="font-size: 0.9em;">${formatTime(h.von)} - ${formatTime(h.bis)}</small>
                 </div>`
               ).join("") : "<em>Keine Patienten erfasst</em>"}
