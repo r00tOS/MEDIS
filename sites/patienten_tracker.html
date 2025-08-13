@@ -14,6 +14,41 @@
     <script src="../scripts/status_options.js"></script>
     <script src="../scripts/logic_trupp.js"></script>
     <script src="../scripts/render_trupps.js"></script>
+    <script src="../scripts/iframe_context_menu_handler.js"></script>
+    <style>
+      /* Ressourcen-Spalte an Inhalt anpassen */
+      .patients-table th:last-child,
+      .patients-table td:last-child {
+        width: auto;
+        min-width: 120px;
+      }
+      
+      /* Verbesserte Tabellen-Responsivität */
+      .table-responsive {
+        overflow-x: auto;
+      }
+      
+      .patients-table {
+        width: 100%;
+        table-layout: auto;
+      }
+      
+      /* Andere Spalten flexible Breiten */
+      .patients-table th:nth-child(4),
+      .patients-table td:nth-child(4) {
+        min-width: 180px;
+      }
+      
+      .patients-table th:nth-child(6),
+      .patients-table td:nth-child(6) {
+        min-width: 100px;
+      }
+      
+      .patients-table th:nth-child(7),
+      .patients-table td:nth-child(7) {
+        min-width: 120px;
+      }
+    </style>
   </head>
   <body>
     <script src="../scripts/main.js"></script>
@@ -27,15 +62,69 @@
     <main id="exportArea">
       <section id="sectionActive">
         <h2>Aktiv</h2>
-        <div id="activePatients"></div>
+        <div class="table-responsive">
+          <table id="activePatients" class="patients-table">
+            <thead>
+              <tr>
+                <th style="width: 30px;"></th>
+                <th style="width: 80px;">ID</th>
+                <th style="width: 120px;">Status</th>
+                <th style="width: 220px;">Diagnose</th>
+                <th>Alter/Geschl.</th>
+                <th>Standort</th>
+                <th>Disposition</th>
+                <th>Trupp/RTM</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Hier werden die aktiven Patienten eingefügt -->
+            </tbody>
+          </table>
+        </div>
       </section>
       <section id="sectionInUHS">
         <h2>In UHS</h2>
-        <div id="inUhsPatients"></div>
+        <div class="table-responsive">
+          <table id="inUhsPatients" class="patients-table">
+            <thead>
+              <tr>
+                <th style="width: 30px;"></th>
+                <th style="width: 80px;">ID</th>
+                <th style="width: 120px;">Status</th>
+                <th style="width: 220px;">Diagnose</th>
+                <th>Alter/Geschl.</th>
+                <th>Standort</th>
+                <th>Disposition</th>
+                <th>Trupp/RTM</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Hier werden die UHS Patienten eingefügt -->
+            </tbody>
+          </table>
+        </div>
       </section>
       <section id="sectionDismissed">
         <h2>Entlassen</h2>
-        <div id="dismissedPatients"></div>
+        <div class="table-responsive">
+          <table id="dismissedPatients" class="patients-table">
+            <thead>
+              <tr>
+                <th style="width: 30px;"></th>
+                <th style="width: 80px;">ID</th>
+                <th style="width: 120px;">Status</th>
+                <th style="width: 220px;">Diagnose</th>
+                <th>Alter/Geschl.</th>
+                <th>Standort</th>
+                <th>Disposition</th>
+                <th>Trupp/RTM</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Hier werden die entlassenen Patienten eingefügt -->
+            </tbody>
+          </table>
+        </div>
       </section>
     </main>
     <script>
@@ -195,6 +284,10 @@ patients.forEach((patient) => {
       
       // Remove the save flag as well
       window.isSavingPatientData = false;
+
+      // Kontextmenü-Funktionen global verfügbar machen
+      window.hidePatientContextMenu = hidePatientContextMenu;
     </script>
   </body>
+</html>
 </html>

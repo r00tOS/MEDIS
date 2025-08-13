@@ -2,6 +2,7 @@
 html, body {
   /* deaktiviert Scroll Anchoring im gesamten Dokument */
   overflow-anchor: none;
+  overflow: visible !important; /* Ermöglicht Scrolling im iframe */
 }
 
 /* 1. Listen & Modal */
@@ -129,8 +130,51 @@ section {
   margin-top: 20px;
 }
 h2 {
-  border-bottom: 1px solid #ccc;
-  padding-bottom: 5px;
+  display: none !important; /* Hide old section headers */
+}
+
+/* Section header styles */
+.section-header-row {
+  background: #f8f9fa !important;
+  border-top: 2px solid #dee2e6 !important;
+}
+
+.section-header {
+  padding: 12px 8px !important;
+  background: #f8f9fa !important;
+  border-bottom: 1px solid #dee2e6 !important;
+  font-weight: 600 !important;
+  color: #495057 !important;
+}
+
+.section-header h3 {
+  margin: 0;
+  font-size: 1.1em;
+  color: #495057;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-header h3::before {
+  content: '';
+  width: 4px;
+  height: 20px;
+  background: #007bff;
+  border-radius: 2px;
+}
+
+/* Section-specific header colors */
+.section-header h3[data-section="active"]::before {
+  background: #28a745;
+}
+
+.section-header h3[data-section="uhs"]::before {
+  background: #ffc107;
+}
+
+.section-header h3[data-section="dismissed"]::before {
+  background: #6c757d;
 }
 
 /* 5. Slide-In/Out Animation */
@@ -366,4 +410,227 @@ h2 {
   margin: 0; /* kein Außenabstand */
   padding: 2px 0; /* kleiner vertikaler Abstand zwischen Einträgen */
   word-wrap: break-word;
+}
+
+/* 9. Patiententabelle - neues tabellenbasiertes Layout */
+.patients-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.patients-table thead th {
+  position: sticky;
+  top: 0;
+  background: #f8f9fa;
+  padding: 10px;
+  font-weight: bold;
+  text-align: left;
+  border-bottom: 2px solid #dee2e6;
+  z-index: 10;
+  cursor: pointer;
+}
+
+.patients-table thead th:hover {
+  background: #e9ecef;
+}
+
+.patients-table tbody tr {
+  border-bottom: 1px solid #dee2e6;
+  transition: background-color 0.2s ease;
+}
+
+.patients-table tbody tr:hover {
+  background-color: rgba(0,0,0,0.03);
+}
+
+.patients-table td {
+  padding: 8px 10px;
+  vertical-align: middle;
+}
+
+/* Status-Farbkodierung in der Tabelle */
+.patients-table tr.status-gemeldet {
+  background: rgba(255, 229, 229, 0.3);
+}
+.patients-table tr.status-gemeldet:hover {
+  background: rgba(255, 229, 229, 0.5);
+}
+
+.patients-table tr.status-disponiert {
+  background: rgba(255, 255, 224, 0.3);
+}
+.patients-table tr.status-disponiert:hover {
+  background: rgba(255, 255, 224, 0.5);
+}
+
+.patients-table tr.status-in-Behandlung {
+  background: rgba(226, 247, 226, 0.3);
+}
+.patients-table tr.status-in-Behandlung:hover {
+  background: rgba(226, 247, 226, 0.5);
+}
+
+.patients-table tr.status-verlegt-in-UHS {
+  background: rgba(224, 240, 255, 0.3);
+}
+.patients-table tr.status-verlegt-in-UHS:hover {
+  background: rgba(224, 240, 255, 0.5);
+}
+
+.patients-table tr.status-Behandlung-in-UHS {
+  background: rgba(208, 230, 255, 0.3);
+}
+.patients-table tr.status-Behandlung-in-UHS:hover {
+  background: rgba(208, 230, 255, 0.5);
+}
+
+.patients-table tr.status-Transport-in-KH,
+.patients-table tr.status-Entlassen {
+  background: rgba(240, 240, 240, 0.3);
+}
+.patients-table tr.status-Transport-in-KH:hover,
+.patients-table tr.status-Entlassen:hover {
+  background: rgba(240, 240, 240, 0.5);
+}
+
+/* Kompakte Aktions-Buttons */
+.action-buttons {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  padding: 3px 8px;
+  font-size: 0.85rem;
+  border-radius: 3px;
+  cursor: pointer;
+  border: 1px solid #ccc;
+  background: #f8f9fa;
+}
+
+.action-btn:hover {
+  background: #e9ecef;
+}
+
+/* Expandierbare Zeilen für Patientendetails */
+.expandable-row {
+  display: none;
+  padding: 15px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.expanded .expandable-row {
+  display: table-row;
+}
+
+.expandable-content {
+  padding: 15px;
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Expand/Collapse Taste */
+.expand-btn {
+  cursor: pointer;
+  color: #666;
+  font-size: 1.2rem;
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  text-align: center;
+  transition: transform 0.3s;
+}
+
+.expand-btn:hover {
+  color: #333;
+}
+
+tr.expanded .expand-btn {
+  transform: rotate(180deg);
+}
+
+/* Disposition-Symbole kompakter formatieren */
+.disposition-symbol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 22px;
+  font-size: 0.8em;
+  font-weight: bold;
+  padding: 0 4px;
+  border-radius: 3px;
+  margin: 2px;
+}
+
+/* Statusindikator */
+.status-indicator {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.status-gemeldet .status-indicator {
+  background: #f28b82;
+}
+
+.status-disponiert .status-indicator {
+  background: #fff475;
+}
+
+.status-in-Behandlung .status-indicator {
+  background: #81c995;
+}
+
+.status-verlegt-in-UHS .status-indicator,
+.status-Behandlung-in-UHS .status-indicator {
+  background: #a7c7e7;
+}
+
+.status-Transport-in-KH .status-indicator,
+.status-Entlassen .status-indicator {
+  background: #d3d3d3;
+}
+
+/* Tooltip für Hilfe */
+.tooltip {
+  position: relative;
+  display: inline-block;
+  cursor: help;
+}
+
+.tooltip .tooltip-text {
+  visibility: hidden;
+  width: 200px;
+  background-color: #555;
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+  padding: 5px;
+  position: absolute;
+  z-index: 1000;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.tooltip:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Kontextmenü sollte über allem anderen stehen */
+.context-menu {
+  position: fixed !important;
+  z-index: 10000 !important;
 }

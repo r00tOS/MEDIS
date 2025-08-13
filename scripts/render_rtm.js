@@ -127,7 +127,6 @@ function renderRTMs() {
     row.innerHTML = `
       <td class="rtm-name">
         <strong>${rtm.name}</strong>
-        ${rtm.status === 6 ? `<button class="delete-btn" onclick="deleteRTM(${i})">×</button>` : ''}
       </td>
       <td class="status-cell">
         <div class="status-dropdown">
@@ -194,9 +193,9 @@ function renderRTMs() {
     }
   });
 
-  // Create tables for each section
-  function createTable(container, title) {
-    container.innerHTML = `
+  // Create single table with sections
+  function createSingleTable() {
+    return `
       <table class="rtms-table">
         <thead>
           <tr>
@@ -206,39 +205,62 @@ function renderRTMs() {
             <th>Zeit</th>
           </tr>
         </thead>
-        <tbody></tbody>
+        <tbody id="rtms-table-body"></tbody>
       </table>
     `;
-    return container.querySelector('tbody');
   }
 
-  const einsatzTable = createTable(einsatzContainer, 'Im Einsatz');
-  const pauseTable = createTable(pauseContainer, 'In Pause');
-  const nichtTable = createTable(nichtContainer, 'Nicht Einsatzbereit');
+  // Only create table in the first container, hide others
+  einsatzContainer.innerHTML = createSingleTable();
+  pauseContainer.style.display = 'none';
+  nichtContainer.style.display = 'none';
+  
+  const tableBody = document.getElementById('rtms-table-body');
 
-  // Sort and append rows
-  einsatz.sort((a, b) => {
-    if (a.sort !== b.sort) return a.sort - b.sort;
-    const tA = rtms.find((t) => t.name === a.el.dataset.key).einsatzzeit || 0;
-    const tB = rtms.find((t) => t.name === b.el.dataset.key).einsatzzeit || 0;
-    return tB - tA;
-  }).forEach((t) => einsatzTable.appendChild(t.el));
+  // Add section header function
+  function addSectionHeader(title, count) {
+    const headerRow = document.createElement('tr');
+    headerRow.className = 'section-header-row';
+    headerRow.innerHTML = `
+      <td colspan="4" class="section-header">
+        <h3>${title} (${count})</h3>
+      </td>
+    `;
+    return headerRow;
+  }
 
-  pause.sort((a, b) => {
-    const statusOrder = [2, 1, 61];
-    const trA = rtms.find((t) => t.name === a.el.dataset.key);
-    const trB = rtms.find((t) => t.name === b.el.dataset.key);
-    const ordA = statusOrder.indexOf(trA.status);
-    const ordB = statusOrder.indexOf(trB.status);
-    if (ordA !== ordB) return ordA - ordB;
-    return (trB.pausenzeit || 0) - (trA.pausenzeit || 0);
-  }).forEach((t) => pauseTable.appendChild(t.el));
+  // Sort and append rows with section headers
+  if (einsatz.length > 0) {
+    tableBody.appendChild(addSectionHeader('Im Einsatz', einsatz.length));
+    einsatz.sort((a, b) => {
+      if (a.sort !== b.sort) return a.sort - b.sort;
+      const tA = rtms.find((r) => r.name === a.el.dataset.key).einsatzzeit || 0;
+      const tB = rtms.find((r) => r.name === b.el.dataset.key).einsatzzeit || 0;
+      return tB - tA;
+    }).forEach((t) => tableBody.appendChild(t.el));
+  }
 
-  nicht.sort((a, b) => {
-    const pA = rtms.find((t) => t.name === a.el.dataset.key).pausenzeit || 0;
-    const pB = rtms.find((t) => t.name === b.el.dataset.key).pausenzeit || 0;
-    return pB - pA;
-  }).forEach((t) => nichtTable.appendChild(t.el));
+  if (pause.length > 0) {
+    tableBody.appendChild(addSectionHeader('In Pause', pause.length));
+    pause.sort((a, b) => {
+      const statusOrder = [2, 1, 61];
+      const rtmA = rtms.find((r) => r.name === a.el.dataset.key);
+      const rtmB = rtms.find((r) => r.name === b.el.dataset.key);
+      const ordA = statusOrder.indexOf(rtmA.status);
+      const ordB = statusOrder.indexOf(rtmB.status);
+      if (ordA !== ordB) return ordA - ordB;
+      return (rtmB.pausenzeit || 0) - (rtmA.pausenzeit || 0);
+    }).forEach((t) => tableBody.appendChild(t.el));
+  }
+
+  if (nicht.length > 0) {
+    tableBody.appendChild(addSectionHeader('Nicht Einsatzbereit', nicht.length));
+    nicht.sort((a, b) => {
+      const pA = rtms.find((r) => r.name === a.el.dataset.key).pausenzeit || 0;
+      const pB = rtms.find((r) => r.name === b.el.dataset.key).pausenzeit || 0;
+      return pB - pA;
+    }).forEach((t) => tableBody.appendChild(t.el));
+  }
 
   // Restore scroll and FLIP animation
   window.scrollTo(0, scrollY);
@@ -380,7 +402,7 @@ function showRTMContextMenu(event, rtmIndex, patientId) {
     }
   }
   
-  // Name ändern immer verfügbar
+  // Name ändern und Löschen immer verfügbar
   menuHTML += `
     <div class="menu-group">
       <div class="menu-group-title">Einstellungen</div>
@@ -389,32 +411,47 @@ function showRTMContextMenu(event, rtmIndex, patientId) {
           <span class="icon">🔄</span>Name ändern
         </button>
       </li>
+      <li>
+        <button class="danger" onclick="deleteRTM(${rtmIndex}); hideRTMContextMenu()">
+          <span class="icon">🗑️</span>RTM löschen
+        </button>
+      </li>
     </div>`;
   
   menu.innerHTML = menuHTML;
 
-  // Position berechnen
-  const x = event.clientX;
-  const y = event.clientY;
-  
+  // Menü direkt sichtbar hinzufügen
+  menu.style.position = 'fixed';
+  menu.style.zIndex = '10000';
+  menu.style.display = 'block';
   document.body.appendChild(menu);
   
-  // Menü positionieren
-  menu.style.left = x + 'px';
-  menu.style.top = y + 'px';
-  menu.style.display = 'block';
-
-  // Sicherstellen, dass das Menü im Viewport bleibt
-  const rect = menu.getBoundingClientRect();
+  // Position berechnen - einfache Logik
+  let x = event.clientX + 10;
+  let y = event.clientY + 10;
+  
+  // Nach dem Hinzufügen zum DOM die Größe messen
+  const menuRect = menu.getBoundingClientRect();
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
-
-  if (rect.right > viewportWidth) {
-    menu.style.left = (x - rect.width) + 'px';
+  
+  // Horizontal positioning - bei Überlauf nach links verschieben
+  if (x + menuRect.width > viewportWidth - 10) {
+    x = event.clientX - menuRect.width - 10;
   }
-  if (rect.bottom > viewportHeight) {
-    menu.style.top = (y - rect.height) + 'px';
+  
+  // Vertical positioning - bei Überlauf nach oben verschieben
+  if (y + menuRect.height > viewportHeight - 10) {
+    y = event.clientY - menuRect.height - 10;
   }
+  
+  // Mindestabstände einhalten
+  x = Math.max(10, x);
+  y = Math.max(10, y);
+  
+  // Position setzen
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
 
   // Animation hinzufügen
   menu.style.opacity = '0';
@@ -426,10 +463,30 @@ function showRTMContextMenu(event, rtmIndex, patientId) {
     menu.style.transform = 'scale(1)';
   });
 
-  // Klick außerhalb schließt das Menü
+  // Event-Handler für Klick außerhalb des Menüs
+  const outsideClickHandler = function(e) {
+    if (!e.target.closest('#rtmContextMenu')) {
+      hideRTMContextMenu();
+      document.removeEventListener('click', outsideClickHandler);
+      document.removeEventListener('contextmenu', outsideClickHandler);
+    }
+  };
+
+  // Event-Handler nach kurzer Verzögerung hinzufügen um zu verhindern, 
+  // dass das aktuelle Klick-Event das Menü sofort wieder schließt
   setTimeout(() => {
-    document.addEventListener('click', hideRTMContextMenu, { once: true });
-  }, 10);
+    document.addEventListener('click', outsideClickHandler);
+    document.addEventListener('contextmenu', outsideClickHandler);
+  }, 100);
+
+  // ESC-Taste schließt das Menü
+  const escHandler = function(e) {
+    if (e.key === 'Escape') {
+      hideRTMContextMenu();
+      document.removeEventListener('keydown', escHandler);
+    }
+  };
+  document.addEventListener('keydown', escHandler);
 }
 
 // Verbesserte Version der hideContextMenu Funktion
@@ -623,6 +680,13 @@ function showRTMHistorie(rtmIndex) {
   `;
 
   document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+function closeRTMHistorieModal() {
+  const modal = document.getElementById('rtmHistorieModal');
+  if (modal) {
+    modal.remove();
+  }
 }
 
 function closeRTMHistorieModal() {

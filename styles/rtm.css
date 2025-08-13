@@ -20,10 +20,40 @@ body {
   margin-top: 40px;
 }
 .section h2 {
-  border-bottom: 2px solid #ccc;
-  padding-bottom: 5px;
-  color: #444;
+  display: none !important; /* Hide old section headers */
 }
+
+/* Section header styles */
+.section-header-row {
+  background: #f8f9fa !important;
+  border-top: 2px solid #dee2e6 !important;
+}
+
+.section-header {
+  padding: 12px 8px !important;
+  background: #f8f9fa !important;
+  border-bottom: 1px solid #dee2e6 !important;
+  font-weight: 600 !important;
+  color: #495057 !important;
+}
+
+.section-header h3 {
+  margin: 0;
+  font-size: 1.1em;
+  color: #495057;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-header h3::before {
+  content: '';
+  width: 4px;
+  height: 20px;
+  background: #007bff;
+  border-radius: 2px;
+}
+
 .section div {
   display: grid;
  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
@@ -326,10 +356,14 @@ body {
   box-shadow: 0 4px 12px rgba(0,0,0,0.2);
   z-index: 10000;
   min-width: 200px;
+  max-width: 300px;
+  max-height: 80vh;
   padding: 0;
   margin: 0;
   list-style: none;
-  display: none;
+  display: block; /* Ensure it's visible when added */
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .context-menu li {
@@ -352,6 +386,9 @@ body {
   font-size: 14px;
   color: #333;
   border-radius: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .context-menu li button:hover {
@@ -370,6 +407,27 @@ body {
   height: 1px;
   background: #ddd;
   margin: 5px 0;
+}
+
+/* Gruppe-Styling für bessere Organisation */
+.context-menu .menu-group {
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 5px;
+}
+
+.context-menu .menu-group:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.context-menu .menu-group-title {
+  padding: 8px 15px 5px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #666;
+  text-transform: uppercase;
+  background: #f8f9fa;
+  border-bottom: 1px solid #eee;
 }
 
 /* Table Styles - copied from trupp.css */

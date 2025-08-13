@@ -306,14 +306,15 @@ function loadPatients(highlightId) {
   // Remove any existing status dropdowns before rendering
   const existingDropdowns = document.querySelectorAll('.status-dropdown-overlay');
   existingDropdowns.forEach(dropdown => dropdown.remove());
+  
+  // Remove any existing context menus
+  const existingContextMenus = document.querySelectorAll('#patientContextMenu');
+  existingContextMenus.forEach(menu => menu.remove());
 
   // Remove any existing global click handlers to prevent duplicates
   if (window.dropdownClickHandler) {
     document.removeEventListener('click', window.dropdownClickHandler);
   }
-
-  // NUR bei bestimmten Events Disposition-Status aktualisieren, NICHT bei jeder Patientendaten-Änderung
-  // Das passiert jetzt nur noch über explizite Events (Trupp/RTM-Zuordnung, etc.)
 
   patients.forEach((p) => {
     // 1) createdAt sicher als Zahl
@@ -328,13 +329,50 @@ function loadPatients(highlightId) {
     }
   });
 
-  document.getElementById("activePatients").innerHTML = "";
-  document.getElementById("inUhsPatients").innerHTML = "";
-  document.getElementById("dismissedPatients").innerHTML = "";
+  // Create single table structure
+  const activeContainer = document.getElementById("activePatients");
+  const uhsContainer = document.getElementById("inUhsPatients");
+  const dismissedContainer = document.getElementById("dismissedPatients");
+
+  // Create single table in active container, hide others
+  activeContainer.innerHTML = `
+    <table class="patients-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>ID</th>
+          <th>Status</th>
+          <th>Verdachtsdiagnose</th>
+          <th>Alter/Geschlecht</th>
+          <th>Standort</th>
+          <th>Disposition</th>
+          <th>Ressourcen</th>
+        </tr>
+      </thead>
+      <tbody id="patients-table-body"></tbody>
+    </table>
+  `;
+  
+  uhsContainer.style.display = 'none';
+  dismissedContainer.style.display = 'none';
+  
+  const tableBody = document.getElementById('patients-table-body');
+
+  // Add section header function
+  function addSectionHeader(title, count) {
+    const headerRow = document.createElement('tr');
+    headerRow.className = 'section-header-row';
+    headerRow.innerHTML = `
+      <td colspan="8" class="section-header">
+        <h3>${title} (${count})</h3>
+      </td>
+    `;
+    return headerRow;
+  }
 
   const order = [
     "gemeldet",
-    "disponiert",
+    "disponiert", 
     "in Behandlung",
     "verlegt in UHS",
     "Behandlung in UHS",
@@ -343,339 +381,327 @@ function loadPatients(highlightId) {
     .slice()
     .sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status));
 
-  sorted.forEach((patient) => {
-    const isFinal =
-      patient.status === "Transport in KH" || patient.status === "Entlassen";
+  // Group patients by category
+  const activePatients = sorted.filter(p => ["gemeldet", "disponiert", "in Behandlung"].includes(p.status));
+  const uhsPatients = sorted.filter(p => ["verlegt in UHS", "Behandlung in UHS"].includes(p.status));
+  const dismissedPatients = sorted.filter(p => ["Transport in KH", "Entlassen"].includes(p.status));
 
-    // --- Trupp-Dropdown ---
-    const excluded = [6, 3, 4, 7, 8, 12];
-    const options = trupps
-      .filter((t) => !excluded.includes(t.status))
-      .map((t) => `<option value="${t.name}">${t.name}</option>`)
-      .join("");
-    const truppSelect = `
-<select id="teamSelect-${patient.id}" ${isFinal ? "disabled" : ""}>
-  <option value="">Wählen…</option>
-  ${options}
-</select>
-<button class="meldung-btn" onclick="assignSelectedTrupp(${patient.id})" ${
-      isFinal ? "disabled" : ""
-    }>
-  Trupp disponieren
-</button>`;
+  // Add sections with headers
+  if (activePatients.length > 0) {
+    tableBody.appendChild(addSectionHeader('Aktive Patienten', activePatients.length));
+    activePatients.forEach(patient => {
+      // ...existing code for creating patient rows...
+      const { mainRow, detailsRow } = createPatientRows(patient, trupps, rtms, highlightId);
+      tableBody.appendChild(mainRow);
+      tableBody.appendChild(detailsRow);
+    });
+  }
 
-    // --- Nachforderungen ---
-    let requestBox = "";
-    if (patient.disposed) {
-      requestBox = Object.entries(patient.disposed)
-        .map(([req, details]) => {
-          // Details kann true (alt) oder Objekt (neu, mit trupp/rtm) sein
-          let done = false;
-          let extra = "";
-          if (details && typeof details === "object") {
-            done = details.trupp || details.rtm;
-            if (details.trupp)
-              extra = ` <span style="color:gray;font-size:0.95em;">[Trupp: ${details.trupp}]</span>`;
-            if (details.rtm)
-              extra = ` <span style="color:gray;font-size:0.95em;">[RTM: ${details.rtm}]</span>`;
-          } else if (details === true) {
-            done = true;
-          }
-          const style = done ? "background:#ccffcc" : "background:#ffcccc";
-          const btn = done
-            ? ""
-            : `<button onclick="openNachforderungModal(${patient.id}, '${req}')">Disponiert</button>`;
-          return `<div style="${style};padding:4px;margin-bottom:4px;">${req}${extra} ${btn}</div>`;
-        })
-        .join("");
-    }
+  if (uhsPatients.length > 0) {
+    tableBody.appendChild(addSectionHeader('In UHS', uhsPatients.length));
+    uhsPatients.forEach(patient => {
+      const { mainRow, detailsRow } = createPatientRows(patient, trupps, rtms, highlightId);
+      tableBody.appendChild(mainRow);
+      tableBody.appendChild(detailsRow);
+    });
+  }
 
-    const dispoButtons = isFinal
-      ? ""
-      : `<div class="buttons" style="display:flex; flex-direction:column; gap:5px; margin-top:8px;">
-<button class="meldung-btn" onclick="disposeRequest(${patient.id}, 'Tragetrupp nachgefordert')">
-Tragetrupp
-</button>
-<button class="meldung-btn" onclick="disposeRequest(${patient.id}, 'RTW nachgefordert')">
-RTW
-<button class="meldung-btn" onclick="disposeRequest(${patient.id}, 'NEF nachgefordert')">
-NEF
-</button>
-</div>
-`;
+  if (dismissedPatients.length > 0) {
+    tableBody.appendChild(addSectionHeader('Entlassen/Transport', dismissedPatients.length));
+    dismissedPatients.forEach(patient => {
+      const { mainRow, detailsRow } = createPatientRows(patient, trupps, rtms, highlightId);
+      tableBody.appendChild(mainRow);
+      tableBody.appendChild(detailsRow);
+    });
+  }
 
-    // --- Historie ---
-    const histItems = (patient.history || [])
-      .map((h) => `<li>${h}</li>`)
-      .join("");
-    const addEntry = `<button class="meldung-btn" style="width:100%;margin-top:6px;"
-           onclick="promptAddEntry(${patient.id})">Eintrag hinzufügen</button>`;
-    const historyHTML = `
-    <div style="min-width:300px;max-width:300px;">
-<strong>Historie:</strong>
-<div class="history-container" style="max-height:200px; overflow-y:auto;">
-  <ul>
-    ${histItems}
-  </ul>
-</div>
-${addEntry}
-</div>`;
-
-    // --- Karte ---
-    const card = document.createElement("div");
+  // Helper function to create patient rows
+  function createPatientRows(patient, trupps, rtms, highlightId) {
+    const isFinal = patient.status === "Transport in KH" || patient.status === "Entlassen";
     const statusClass = (patient.status || "undefined").replace(/\s/g, "-");
-    card.className = "patient-card " + statusClass;
-    card.dataset.id = patient.id;
-    card.innerHTML = `
-<!-- ① Titel als Überschrift oberhalb aller Spalten -->
-<h2 style="width:100%; margin:0 0 10px; font-size:1.5em; color:#333;">
-Patient ${patient.id}
-</h2>
-
-<!-- ② Jetzt alle Spalten ohne den alten Titel-Span -->
-<div style="display:flex; flex-wrap:wrap; gap:10px;">
-  <div class="button-group">
-<button class="meldung-btn" onclick="copyPatientData(${
-      patient.id
-    })">Meldung</button>
-<button class="reset-btn"   onclick="deletePatient(${
-      patient.id
-    })">Löschen</button>
-
-</div>
-
-</div>
-
-<div style="min-width:200px;">
-  <strong>Status:</strong> ${patient.status}<br>
-
-  ${!["Entlassen","Transport in KH"].includes(patient.status) ? `
-    <button class="status-Transport-in-KH"
-            onclick="transportPatient(${patient.id})">
-      Transport in KH
-    </button>
-    <button class="status-Entlassen"
-            onclick="dischargePatient(${patient.id})">
-      Entlassen
-    </button>
-  ` : ``}
-</div>
-
-
-${historyHTML}
-
-<div class="patient-info-block" style="min-width:400px;">
-  <div class="patient-info-text">
-  <!-- ➊ Tabelle für Verdachtsdiagnose  -->
-<table class="patient-details-table">
-<thead>
-<tr>
-<th>Verdachtsdiagnose</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-${patient.diagnosis || "–"}
-</td>
-</tr>
-</tbody>
-</table>
-
-<!-- ➋ Tabelle für die restlichen Felder -->
-<table class="patient-info-table">
-<tbody>
-${(() => {
-  // Dispositionssymbole generieren
-  let dispositionSymbols = '';
-  
-  if (patient.suggestedResources && Array.isArray(patient.suggestedResources) && patient.suggestedResources.length > 0) {
-    dispositionSymbols = '<div class="disposition-symbols" style="margin-top: 10px;">' +
-      '<div style="font-weight: bold; margin-bottom: 4px;">Dispositionsvorschlag:</div>' +
-      '<div style="display: flex; flex-wrap: wrap; gap: 4px;">';
     
-    patient.suggestedResources.forEach(resource => {
-      const abbrev = getResourceAbbreviation(resource);
-      
-      if (!patient.dispositionStatus) {
-        patient.dispositionStatus = {};
+    // Erstelle die Hauptzeile des Patienten
+    const mainRow = document.createElement("tr");
+    mainRow.className = `patient-row status-${statusClass}`;
+    mainRow.dataset.id = patient.id;
+    mainRow.dataset.status = patient.status;
+    
+    if (patient.id === highlightId) {
+      mainRow.classList.add("slide-in");
+      setTimeout(() => mainRow.classList.remove("slide-in"), 2000);
+    }
+    
+    // Expandieren/Kollabieren per Klick auf die ganze Zeile
+    mainRow.addEventListener('click', (e) => {
+      if (e.target.tagName !== 'BUTTON' && !e.target.closest('button') && 
+          e.target.tagName !== 'A' && !e.target.closest('a') &&
+          e.target.tagName !== 'SELECT' && !e.target.closest('select')) {
+        toggleExpandRow(patient.id);
       }
-      
-      const isDispatched = patient.dispositionStatus[resource] === 'dispatched';
-      const isIgnored = patient.dispositionStatus[resource + '_ignored'] === true;
-      
-      // CSS-Klassen mit Priorität: dispatched überschreibt alles
-      let cssClass = 'disposition-symbol ';
-      if (isDispatched) {
-        // Dispatched hat höchste Priorität - alle anderen Klassen werden überschrieben
-        cssClass += 'dispatched';
-      } else if (isIgnored) {
-        cssClass += 'ignored';
-      } else {
-        cssClass += 'required';
-      }
-      
-      dispositionSymbols += '<span class="' + cssClass + '"' +
-             ' onclick="toggleDispositionStatus(' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
-             ' oncontextmenu="toggleDispositionIgnore(event, ' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
-             ' title="' + resource + '">' +
-             abbrev + '</span>';
     });
     
-    dispositionSymbols += '</div></div>';
-  }
-  
-  return dispositionSymbols;
-})()}
-<tr>
-<th>Alter</th>
-<td>
-${patient.age || "–"}
-</td>
-</tr>
-<tr>
-  <th>Geschlecht</th>
-  <td>
-    ${["M", "W", "D"]
-      .map(
-        (g) => `
-        <label style="margin-right:8px;">
-          <input
-            type="checkbox"
-            name="gender-${patient.id}"
-            value="${g}"
-            ${patient.gender === g ? "checked" : ""}
-            disabled
-          >
-          ${g}
-        </label>
-      `
-      )
-      .join("")}
-  </td>
-</tr>
-
-<tr>
-<th>Standort</th>
-<td>
-${patient.location || "–"}
-</td>
-</tr>
-<tr>
-<th>Bemerkung</th>
-<td>
-${patient.remarks || "–"}
-</td>
-</tr>
-</tbody>
-</table>
-
-  </div>
-  ${
-    !isFinal
-      ? `<button class="meldung-btn edit-info-btn" onclick="openEditModal(${patient.id})">
-         ✏️ Patientendaten bearbeiten
-       </button>`
-      : ``
-  }
-</div>
-
-<div class="patient-trupp-column" style="min-width:200px;">
-  <strong>Trupp:</strong><br>
-  ${
-    (patient.team || [])
-      .map(
-        (t, i) => {
-          // Find the corresponding trupp to get its status
-          const trupp = trupps.find(tr => tr.name === t);
-          const statusDef = trupp ? window.statusOptions?.find(o => o.status === trupp.status) : null;
-          const statusIndicator = statusDef ? 
-            `<span class="status-code" style="background: ${statusDef.color}; border: 1px solid ${statusDef.color}; color: black; padding: 1px 4px; border-radius: 2px; font-size: 0.8em; margin-left: 4px; cursor: pointer;" 
-             onclick="openTruppStatusDropdown(event, '${t}')" 
-             title="Klick zum Ändern des Status">${statusDef.status}</span>` : '';
-          
-          return `<span>${t}${statusIndicator}${
-            !isFinal
-              ? ` <button class="reset-btn" onclick="removeTrupp(${patient.id},${i})">X</button>`
-              : ``
-          }</span>`
+    // Rechtsklick-Event für Kontextmenü
+    mainRow.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      showPatientContextMenu(e, patient.id, isFinal);
+    });
+    
+    // Inhalt der Hauptzeile
+    const expandBtnCell = `<td><span class="expand-btn" onclick="toggleExpandRow('${patient.id}')">▼</span></td>`;
+    
+    const idCell = `<td><strong>P${patient.id}</strong></td>`;
+    
+    const statusCell = `
+      <td>
+        <span class="status-indicator"></span>
+        ${patient.status || "–"}
+      </td>
+    `;
+    
+    const diagnosisCell = `
+      <td>
+        <div class="tooltip">
+          ${(patient.diagnosis || "–").length > 30 ? 
+            (patient.diagnosis || "–").substring(0, 30) + "..." : 
+            (patient.diagnosis || "–")}
+          <span class="tooltip-text">${patient.diagnosis || "–"}</span>
+        </div>
+      </td>
+    `;
+    
+    const ageGenderCell = `
+      <td>${patient.age || "–"} / ${patient.gender || "–"}</td>
+    `;
+    
+    const locationCell = `
+      <td>
+        <div class="tooltip">
+          ${(patient.location || "–").length > 20 ? 
+            (patient.location || "–").substring(0, 20) + "..." : 
+            (patient.location || "–")}
+          <span class="tooltip-text">${patient.location || "–"}</span>
+        </div>
+      </td>
+    `;
+    
+    // Disposition Symbole
+    let dispositionCell = `<td>`;
+    if (patient.suggestedResources && Array.isArray(patient.suggestedResources) && patient.suggestedResources.length > 0) {
+      dispositionCell += `<div style="display: flex; flex-wrap: wrap; gap: 3px;">`;
+      patient.suggestedResources.forEach(resource => {
+        const abbrev = getResourceAbbreviation(resource);
+        if (!patient.dispositionStatus) patient.dispositionStatus = {};
+        
+        const isDispatched = patient.dispositionStatus[resource] === 'dispatched';
+        const isIgnored = patient.dispositionStatus[resource + '_ignored'] === true;
+        
+        let cssClass = 'disposition-symbol ';
+        if (isDispatched) {
+          cssClass += 'dispatched';
+        } else if (isIgnored) {
+          cssClass += 'ignored';
+        } else {
+          cssClass += 'required';
         }
-      )
-      .join("<br>") || "–"
-  }
-  <br>
-  <button class="meldung-btn" onclick="openTruppDispositionModal(${patient.id})" ${isFinal ? "disabled" : ""}>
-    Trupp disponieren
-  </button>
-</div>
-
-<div style="min-width:300px;">
-  <strong>RTM:</strong><br>
-  ${
-    (patient.rtm || [])
-      .map(
-        (r, i) => {
-          // Find the corresponding RTM to get its status
-          const rtm = rtms.find(rt => rt.name === r);
-          const statusDef = rtm ? window.statusOptions?.find(o => o.status === rtm.status) : null;
-          const statusIndicator = statusDef ? 
-            `<span class="status-code" style="background: ${statusDef.color}; border: 1px solid ${statusDef.color}; color: black; padding: 1px 4px; border-radius: 2px; font-size: 0.8em; margin-left: 4px; cursor: pointer;" 
-             onclick="openRtmStatusDropdown(event, '${r}')" 
-             title="Klick zum Ändern des Status">${statusDef.status}</span>` : '';
+        
+        dispositionCell += `
+          <span class="${cssClass}"
+                onclick="toggleDispositionStatus(${patient.id}, '${resource.replace(/'/g, "\\'")}')"
+                oncontextmenu="toggleDispositionIgnore(event, ${patient.id}, '${resource.replace(/'/g, "\\'")}')"
+                title="${resource}">
+            ${abbrev}
+          </span>
+        `;
+      });
+      dispositionCell += `</div>`;
+    } else {
+      dispositionCell += `–`;
+    }
+    dispositionCell += `</td>`;
+    
+    // Trupp/RTM-Zelle
+    let resourcesCell = `<td>`;
+    
+    // Trupps
+    if (Array.isArray(patient.team) && patient.team.length > 0) {
+      resourcesCell += `<div class="resources-list">`;
+      patient.team.forEach((t, i) => {
+        const trupp = trupps.find(tr => tr.name === t);
+        const statusDef = trupp ? window.statusOptions?.find(o => o.status === trupp.status) : null;
+        const statusIndicator = statusDef ? 
+          `<span class="status-code" style="background: ${statusDef.color}; color: black; padding: 0 3px; border-radius: 2px; font-size: 0.8em; margin-left: 2px; cursor: pointer;" 
+           onclick="openTruppStatusDropdown(event, '${t}')" 
+           title="Klick zum Ändern des Status">${statusDef.status}</span>` : '';
+        
+        resourcesCell += `
+          <span class="resource-tag trupp-tag">
+            T: ${t.length > 10 ? t.substring(0, 10) + "..." : t}${statusIndicator}
+          </span>
+        `;
+      });
+      resourcesCell += `</div>`;
+    }
+    
+    // RTMs
+    if (Array.isArray(patient.rtm) && patient.rtm.length > 0) {
+      resourcesCell += `<div class="resources-list">`;
+      patient.rtm.forEach((r, i) => {
+        const rtm = rtms.find(rt => rt.name === r);
+        const statusDef = rtm ? window.statusOptions?.find(o => o.status === rtm.status) : null;
+        const statusIndicator = statusDef ? 
+          `<span class="status-code" style="background: ${statusDef.color}; color: black; padding: 0 3px; border-radius: 2px; font-size: 0.8em; margin-left: 2px; cursor: pointer;" 
+           onclick="openRtmStatusDropdown(event, '${r}')" 
+           title="Klick zum Ändern des Status">${statusDef.status}</span>` : '';
+        
+        resourcesCell += `
+          <span class="resource-tag rtm-tag">
+            R: ${r}${statusIndicator}
+          </span>
+        `;
+      });
+      resourcesCell += `</div>`;
+    }
+    
+    if (!Array.isArray(patient.team) || patient.team.length === 0) {
+      if (!Array.isArray(patient.rtm) || patient.rtm.length === 0) {
+        resourcesCell += `–`;
+      }
+    }
+    
+    resourcesCell += `</td>`;
+    
+    // Füge alle Zellen zur Hauptzeile hinzu (Aktionsbuttons entfernt)
+    mainRow.innerHTML = expandBtnCell + idCell + statusCell + diagnosisCell + 
+                       ageGenderCell + locationCell + dispositionCell + 
+                       resourcesCell;
+    
+    // Erstelle die erweiterbaren Details-Zeilen
+    const detailsRow = document.createElement("tr");
+    detailsRow.className = "expandable-row";
+    detailsRow.id = `details-${patient.id}`;
+    
+    // Details-Inhalt mit 3 Spalten
+    const detailsContent = document.createElement("td");
+    detailsContent.colSpan = 9; // Über alle Spalten erstrecken
+    detailsContent.className = "expandable-content";
+    
+    // Inhalt der Details
+    detailsContent.innerHTML = `
+      <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+        <!-- Linke Spalte: Trupps, RTMs zuweisen -->
+        <div style="flex: 1; min-width: 300px;">
+          <h4>Ressourcen zuweisen</h4>
           
-          return `<span>${r}${statusIndicator}${
-            !isFinal
-              ? ` <button class="reset-btn" onclick="removeRtm(${patient.id},${i})">X</button>`
-              : ``
-          }</span>`
-        }
-      )
-      .join("<br>") || "–"
-  }<br>
-  <button class="meldung-btn" onclick="openRtmModal(${patient.id})" ${
-      isFinal ? "disabled" : ""
-    }>
-    RTM disponieren
-  </button>
-</div>
+          <div class="assignment-section">
+            <h5>Trupp</h5>
+            <select id="teamSelect-${patient.id}" ${isFinal ? "disabled" : ""}>
+              <option value="">Wählen…</option>
+              ${trupps
+                .filter(t => ![6, 3, 4, 7, 8, 12].includes(t.status))
+                .map(t => `<option value="${t.name}">${t.name}</option>`)
+                .join("")}
+            </select>
+            <button class="meldung-btn" onclick="assignSelectedTrupp(${patient.id})" ${isFinal ? "disabled" : ""}>
+              Trupp disponieren
+            </button>
+            
+            <h5>RTM</h5>
+            <button class="meldung-btn" onclick="openRtmModal(${patient.id})" ${isFinal ? "disabled" : ""}>
+              RTM disponieren
+            </button>
+          </div>
+          
+          <!-- Zugewiesene Ressourcen anzeigen und entfernen können -->
+          <div style="margin-top: 15px;">
+            <h5>Zugewiesene Trupps</h5>
+            ${Array.isArray(patient.team) && patient.team.length > 0 ?
+              patient.team.map((t, i) => `
+                <div style="margin: 5px 0; padding: 5px; border: 1px solid #ddd; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+                  <span>${t}</span>
+                  ${!isFinal ? `<button class="reset-btn" onclick="removeTrupp(${patient.id},${i})">Entfernen</button>` : ''}
+                </div>
+              `).join("") :
+              "<p>Keine Trupps zugewiesen</p>"
+            }
+            
+            <h5>Zugewiesene RTMs</h5>
+            ${Array.isArray(patient.rtm) && patient.rtm.length > 0 ?
+              patient.rtm.map((r, i) => `
+                <div style="margin: 5px 0; padding: 5px; border: 1px solid #ddd; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+                  <span>${r}</span>
+                  ${!isFinal ? `<button class="reset-btn" onclick="removeRtm(${patient.id},${i})">Entfernen</button>` : ''}
+                </div>
+              `).join("") :
+              "<p>Keine RTMs zugewiesen</p>"
+            }
+          </div>
+        </div>
+        
+        <!-- Mittlere Spalte: Patienteninfo -->
+        <div style="flex: 1; min-width: 300px;">
+          <h4>Patientendaten</h4>
+          
+          <!-- Patientendaten als Tabelle -->
+          <table class="patient-info-table" style="width:100%">
+            <tr>
+              <th>Verdachtsdiagnose</th>
+              <td>${patient.diagnosis || "–"}</td>
+            </tr>
+            <tr>
+              <th>Alter</th>
+              <td>${patient.age || "–"}</td>
+            </tr>
+            <tr>
+              <th>Geschlecht</th>
+              <td>${patient.gender || "–"}</td>
+            </tr>
+            <tr>
+              <th>Standort</th>
+              <td>${patient.location || "–"}</td>
+            </tr>
+            <tr>
+              <th>Bemerkungen</th>
+              <td>${patient.remarks || "–"}</td>
+            </tr>
+          </table>
+          
+          <button class="meldung-btn edit-info-btn" style="margin-top: 10px;" onclick="openEditModal(${patient.id})">
+            Patientendaten bearbeiten
+          </button>
+        </div>
+        
+        <!-- Rechte Spalte: Historie -->
+        <div style="flex: 1; min-width: 300px;">
+          <h4>Patientenhistorie</h4>
+          
+          <div class="history-container" style="max-height: 300px; overflow-y: auto;">
+            <ul>
+              ${(patient.history || []).map(h => `<li>${h}</li>`).join("")}
+            </ul>
+          </div>
+          
+          <button class="meldung-btn" style="width:100%; margin-top:10px;"
+                 onclick="promptAddEntry(${patient.id})">
+            Eintrag hinzufügen
+          </button>
+        </div>
+      </div>
+    `;
+    
+    detailsRow.appendChild(detailsContent);
+    
+    return { mainRow, detailsRow };
+  }
 
-
-</div>
-</div>
-
-`;
-
-    const container = ["gemeldet", "disponiert", "in Behandlung"].includes(
-      patient.status
-    )
-      ? "activePatients"
-      : ["verlegt in UHS", "Behandlung in UHS"].includes(patient.status)
-      ? "inUhsPatients"
-      : "dismissedPatients";
-    document.getElementById(container).appendChild(card);
-
-    // <–– HIER scrollen wir den History-Container ans Ende:
-    const histContainer = card.querySelector(".history-container");
-    if (histContainer) {
-      // sofort ans Ende scrollen
-      histContainer.scrollTop = histContainer.scrollHeight;
+  // Scroll zu Highlight-ID, falls vorhanden
+  if (highlightId) {
+    const highlightRow = document.querySelector(`tr[data-id="${highlightId}"]`);
+    if (highlightRow) {
+      highlightRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
+  }
 
-    if (patient.id === highlightId) {
-      card.classList.add("slide-in");
-      card.addEventListener(
-        "animationend",
-        () => card.classList.remove("slide-in"),
-        { once: true }
-      );
-    }
-  });
-
-  document.querySelectorAll(".history-container").forEach((hc) => {
-    hc.scrollTop = hc.scrollHeight;
-  });
-  
-  // Set up persistent global click handler to close dropdowns
+  // Setze den globalen Click-Handler für Dropdowns
   window.dropdownClickHandler = function(e) {
     if (!e.target.closest('.status-dropdown-overlay') && !e.target.closest('.status-code')) {
       const dropdowns = document.querySelectorAll('.status-dropdown-overlay');
@@ -685,9 +711,7 @@ ${patient.remarks || "–"}
   
   document.addEventListener('click', window.dropdownClickHandler);
   
-  window.scrollTo(0, scrollY); 
-  
-  // Event-Listener für Disposition-Updates - aber nur für relevante Changes
+  // Event-Listener für Disposition-Updates
   if (window.dispositionUpdateListener) {
     window.removeEventListener('dispositionUpdate', window.dispositionUpdateListener);
   }
@@ -695,7 +719,6 @@ ${patient.remarks || "–"}
   window.dispositionUpdateListener = function() {
     console.log('Disposition update received - updating relevant patients only');
     
-    // Nur Disposition-Status aktualisieren, KEINE komplette Patient-Liste neu laden
     const currentPatients = JSON.parse(localStorage.getItem("patients")) || [];
     const currentTrupps = JSON.parse(localStorage.getItem("trupps")) || [];
     const currentRtms = JSON.parse(localStorage.getItem("rtms")) || [];
@@ -703,38 +726,274 @@ ${patient.remarks || "–"}
     currentPatients.forEach(patient => {
       updatePatientDispositionStatus(patient, currentTrupps, currentRtms);
       
-      // Nur die Dispositionssymbole in der bestehenden Karte aktualisieren
-      const patientCard = document.querySelector(`[data-id="${patient.id}"]`);
-      if (patientCard && patient.suggestedResources && Array.isArray(patient.suggestedResources)) {
-        const dispositionContainer = patientCard.querySelector('.disposition-symbols');
-        if (dispositionContainer) {
-          const symbolsDiv = dispositionContainer.querySelector('div:last-child');
-          if (symbolsDiv) {
-            // Symbole neu generieren
-            let newSymbols = '';
-            patient.suggestedResources.forEach(resource => {
-              const abbrev = getResourceAbbreviation(resource);
-              const isDispatched = patient.dispositionStatus && patient.dispositionStatus[resource] === 'dispatched';
-              const isIgnored = patient.dispositionStatus && patient.dispositionStatus[resource + '_ignored'] === true;
-              
-              newSymbols += '<span class="disposition-symbol ' + (isDispatched ? 'dispatched' : 'required') + 
-                     (isIgnored ? ' ignored' : '') + '"' +
-                     ' onclick="toggleDispositionStatus(' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
-                     ' oncontextmenu="toggleDispositionIgnore(event, ' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
-                     ' title="' + resource + '">' +
-                     abbrev + '</span>';
-            });
-            symbolsDiv.innerHTML = newSymbols;
-          }
+      const patientRow = document.querySelector(`tr[data-id="${patient.id}"]`);
+      if (patientRow && patient.suggestedResources && Array.isArray(patient.suggestedResources)) {
+        const dispositionCell = patientRow.querySelector('td:nth-child(7)');
+        if (dispositionCell) {
+          // Nur die Dispositionssymbole neu rendern
+          let symbolsHTML = '<div style="display: flex; flex-wrap: wrap; gap: 3px;">';
+          
+          patient.suggestedResources.forEach(resource => {
+            const abbrev = getResourceAbbreviation(resource);
+            const isDispatched = patient.dispositionStatus && patient.dispositionStatus[resource] === 'dispatched';
+            const isIgnored = patient.dispositionStatus && patient.dispositionStatus[resource + '_ignored'] === true;
+            
+            let cssClass = 'disposition-symbol ';
+            if (isDispatched) {
+              cssClass += 'dispatched';
+            } else if (isIgnored) {
+              cssClass += 'ignored';
+            } else {
+              cssClass += 'required';
+            }
+            
+            symbolsHTML += `
+              <span class="${cssClass}"
+                    onclick="toggleDispositionStatus(${patient.id}, '${resource.replace(/'/g, "\\'")}')"
+                    oncontextmenu="toggleDispositionIgnore(event, ${patient.id}, '${resource.replace(/'/g, "\\'")}')"
+                    title="${resource}">
+                ${abbrev}
+              </span>
+            `;
+          });
+          
+          symbolsHTML += '</div>';
+          dispositionCell.innerHTML = symbolsHTML;
         }
       }
     });
     
-    // Aktualisierte Patientendaten speichern
     localStorage.setItem("patients", JSON.stringify(currentPatients));
   };
   
   window.addEventListener('dispositionUpdate', window.dispositionUpdateListener);
   
-  window.scrollTo(0, scrollY); 
+  // Füge die Toggle-Funktion zum Window-Objekt hinzu
+  window.toggleExpandRow = function(patientId) {
+    const mainRow = document.querySelector(`tr[data-id="${patientId}"]`);
+    const detailsRow = document.getElementById(`details-${patientId}`);
+    
+    if (mainRow && detailsRow) {
+      const isExpanded = mainRow.classList.contains('expanded');
+      
+      if (isExpanded) {
+        mainRow.classList.remove('expanded');
+        detailsRow.style.display = 'none';
+      } else {
+        mainRow.classList.add('expanded');
+        detailsRow.style.display = 'table-row';
+        
+        // Scroll zum Container der Historie
+        const historyContainer = detailsRow.querySelector('.history-container');
+        if (historyContainer) {
+          historyContainer.scrollTop = historyContainer.scrollHeight;
+        }
+      }
+    }
+  };
 }
+
+/**
+ * Zeigt das Kontextmenü für einen Patienten an
+ * @param {Event} event - Das auslösende Event (Rechtsklick)
+ * @param {number|string} patientId - Die ID des Patienten
+ * @param {boolean} isFinal - Ob der Patient im finalen Status ist
+ */
+function showPatientContextMenu(event, patientId, isFinal) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  // Erstelle das Kontextmenü direkt im iframe, unabhängig von parent
+  hidePatientContextMenu();
+
+  const menu = document.createElement('div');
+  menu.id = 'patientContextMenu';
+  menu.className = 'context-menu';
+  
+  let menuHTML = `
+    <div class="menu-group">
+      <div class="menu-group-title">Patient P${patientId}</div>
+      ${!isFinal ? `
+        <div class="menu-item" onclick="transportPatient(${patientId}); hidePatientContextMenu()">
+          <span class="icon">🚑</span>Transport in KH
+        </div>
+        <div class="menu-item" onclick="dischargePatient(${patientId}); hidePatientContextMenu()">
+          <span class="icon">✅</span>Entlassen
+        </div>
+      ` : ''}
+      <div class="menu-item" onclick="copyPatientData(${patientId}); hidePatientContextMenu()">
+        <span class="icon">📋</span>Meldung kopieren
+      </div>
+      <div class="menu-item warning" onclick="deletePatient(${patientId}); hidePatientContextMenu()">
+        <span class="icon">🗑️</span>Löschen
+      </div>
+    </div>
+    
+    <div class="menu-group">
+      <div class="menu-group-title">Dokumentation</div>
+      <div class="menu-item" onclick="openEditModal(${patientId}); hidePatientContextMenu()">
+        <span class="icon">✏️</span>Patientendaten bearbeiten
+      </div>
+      <div class="menu-item" onclick="promptAddEntry(${patientId}); hidePatientContextMenu()">
+        <span class="icon">📝</span>Eintrag hinzufügen
+      </div>
+    </div>
+  `;
+
+  if (!isFinal) {
+    menuHTML += `
+      <div class="menu-group">
+        <div class="menu-group-title">Ressourcen</div>
+        <div class="menu-item" onclick="openTruppDispositionModal(${patientId}); hidePatientContextMenu()">
+          <span class="icon">👥</span>Trupp disponieren
+        </div>
+        <div class="menu-item" onclick="openRtmModal(${patientId}); hidePatientContextMenu()">
+          <span class="icon">🚗</span>RTM disponieren
+        </div>
+      </div>
+    `;
+  }
+  
+  menu.innerHTML = menuHTML;
+
+  // Menu erstmal unsichtbar hinzufügen um Größe zu messen
+  menu.style.position = 'fixed';
+  menu.style.left = '-9999px';
+  menu.style.top = '-9999px';
+  menu.style.zIndex = '10000';
+  menu.style.opacity = '0';
+  menu.style.pointerEvents = 'none';
+  
+  document.body.appendChild(menu);
+  
+  // Größe messen
+  const rect = menu.getBoundingClientRect();
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  // Position berechnen - Standard rechts unten von der Maus
+  let finalX = event.clientX + 5;
+  let finalY = event.clientY + 5;
+
+  // Prüfe ob das Menü rechts rausragen würde
+  if (finalX + rect.width > viewportWidth) {
+    finalX = event.clientX - rect.width - 5; // Links von der Maus
+  }
+  
+  // Prüfe ob das Menü unten rausragen würde
+  if (finalY + rect.height > viewportHeight) {
+    finalY = event.clientY - rect.height - 5; // Oberhalb der Maus
+  }
+  
+  // Noch ein Check falls es sowohl rechts als auch unten rausragen würde
+  if (finalX + rect.width > viewportWidth && finalY + rect.height > viewportHeight) {
+    finalX = event.clientX - rect.width - 5;
+    finalY = event.clientY - rect.height - 5;
+  }
+  
+  // Mindestabstand zum Rand sicherstellen
+  finalX = Math.max(5, Math.min(finalX, viewportWidth - rect.width - 5));
+  finalY = Math.max(5, Math.min(finalY, viewportHeight - rect.height - 5));
+
+  // Finale Position setzen
+  menu.style.left = finalX + 'px';
+  menu.style.top = finalY + 'px';
+  menu.style.opacity = '1';
+  menu.style.pointerEvents = 'auto';
+
+  // Animation
+  menu.style.transform = 'scale(0.95)';
+  menu.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
+  
+  requestAnimationFrame(() => {
+    menu.style.transform = 'scale(1)';
+  });
+
+  // Event Handler für das Schließen
+  const closeHandler = function(e) {
+    if (!e.target.closest('#patientContextMenu')) {
+      hidePatientContextMenu();
+      document.removeEventListener('click', closeHandler);
+      document.removeEventListener('contextmenu', closeHandler);
+    }
+  };
+  
+  setTimeout(() => {
+    document.addEventListener('click', closeHandler);
+    document.addEventListener('contextmenu', closeHandler);
+  }, 10);
+
+  // ESC-Taste schließt das Menü
+  const escHandler = function(e) {
+    if (e.key === 'Escape') {
+      hidePatientContextMenu();
+      document.removeEventListener('keydown', escHandler);
+    }
+  };
+  document.addEventListener('keydown', escHandler);
+}
+
+/**
+ * Blendet das Patienten-Kontextmenü aus
+ */
+function hidePatientContextMenu() {
+  const menu = document.getElementById('patientContextMenu');
+  if (menu) {
+    menu.style.opacity = '0';
+    menu.style.transform = 'scale(0.95)';
+    
+    setTimeout(() => {
+      menu.remove();
+    }, 150);
+  }
+}
+
+// Message-Listener für Actions vom parent window
+window.addEventListener('message', function(event) {
+  if (event.data.type === 'executePatientAction') {
+    const { action, patientId } = event.data;
+    
+    switch(action) {
+      case 'transport':
+        if (typeof transportPatient === 'function') {
+          transportPatient(patientId);
+        }
+        break;
+      case 'discharge':
+        if (typeof dischargePatient === 'function') {
+          dischargePatient(patientId);
+        }
+        break;
+      case 'copy':
+        if (typeof copyPatientData === 'function') {
+          copyPatientData(patientId);
+        }
+        break;
+      case 'delete':
+        if (typeof deletePatient === 'function') {
+          deletePatient(patientId);
+        }
+        break;
+      case 'edit':
+        if (typeof openEditModal === 'function') {
+          openEditModal(patientId);
+        }
+        break;
+      case 'addEntry':
+        if (typeof promptAddEntry === 'function') {
+          promptAddEntry(patientId);
+        }
+        break;
+      case 'assignTrupp':
+        if (typeof openTruppDispositionModal === 'function') {
+          openTruppDispositionModal(patientId);
+        }
+        break;
+      case 'assignRtm':
+        if (typeof openRtmModal === 'function') {
+          openRtmModal(patientId);
+        }
+        break;
+    }
+  }
+});

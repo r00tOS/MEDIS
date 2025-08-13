@@ -33,6 +33,68 @@
         -webkit-appearance: none; /* Chrome, Safari, Edge */
         margin: 0;
       }
+
+      /* Responsive RTM Layout */
+      .section {
+        width: 100%;
+        margin-bottom: 20px;
+      }
+
+      #einsatzContainer, #pauseContainer, #nichtContainer {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: flex-start;
+      }
+
+      /* RTM Karten responsive machen */
+      .rtm-card {
+        flex: 1 1 auto;
+        min-width: 300px;
+        max-width: 400px;
+        box-sizing: border-box;
+      }
+
+      /* Für größere Bildschirme mehr Spalten */
+      @media (min-width: 1200px) {
+        .rtm-card {
+          flex: 1 1 calc(33.333% - 10px);
+        }
+      }
+
+      @media (min-width: 1600px) {
+        .rtm-card {
+          flex: 1 1 calc(25% - 10px);
+        }
+      }
+
+      @media (min-width: 2000px) {
+        .rtm-card {
+          flex: 1 1 calc(20% - 10px);
+        }
+      }
+
+      /* Für kleinere Bildschirme */
+      @media (max-width: 768px) {
+        .rtm-card {
+          flex: 1 1 100%;
+          min-width: unset;
+          max-width: unset;
+        }
+      }
+
+      /* Container Vollbreite */
+      body {
+        margin: 0;
+        padding: 10px;
+        box-sizing: border-box;
+      }
+
+      .max-einsatz-time, .button-row {
+        width: 100%;
+        box-sizing: border-box;
+      }
     </style>
   </head>
   <body>

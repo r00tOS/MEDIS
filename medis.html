@@ -21,16 +21,16 @@
       "
     >
       <h1 style="display: flex; align-items: center; gap: 8px; margin: 0">
-        <img src="icons/medis_long.png" alt="MEDIS" style="height: 11vh" />
+        <img src="icons/medis_long.png" alt="MEDIS" style="height: 6vh" />
       </h1>
 
       <div>
-        <!-- „Alles löschen“-Button -->
+        <!-- „Alles löschen"-Button -->
         <button
           id="btnClearAll"
           class="btnHeader"
           title="Alle Daten löschen"
-          style="font-size: 3.5rem; padding: 8px 12px"
+          style="font-size: 2.8rem; padding: 6px 10px"
         >
           🗑️
         </button>
@@ -40,7 +40,7 @@
           id="btnExportPDF"
           class="btnHeader"
           title="PDF Export"
-          style="font-size: 3.5rem; padding: 8px 12px"
+          style="font-size: 2.8rem; padding: 6px 10px"
         >
           📄
         </button>
@@ -50,7 +50,7 @@
           id="btnSettings"
           class="btnHeader"
           title="Einstellungen"
-          style="font-size: 3.5rem; padding: 8px 12px"
+          style="font-size: 2.8rem; padding: 6px 10px"
         >
           ⚙️
         </button>
@@ -67,9 +67,6 @@
       <div class="tab active" data-tab="tab1">
         <img src="icons/lageführung.png" alt="Trupps" class="tab-icon" />
       </div>    
-      <div class="tab" data-tab="tab3">
-        <img src="icons/patients.png" alt="Patienten" class="tab-icon" />
-      </div>
       <div class="tab" data-tab="tab4">
         <img src="icons/dashboard.png" alt="Dashboard" class="tab-icon" />
       </div>
@@ -80,9 +77,33 @@
 
     <div class="container" style="overflow: auto">
       <div class="tab-content active" id="tab1">
-        <div style="display: flex; height: 100%; gap: 10px;">
-          <iframe src="sites/trupp_status_tracker.html" style="flex: 1; border: none; height: 100%;"></iframe>
-          <iframe src="sites/rtm_tracker.html" style="flex: 1; border: none; height: 100%;"></iframe>
+        <div style="display: flex; flex-direction: column; height: 100%; gap: 15px;">
+          <!-- Top section (60% height) with trupp and rtm trackers side by side -->
+          <div style="display: flex; height: 60%; gap: 15px;">
+            <!-- Trupp tracker with title and border -->
+            <div style="flex: 1; display: flex; flex-direction: column; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+              <div style="background: #f0f8ff; padding: 6px 10px; font-weight: bold; border-bottom: 1px solid #ddd;">
+                Trupp Status
+              </div>
+              <iframe src="sites/trupp_status_tracker.html" style="flex: 1; border: none;"></iframe>
+            </div>
+            
+            <!-- RTM tracker with title and border -->
+            <div style="flex: 1; display: flex; flex-direction: column; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+              <div style="background: #f0f8ff; padding: 6px 10px; font-weight: bold; border-bottom: 1px solid #ddd;">
+                RTM Status
+              </div>
+              <iframe src="sites/rtm_tracker.html" style="flex: 1; border: none;"></iframe>
+            </div>
+          </div>
+          
+          <!-- Bottom section (40% height) with patient tracker across full width -->
+          <div style="height: 40%; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; flex-direction: column;">
+            <div style="background: #f0fff0; padding: 6px 10px; font-weight: bold; border-bottom: 1px solid #ddd;">
+              Patienten Übersicht
+            </div>
+            <iframe src="sites/patienten_tracker.html" style="flex: 1; border: none;"></iframe>
+          </div>
         </div>
       </div>
       <div class="tab-content" id="tab3">
@@ -93,6 +114,11 @@
       </div>
       <div class="tab-content" id="tab5">
         <iframe src="sites/map.html"></iframe>
+    </div>
+
+    <!-- Patient Context Menu for main page -->
+    <div id="mainPatientContextMenu" class="context-menu" style="display: none;">
+      <!-- Content will be filled by JavaScript -->
     </div>
 
     <script src="./scripts/jspdf.umd.min.js"></script>
@@ -346,6 +372,230 @@ document.addEventListener("DOMContentLoaded", () => {
         if (e.key === "nextPatientNumber") syncNext();
       });
       setInterval(syncNext, 2000);
+
+      // Patient Context Menu Handler for main page
+      function showMainPatientContextMenu(event, patientData) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        hideMainPatientContextMenu();
+
+        const menu = document.getElementById('mainPatientContextMenu');
+        const isFinal = patientData.status === "Transport in KH" || patientData.status === "Entlassen";
+        
+        let menuHTML = `
+          <div class="menu-group">
+            <div class="menu-group-title">Patient P${patientData.id}</div>
+            ${!isFinal ? `
+              <li>
+                <button class="primary" onclick="executePatientAction('transport', ${patientData.id}); hideMainPatientContextMenu()">
+                  <span class="icon">🚑</span>Transport in KH
+                </button>
+              </li>
+              <li>
+                <button class="success" onclick="executePatientAction('discharge', ${patientData.id}); hideMainPatientContextMenu()">
+                  <span class="icon">✅</span>Entlassen
+                </button>
+              </li>
+            ` : ''}
+            <li>
+              <button onclick="executePatientAction('copy', ${patientData.id}); hideMainPatientContextMenu()">
+                <span class="icon">📋</span>Meldung kopieren
+              </button>
+            </li>
+            <li>
+              <button class="warning" onclick="executePatientAction('delete', ${patientData.id}); hideMainPatientContextMenu()">
+                <span class="icon">🗑️</span>Löschen
+              </button>
+            </li>
+          </div>
+          
+          <div class="menu-group">
+            <div class="menu-group-title">Dokumentation</div>
+            <li>
+              <button onclick="executePatientAction('edit', ${patientData.id}); hideMainPatientContextMenu()">
+                <span class="icon">✏️</span>Patientendaten bearbeiten
+              </button>
+            </li>
+            <li>
+              <button onclick="executePatientAction('addEntry', ${patientData.id}); hideMainPatientContextMenu()">
+                <span class="icon">📝</span>Eintrag hinzufügen
+              </button>
+            </li>
+          </div>
+        `;
+
+        if (!isFinal) {
+          menuHTML += `
+            <div class="menu-group">
+              <div class="menu-group-title">Ressourcen</div>
+              <li>
+                <button onclick="executePatientAction('assignTrupp', ${patientData.id}); hideMainPatientContextMenu()">
+                  <span class="icon">👥</span>Trupp disponieren
+                </button>
+              </li>
+              <li>
+                <button onclick="executePatientAction('assignRtm', ${patientData.id}); hideMainPatientContextMenu()">
+                  <span class="icon">🚗</span>RTM disponieren
+                </button>
+              </li>
+            </div>
+          `;
+        }
+        
+        menu.innerHTML = menuHTML;
+
+        // Verbesserte Position-Berechnung
+        const x = Math.max(10, Math.min(event.clientX, window.innerWidth - 260)); // 260px Menu-Breite
+        const y = Math.max(10, Math.min(event.clientY, window.innerHeight - 350)); // 350px Menu-Höhe
+        
+        menu.style.left = x + 'px';
+        menu.style.top = y + 'px';
+        menu.style.display = 'block';
+        menu.style.position = 'fixed';
+        menu.style.zIndex = '10000';
+
+        // Animation
+        menu.style.opacity = '0';
+        menu.style.transform = 'scale(0.95)';
+        menu.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
+        
+        requestAnimationFrame(() => {
+          menu.style.opacity = '1';
+          menu.style.transform = 'scale(1)';
+        });
+
+        // Event Handler für das Schließen
+        const closeHandler = function(e) {
+          if (!e.target.closest('#mainPatientContextMenu')) {
+            hideMainPatientContextMenu();
+            document.removeEventListener('click', closeHandler);
+            document.removeEventListener('contextmenu', closeHandler);
+          }
+        };
+        
+        setTimeout(() => {
+          document.addEventListener('click', closeHandler);
+          document.addEventListener('contextmenu', closeHandler);
+        }, 10);
+      }
+
+      function hideMainPatientContextMenu() {
+        const menu = document.getElementById('mainPatientContextMenu');
+        if (menu && menu.style.display !== 'none') {
+          menu.style.opacity = '0';
+          menu.style.transform = 'scale(0.95)';
+          
+          setTimeout(() => {
+            menu.style.display = 'none';
+          }, 150);
+        }
+      }
+
+      function executePatientAction(action, patientId) {
+        // Sende Aktion an das Patienten-iframe
+        const patientIframes = document.querySelectorAll('iframe[src*="patienten_tracker.html"]');
+        patientIframes.forEach(iframe => {
+          if (iframe.contentWindow) {
+            iframe.contentWindow.postMessage({
+              type: 'executePatientAction',
+              action: action,
+              patientId: patientId
+            }, '*');
+          }
+        });
+      }
+
+      // Message-Listener für iframe-Kommunikation
+      window.addEventListener('message', function(event) {
+        if (event.data.type === 'showPatientContextMenu') {
+          // Einfache Fallback-Positionierung falls keine genauen Koordinaten verfügbar sind
+          const x = event.data.x || window.innerWidth / 2 - 130; // Zentriert
+          const y = event.data.y || window.innerHeight / 2 - 175; // Zentriert
+          
+          const fakeEvent = {
+            clientX: x,
+            clientY: y,
+            preventDefault: () => {},
+            stopPropagation: () => {}
+          };
+          
+          showMainPatientContextMenu(fakeEvent, event.data.patientData);
+        } else if (event.data.type === 'hidePatientContextMenu') {
+          hideMainPatientContextMenu();
+        }
+      });
+
+      // Globaler Event-Handler
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('#mainPatientContextMenu')) {
+          hideMainPatientContextMenu();
+        }
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          hideMainPatientContextMenu();
+        }
+      });
+
+      // Browser-Kompatibilitäts-Check
+      document.addEventListener("DOMContentLoaded", () => {
+        const ua = navigator.userAgent;
+        const isChrome =
+          ua.includes("Chrome") && !ua.includes("Edge") && !ua.includes("OPR");
+        const isEdge = ua.includes("Edg/");
+        if (!isChrome && !isEdge) {
+          // Banner erstellen
+          const warning = document.createElement("div");
+          warning.style.cssText = `
+          position: fixed;
+          top: 0; left: 0; right: 0;
+          background: #ffc107;
+          color: #333;
+          padding: 12px;
+          text-align: center;
+          font-weight: bold;
+          z-index: 9999;
+        `;
+          warning.textContent =
+            "⚠️ Dein Browser wird leider nicht offiziell unterstützt. Für volle Funktionalität bitte Chrome oder Edge verwenden.";
+          document.body.prepend(warning);
+        }
+      });
+
+      function updateDateTime() {
+        const now = new Date();
+        // Datum als TT.MM.JJJJ, Wochentag
+        const days = [
+          "Sonntag",
+          "Montag",
+          "Dienstag",
+          "Mittwoch",
+          "Donnerstag",
+          "Freitag",
+          "Samstag",
+        ];
+        const d = String(now.getDate()).padStart(2, "0");
+        const m = String(now.getMonth() + 1).padStart(2, "0");
+        const y = now.getFullYear();
+        document.getElementById("currentDate").textContent = `${d}.${m}.${y}, ${
+          days[now.getDay()]
+        }`;
+
+        // Uhrzeit HH:MM:SS
+        const hh = String(now.getHours()).padStart(2, "0");
+        const mm = String(now.getMinutes()).padStart(2, "0");
+        const ss = String(now.getSeconds()).padStart(2, "0");
+        document.getElementById(
+          "currentTime"
+        ).textContent = `${hh}:${mm}:${ss}`;
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+      });
     </script>
 
     <!-- Settings-Modal -->
@@ -458,67 +708,5 @@ document.addEventListener("DOMContentLoaded", () => {
         </button>
       </div>
     </div>
-
-    <!-- Browser-Kompatibilitäts-Check -->
-    <script>
-      document.addEventListener("DOMContentLoaded", () => {
-        const ua = navigator.userAgent;
-        const isChrome =
-          ua.includes("Chrome") && !ua.includes("Edge") && !ua.includes("OPR");
-        const isEdge = ua.includes("Edg/");
-        if (!isChrome && !isEdge) {
-          // Banner erstellen
-          const warning = document.createElement("div");
-          warning.style.cssText = `
-          position: fixed;
-          top: 0; left: 0; right: 0;
-          background: #ffc107;
-          color: #333;
-          padding: 12px;
-          text-align: center;
-          font-weight: bold;
-          z-index: 9999;
-        `;
-          warning.textContent =
-            "⚠️ Dein Browser wird leider nicht offiziell unterstützt. Für volle Funktionalität bitte Chrome oder Edge verwenden.";
-          document.body.prepend(warning);
-        }
-      });
-
-      function updateDateTime() {
-        const now = new Date();
-        // Datum als TT.MM.JJJJ, Wochentag
-        const days = [
-          "Sonntag",
-          "Montag",
-          "Dienstag",
-          "Mittwoch",
-          "Donnerstag",
-          "Freitag",
-          "Samstag",
-        ];
-        const d = String(now.getDate()).padStart(2, "0");
-        const m = String(now.getMonth() + 1).padStart(2, "0");
-        const y = now.getFullYear();
-        document.getElementById("currentDate").textContent = `${d}.${m}.${y}, ${
-          days[now.getDay()]
-        }`;
-
-        // Uhrzeit HH:MM:SS
-        const hh = String(now.getHours()).padStart(2, "0");
-        const mm = String(now.getMinutes()).padStart(2, "0");
-        const ss = String(now.getSeconds()).padStart(2, "0");
-        document.getElementById(
-          "currentTime"
-        ).textContent = `${hh}:${mm}:${ss}`;
-      }
-
-      document.addEventListener("DOMContentLoaded", () => {
-        updateDateTime();
-        setInterval(updateDateTime, 1000);
-      });
-    </script>
-
-
   </body>
 </html>
