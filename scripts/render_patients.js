@@ -581,7 +581,7 @@ function loadPatients(highlightId) {
     
     // Details-Inhalt mit 3 Spalten
     const detailsContent = document.createElement("td");
-    detailsContent.colSpan = 9; // Über alle Spalten erstrecken
+    detailsContent.colSpan = 8; // Über alle Spalten erstrecken
     detailsContent.className = "expandable-content";
     
     // Inhalt der Details
