@@ -37,45 +37,63 @@ describe('Patienten-Tracker (patienten_tracker.html)', () => {
     await page.click('#btnNewPatient');
     await page.waitForSelector('#keywordModal', { visible: true });
 
-    // Modal schließen, um die Karte zu sehen
+    // Modal schließen, um die Tabelle zu sehen
     await page.evaluate(() => {
       document.getElementById('keywordModal').style.display = 'none';
     });
 
-    // Patient-Karte sollte im #activePatients-Container liegen
-    const cards = await page.$$eval('#activePatients .patient-card', els =>
-      els.map(e => e.dataset.id)
+    // Warte auf das Rendering der Tabelle
+    await page.waitForSelector('#patients-table-body', { visible: true });
+    
+    // Warte bis Patient-Rows geladen sind
+    await page.waitForFunction(
+      () => document.querySelectorAll('#patients-table-body tr.patient-row').length > 0,
+      { timeout: 3000 }
     );
-    expect(cards).toHaveLength(1);
+
+    // Patient-Row sollte in der Tabelle liegen (neue Struktur mit table)
+    const patientRows = await page.$$eval('#patients-table-body tr.patient-row', els =>
+      els.map(e => e.dataset.id).filter(id => id) // Filter out undefined/empty IDs
+    );
+    
+    expect(patientRows).toHaveLength(1);
     // dataset.id ist die ID des Patienten
-    expect(Number(cards[0])).toBeGreaterThan(0);
+    expect(Number(patientRows[0])).toBeGreaterThan(0);
   });
 
   it('entfernt einen Trupp vom Patienten, wenn in trupps storage-event Status wechselt', async () => {
     // 1) Patienten anlegen und diagnostizieren
     await page.click('#btnNewPatient');
     await page.waitForSelector('#keywordModal', { visible: true });
-    // im Modal auf Suche klicken, eine Kategorie + Stichwort auswählen …
-    // hier einfach direkt in den localStorage einfügen:
+    
+    // Modal schließen und Patient-Daten direkt setzen
+    await page.evaluate(() => {
+      document.getElementById('keywordModal').style.display = 'none';
+    });
+    
     const patientId = await page.evaluate(() => {
-      const p = JSON.parse(localStorage.getItem('patients'))[0];
-      // Simuliere, dass beim ConfirmKeyword resources gesetzt werden
+      const patients = JSON.parse(localStorage.getItem('patients') || '[]');
+      const p = patients[0];
+      // Simuliere, dass beim ConfirmKeyword resources und team gesetzt werden
       p.team = ['T1'];
+      p.status = 'disponiert'; // Setze Status explizit
       localStorage.setItem('patients', JSON.stringify([p]));
       return p.id;
     });
-    // 2) Trupps so ins Storage schreiben, dass T1 zunächst status 'Patient' hat …
+    
+    // 2) Trupps so ins Storage schreiben, dass T1 zunächst status 3 (Patient) hat
     await page.evaluate(() => {
       localStorage.setItem(
         'trupps',
-        JSON.stringify([{ name: 'T1', status: 'Patient' }])
+        JSON.stringify([{ name: 'T1', status: 3 }]) // Status 3 = Einsatz übernommen
       );
     });
-    // 3) Wechseln T1 auf einen Nicht-Patient-Status
+    
+    // 3) Wechseln T1 auf einen Nicht-Patient-Status (z.B. Status 6 = Nicht Einsatzbereit)
     await page.evaluate(() => {
       localStorage.setItem(
         'trupps',
-        JSON.stringify([{ name: 'T1', status: 'Nicht Einsatzbereit' }])
+        JSON.stringify([{ name: 'T1', status: 6 }]) // Status 6 = Nicht Einsatzbereit
       );
       window.dispatchEvent(
         new StorageEvent('storage', {
@@ -84,12 +102,55 @@ describe('Patienten-Tracker (patienten_tracker.html)', () => {
         })
       );
     });
-    // 4) kurz warten und dann prüfen, dass im patient-storage die team-Liste leer ist
-    await page.evaluate(() => new Promise(res => setTimeout(res, 100)));
+    
+    // 4) Warten bis das Storage-Event verarbeitet wurde
+    await page.waitForFunction(
+      (id) => {
+        const patients = JSON.parse(localStorage.getItem('patients') || '[]');
+        const p = patients.find(x => x.id === id);
+        return p && (!p.team || p.team.length === 0);
+      },
+      { timeout: 5000 },
+      patientId
+    );
+    
     const teamAfter = await page.evaluate(id => {
-      const p = JSON.parse(localStorage.getItem('patients')).find(x => x.id === id);
-      return p.team;
+      const patients = JSON.parse(localStorage.getItem('patients') || '[]');
+      const p = patients.find(x => x.id === id);
+      return p ? p.team : null;
     }, patientId);
+    
     expect(teamAfter).toEqual([]);
+  });
+
+  it('zeigt Patienten in der korrekten Tabellensektion basierend auf Status', async () => {
+    // Patienten mit verschiedenen Status anlegen
+    await page.evaluate(() => {
+      const patients = [
+        { id: 1, status: 'gemeldet', diagnosis: 'Test 1', history: [] },
+        { id: 2, status: 'verlegt in UHS', diagnosis: 'Test 2', history: [] },
+        { id: 3, status: 'Entlassen', diagnosis: 'Test 3', history: [] }
+      ];
+      localStorage.setItem('patients', JSON.stringify(patients));
+    });
+
+    // Seite neu laden um die Tabelle zu rendern
+    await page.reload();
+    await page.waitForSelector('#patients-table-body');
+
+    // Warte bis Section-Headers geladen sind
+    await page.waitForFunction(
+      () => document.querySelectorAll('.section-header h3').length >= 3,
+      { timeout: 3000 }
+    );
+
+    // Prüfe dass Section-Headers vorhanden sind
+    const sectionHeaders = await page.$$eval('.section-header h3', els =>
+      els.map(e => e.textContent)
+    );
+    
+    expect(sectionHeaders).toContain('Aktive Patienten (1)');
+    expect(sectionHeaders).toContain('In UHS (1)');
+    expect(sectionHeaders).toContain('Entlassen/Transport (1)');
   });
 });
