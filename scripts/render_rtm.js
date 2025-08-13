@@ -688,10 +688,3 @@ function closeRTMHistorieModal() {
     modal.remove();
   }
 }
-
-function closeRTMHistorieModal() {
-  const modal = document.getElementById('rtmHistorieModal');
-  if (modal) {
-    modal.remove();
-  }
-}
