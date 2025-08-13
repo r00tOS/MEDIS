@@ -51,16 +51,15 @@ global.CustomEvent = jest.fn(function(type, options) {
 // Mock console.log to avoid excessive output
 global.console.log = jest.fn();
 
-// Load the functions from render_patients.js
-const fs = require('fs');
-const path = require('path');
-const renderPatientsCode = fs.readFileSync(
-  path.join(__dirname, '..', 'scripts', 'render_patients.js'), 
-  'utf8'
-);
-
-// Execute the code to make functions available
-eval(renderPatientsCode);
+// Import the functions from render_patients.js safely
+const {
+  getResourceAbbreviation,
+  updatePatientDispositionStatus,
+  toggleDispositionStatus,
+  toggleDispositionIgnore,
+  triggerDispositionUpdate,
+  loadPatients
+} = require('../scripts/render_patients.js');
 
 describe('render_patients.js', () => {
   beforeEach(() => {

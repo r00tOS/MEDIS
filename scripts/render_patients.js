@@ -1039,3 +1039,15 @@ window.addEventListener('message', function(event) {
     }
   }
 });
+
+// Export functions for testing (Node.js environment)
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    getResourceAbbreviation,
+    updatePatientDispositionStatus,
+    toggleDispositionStatus,
+    toggleDispositionIgnore,
+    triggerDispositionUpdate,
+    loadPatients
+  };
+}
