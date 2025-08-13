@@ -544,15 +544,28 @@ h2 {
   height: 24px;
   line-height: 24px;
   text-align: center;
-  transition: transform 0.3s;
+  transition: transform 0.3s, color 0.2s;
+  border-radius: 3px;
 }
 
 .expand-btn:hover {
   color: #333;
+  background: rgba(0,0,0,0.05);
 }
 
 tr.expanded .expand-btn {
   transform: rotate(180deg);
+  color: #007bff;
+}
+
+/* Visueller Indikator für aufgeklappte Zeilen */
+tr.expanded {
+  background: rgba(0, 123, 255, 0.02) !important;
+  border-left: 3px solid #007bff;
+}
+
+tr.expanded:hover {
+  background: rgba(0, 123, 255, 0.05) !important;
 }
 
 /* Disposition-Symbole kompakter formatieren */

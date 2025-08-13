@@ -386,6 +386,10 @@ function loadPatients(highlightId) {
   const uhsPatients = sorted.filter(p => ["verlegt in UHS", "Behandlung in UHS"].includes(p.status));
   const dismissedPatients = sorted.filter(p => ["Transport in KH", "Entlassen"].includes(p.status));
 
+  // Check if dismissed patients should be shown
+  const showDismissedCheckbox = document.getElementById("showDismissedCheckbox");
+  const showDismissed = showDismissedCheckbox ? showDismissedCheckbox.checked : true;
+
   // Add sections with headers
   if (activePatients.length > 0) {
     tableBody.appendChild(addSectionHeader('Aktive Patienten', activePatients.length));
@@ -406,7 +410,7 @@ function loadPatients(highlightId) {
     });
   }
 
-  if (dismissedPatients.length > 0) {
+  if (showDismissed && dismissedPatients.length > 0) {
     tableBody.appendChild(addSectionHeader('Entlassen/Transport', dismissedPatients.length));
     dismissedPatients.forEach(patient => {
       const { mainRow, detailsRow } = createPatientRows(patient, trupps, rtms, highlightId);
@@ -460,12 +464,7 @@ function loadPatients(highlightId) {
     
     const diagnosisCell = `
       <td>
-        <div class="tooltip">
-          ${(patient.diagnosis || "–").length > 30 ? 
-            (patient.diagnosis || "–").substring(0, 30) + "..." : 
-            (patient.diagnosis || "–")}
-          <span class="tooltip-text">${patient.diagnosis || "–"}</span>
-        </div>
+        ${patient.diagnosis || "–"}
       </td>
     `;
     
@@ -779,9 +778,13 @@ function loadPatients(highlightId) {
       if (isExpanded) {
         mainRow.classList.remove('expanded');
         detailsRow.style.display = 'none';
+        // Aus der Set entfernen
+        window.expandedPatients.delete(patientId);
       } else {
         mainRow.classList.add('expanded');
         detailsRow.style.display = 'table-row';
+        // Zur Set hinzufügen
+        window.expandedPatients.add(patientId);
         
         // Scroll zum Container der Historie
         const historyContainer = detailsRow.querySelector('.history-container');
@@ -791,6 +794,45 @@ function loadPatients(highlightId) {
       }
     }
   };
+
+  // NEUE FUNKTION: Erweiterte Zustände nach dem Rendern wiederherstellen
+  setTimeout(() => {
+    restoreExpandedStates();
+  }, 50); // Kurze Verzögerung damit das DOM vollständig gerendert ist
+}
+
+/**
+ * Stellt die aufgeklappten Zustände der Patienten wieder her
+ */
+function restoreExpandedStates() {
+  window.expandedPatients.forEach(patientId => {
+    const mainRow = document.querySelector(`tr[data-id="${patientId}"]`);
+    const detailsRow = document.getElementById(`details-${patientId}`);
+    
+    if (mainRow && detailsRow) {
+      // Prüfe ob der Patient noch in der aktuellen Ansicht existiert
+      const patients = JSON.parse(localStorage.getItem("patients")) || [];
+      const patient = patients.find(p => p.id === patientId);
+      
+      if (patient) {
+        // Patient existiert noch - aufgeklappten Zustand wiederherstellen
+        mainRow.classList.add('expanded');
+        detailsRow.style.display = 'table-row';
+        
+        // Scroll zum Container der Historie (falls erweitert)
+        const historyContainer = detailsRow.querySelector('.history-container');
+        if (historyContainer) {
+          historyContainer.scrollTop = historyContainer.scrollHeight;
+        }
+      } else {
+        // Patient existiert nicht mehr - aus der Set entfernen
+        window.expandedPatients.delete(patientId);
+      }
+    } else {
+      // Elemente nicht gefunden - möglicherweise Patient nicht mehr sichtbar
+      // Behalte in der Set für den Fall dass der Patient später wieder erscheint
+    }
+  });
 }
 
 /**

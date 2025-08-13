@@ -293,34 +293,34 @@ window.addEventListener('storage', e => {
         
         // Show menu temporarily to measure its dimensions
         menu.style.visibility = 'hidden';
-        menu.classList.add('open'); // Add class to make it visible for measurement
+        menu.classList.add('open');
         const menuRect = menu.getBoundingClientRect();
-        menu.classList.remove('open'); // Remove class after measurement
+        menu.classList.remove('open');
         menu.style.visibility = 'visible';
         
         // Calculate position
         let top = buttonRect.bottom + 2;
         let left = buttonRect.left;
         
-        // Adjust position if menu would go off-screen
-        if (top + menuRect.height > viewportHeight) {
-          // Show above button if there's more space
-          const spaceAbove = buttonRect.top;
-          const spaceBelow = viewportHeight - buttonRect.bottom;
+        // Adjust position if menu would go off-screen vertically
+        if (top + menuRect.height > viewportHeight - 10) {
+          // Show above button instead
+          top = buttonRect.top - menuRect.height - 2;
           
-          if (spaceAbove > spaceBelow && spaceAbove > 200) {
-            top = buttonRect.top - menuRect.height - 2;
-          } else {
-            // Keep below but adjust height
-            top = buttonRect.bottom + 2;
-            menu.style.maxHeight = (viewportHeight - top - 10) + 'px';
+          // If still not enough space above, keep it below but move it up
+          if (top < 10) {
+            top = Math.max(10, viewportHeight - menuRect.height - 10);
           }
         }
         
         // Adjust horizontal position if needed
-        if (left + menuRect.width > viewportWidth) {
+        if (left + menuRect.width > viewportWidth - 10) {
           left = viewportWidth - menuRect.width - 10;
         }
+        
+        // Ensure minimum margins
+        left = Math.max(10, left);
+        top = Math.max(10, top);
         
         // Apply positioning and open the menu
         menu.style.top = top + 'px';
@@ -328,7 +328,7 @@ window.addEventListener('storage', e => {
         menu.style.minWidth = buttonRect.width + 'px';
         menu.classList.add('open');
       }
-    }, 50); // Small delay to ensure DOM is ready
+    }, 50);
   }
 
   // Restore scroll and FLIP animation
@@ -829,7 +829,6 @@ function toggleStatusDropdown(truppId, event) {
     menu.style.top = '';
     menu.style.left = '';
     menu.style.minWidth = '';
-    menu.style.maxHeight = '';
     menu.style.visibility = '';
   } else {
     console.log('Opening menu');
@@ -844,30 +843,30 @@ function toggleStatusDropdown(truppId, event) {
     
     // Show menu temporarily to measure its dimensions
     menu.style.visibility = 'hidden';
-    menu.classList.add('open'); // Add class to make it visible for measurement
+    menu.classList.add('open');
     const menuRect = menu.getBoundingClientRect();
-    menu.classList.remove('open'); // Remove class after measurement
+    menu.classList.remove('open');
     menu.style.visibility = 'visible';
     
-    // Adjust position if menu would go off-screen
-    if (top + menuRect.height > viewportHeight) {
-      // Show above button if there's more space
-      const spaceAbove = buttonRect.top;
-      const spaceBelow = viewportHeight - buttonRect.bottom;
+    // Adjust position if menu would go off-screen vertically
+    if (top + menuRect.height > viewportHeight - 10) {
+      // Show above button instead
+      top = buttonRect.top - menuRect.height - 2;
       
-      if (spaceAbove > spaceBelow && spaceAbove > 200) {
-        top = buttonRect.top - menuRect.height - 2;
-      } else {
-        // Keep below but adjust height
-        top = buttonRect.bottom + 2;
-        menu.style.maxHeight = (viewportHeight - top - 10) + 'px';
+      // If still not enough space above, keep it below but move it up
+      if (top < 10) {
+        top = Math.max(10, viewportHeight - menuRect.height - 10);
       }
     }
     
     // Adjust horizontal position if needed
-    if (left + menuRect.width > viewportWidth) {
+    if (left + menuRect.width > viewportWidth - 10) {
       left = viewportWidth - menuRect.width - 10;
     }
+    
+    // Ensure minimum margins
+    left = Math.max(10, left);
+    top = Math.max(10, top);
     
     // Apply positioning
     menu.style.top = top + 'px';

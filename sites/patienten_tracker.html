@@ -14,7 +14,6 @@
     <script src="../scripts/status_options.js"></script>
     <script src="../scripts/logic_trupp.js"></script>
     <script src="../scripts/render_trupps.js"></script>
-    <script src="../scripts/iframe_context_menu_handler.js"></script>
     <style>
       /* Ressourcen-Spalte an Inhalt anpassen */
       .patients-table th:last-child,
@@ -56,6 +55,10 @@
     <script src="../scripts/modal.js"></script>
     <header>
       <button id="btnNewPatient">Neuen Patienten erstellen</button>
+      <label style="margin-left: 20px;">
+        <input type="checkbox" id="showDismissedCheckbox" checked>
+        Entlassene/Transportierte anzeigen
+      </label>
     </header>
 
     <!-- Bereich, der für den Export genutzt wird -->
@@ -135,6 +138,11 @@
         openEditModal(id);
       });
 
+      // Event listener für die Checkbox
+      document.getElementById("showDismissedCheckbox").addEventListener("change", () => {
+        loadPatients();
+      });
+
       function formatMS(ms) {
         if (!isFinite(ms) || ms < 0) return "–";
         const totalSec = Math.floor(ms / 1000);
@@ -186,16 +194,24 @@
 
       window.addEventListener("storage", (e) => {
         if (e.key === "trupps") {
-          // 1) Trupps aus dem Storage parsen
+          // 1) Scroll-Position merken
+          const currentScrollY = window.scrollY;
+          
+          // 2) Trupps aus dem Storage parsen
           const newTrupps = JSON.parse(e.newValue || "[]");
-          // 2) immer neu rendern, damit frisch angemeldete Trupps im Patientendropdown auftauchen
+          // 3) immer neu rendern, damit frisch angemeldete Trupps im Patientendropdown auftauchen
           loadPatients();
 
-          // 3) jetzt erst die Patienten aus Storage holen
+          // 4) Scroll-Position wiederherstellen
+          setTimeout(() => {
+            window.scrollTo(0, currentScrollY);
+          }, 100);
+
+          // 5) jetzt erst die Patienten aus Storage holen
           const patients = JSON.parse(localStorage.getItem("patients")) || [];
           let dirty = false;
 
-          // 4) Entferne alle Trupp-Namen, die nicht mehr Status 3 haben
+          // 6) Entferne alle Trupp-Namen, die nicht mehr Status 3 haben
 patients.forEach((patient) => {
   // WICHTIG: Finale Status schützen - erweiterte Prüfung
   const isFinalState = patient.status === "Entlassen" || 
@@ -225,7 +241,7 @@ patients.forEach((patient) => {
             });
           });
 
-          // 5) Falls jetzt keine Trupps oder RTMs mehr dran hängen → zurück auf "gemeldet"
+          // 7) Falls jetzt keine Trupps oder RTMs mehr dran hängen → zurück auf "gemeldet"
           // ABER NUR wenn Patient nicht in finalem Status ist
           patients.forEach((patient) => {
             // WICHTIG: Finale Status schützen - erweiterte Prüfung
@@ -248,7 +264,7 @@ patients.forEach((patient) => {
             }
           });
 
-          // 6) Wenn sich etwas geändert hat, speichern & neu rendern
+          // 8) Wenn sich etwas geändert hat, speichern & neu rendern
           if (dirty) {
             localStorage.setItem("patients", JSON.stringify(patients));
             loadPatients();
@@ -256,8 +272,16 @@ patients.forEach((patient) => {
         }
         
         if (e.key === "patients") {
+          // Scroll-Position merken vor dem Neuladen
+          const currentScrollY = window.scrollY;
+          
           // Bei Patient-Änderungen nur neu laden, KEINE Disposition-Updates
           loadPatients();
+          
+          // Scroll-Position wiederherstellen
+          setTimeout(() => {
+            window.scrollTo(0, currentScrollY);
+          }, 100);
           
           // REMOVED: triggerDispositionUpdate() - was causing save conflicts
           // Disposition updates will be handled through direct logic in assignResource() etc.
@@ -287,7 +311,44 @@ patients.forEach((patient) => {
 
       // Kontextmenü-Funktionen global verfügbar machen
       window.hidePatientContextMenu = hidePatientContextMenu;
+
+      // NEUE FUNKTION: Periodisches Backup der erweiterten Zustände
+      // Falls das System abstürzt oder neu geladen wird
+      setInterval(() => {
+        if (window.expandedPatients && window.expandedPatients.size > 0) {
+          // Speichere die IDs der aufgeklappten Patienten in sessionStorage
+          const expandedArray = Array.from(window.expandedPatients);
+          sessionStorage.setItem('expandedPatients', JSON.stringify(expandedArray));
+        }
+      }, 2000); // Alle 2 Sekunden speichern
+
+      // NEUE FUNKTION: Wiederherstellen beim Seitenladen
+      document.addEventListener('DOMContentLoaded', () => {
+        // Versuche erweiterte Zustände aus sessionStorage wiederherzustellen
+        const savedExpanded = sessionStorage.getItem('expandedPatients');
+        if (savedExpanded) {
+          try {
+            const expandedArray = JSON.parse(savedExpanded);
+            if (Array.isArray(expandedArray)) {
+              window.expandedPatients = new Set(expandedArray);
+              console.log('Wiederhergestellte aufgeklappte Patienten:', expandedArray);
+            }
+          } catch (e) {
+            console.warn('Fehler beim Wiederherstellen der aufgeklappten Patienten:', e);
+            window.expandedPatients = new Set();
+          }
+        } else {
+          window.expandedPatients = new Set();
+        }
+      });
+
+      // Cleanup bei Page-Unload falls nötig
+      window.addEventListener('beforeunload', () => {
+        if (window.expandedPatients && window.expandedPatients.size > 0) {
+          const expandedArray = Array.from(window.expandedPatients);
+          sessionStorage.setItem('expandedPatients', JSON.stringify(expandedArray));
+        }
+      });
     </script>
   </body>
-</html>
 </html>
