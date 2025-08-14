@@ -1778,6 +1778,125 @@ function updateDispositionStatusFromAssignedResources() {
   }
 }
 
+function createPatientRows(patient, trupps, rtms, highlightId) {
+  const rowId = `patient-${patient.id}`;
+  const isHighlighted = highlightId === patient.id;
+  
+  let rowClass = "patient-row";
+  if (isHighlighted) {
+    rowClass += " highlighted";
+  }
+  
+  // Basis-Row
+  let html = `<div class="${rowClass}" id="${rowId}" data-id="${patient.id}" onclick="selectPatient(${patient.id})">`;
+  
+  // 1. Spalte: ID, Status, Transport, Entlassung
+  html += `<div class="patient-cell id-cell">${patient.id}</div>`;
+  
+  // Status-Spalte: Immer anzeigen, auch bei Entlassung
+  const statusDef = window.statusOptions?.find(s => s.status === patient.status);
+  const statusColor = statusDef ? statusDef.color : "#ccc";
+  
+  html += `
+    <div class="patient-cell status-cell" style="position: relative;">
+      <div class="status-indicator" style="background: ${statusColor};"></div>
+      <div class="status-text">${patient.status}</div>
+    </div>
+  `;
+  
+  // Transport-Spalte: Nur anzeigen wenn belegt
+  if (patient.transport) {
+    html += `<div class="patient-cell transport-cell">${patient.transport}</div>`;
+  } else {
+    html += `<div class="patient-cell transport-cell empty-cell">-</div>`;
+  }
+  
+  // Entlassungsort-Spalte: Nur anzeigen wenn belegt
+  if (patient.discharge) {
+    html += `<div class="patient-cell discharge-cell">${patient.discharge}</div>`;
+  } else {
+    html += `<div class="patient-cell discharge-cell empty-cell">-</div>`;
+  }
+  
+  // 2. Spalte: Patientendaten (Name, Alter, Geschlecht)
+  html += `<div class="patient-cell info-cell">`;
+  
+  // Name (ID-Link)
+  html += `<div class="patient-name" onclick="event.stopPropagation(); openPatientDetails(${patient.id})">${patient.name || "Unbekannt"}</div>`;
+  
+  // Alter, Geschlecht, Status
+  html += `
+    <div class="patient-meta">
+      <span class="patient-age">${patient.age || "?"} Jahre</span>
+      <span class="patient-gender">${patient.gender || "?"}</span>
+    </div>
+  `;
+  
+  // 3. Spalte: Ressourcen (Trupps, RTMs)
+  let resourcesCell = `<div class="patient-resources">`;
+  
+  // Trupps
+  if (Array.isArray(patient.team) && patient.team.length > 0) {
+    resourcesCell += `<div class="resources-list">`;
+    patient.team.forEach((t, i) => {
+      const trupp = trupps.find(tr => tr.name === t);
+      const statusDef = trupp ? window.statusOptions?.find(o => o.status === trupp.status) : null;
+      const statusIndicator = statusDef ? 
+        `<span class="status-code" style="background: ${statusDef.color}; color: black; padding: 0 3px; border-radius: 2px; font-size: 0.8em; margin-left: 2px; cursor: pointer;" 
+         onclick="openTruppStatusDropdown(event, '${t}')" 
+         title="Klick zum Ändern des Status">${statusDef.status}</span>` : '';
+      
+      resourcesCell += `
+        <span class="resource-tag trupp-tag">
+          T: ${t}${statusIndicator}
+        </span>
+      `;
+    });
+    resourcesCell += `</div>`;
+  }
+  
+  // RTMs (nur anzeigen wenn vorhanden)
+  if (Array.isArray(patient.rtm) && patient.rtm.length > 0) {
+    resourcesCell += `<div class="resources-list">`;
+    patient.rtm.forEach((r, i) => {
+      const rtm = rtms.find(rt => rt.name === r);
+      const statusDef = rtm ? window.statusOptions?.find(o => o.status === rtm.status) : null;
+      const statusIndicator = statusDef ? 
+        `<span class="status-code" style="background: ${statusDef.color}; color: black; padding: 0 3px; border-radius: 2px; font-size: 0.8em; margin-left: 2px; cursor: pointer;" 
+         onclick="openRtmStatusDropdown(event, '${r}')" 
+         title="Klick zum Ändern des Status">${statusDef.status}</span>` : '';
+      
+      resourcesCell += `
+        <span class="resource-tag rtm-tag">
+          R: ${r}${statusIndicator}
+        </span>
+      `;
+    });
+    resourcesCell += `</div>`;
+  }
+  
+  html += resourcesCell + `</div>`; // Ressourcen-Cell abschließen
+  
+  // 4. Spalte: Historie (letzte Einträge)
+  html += `<div class="patient-cell history-cell">`;
+  
+  // Zeige die letzten 3 Historie-Einträge an
+  if (Array.isArray(patient.history) && patient.history.length > 0) {
+    const recentEntries = patient.history.slice(-3);
+    recentEntries.forEach(entry => {
+      html += `<div class="history-entry">${entry}</div>`;
+    });
+  } else {
+    html += `<div class="history-entry empty-entry">Keine Einträge</div>`;
+  }
+  
+  html += `</div>`; // Historie-Cell abschließen
+  
+  html += `</div>`; // Patient-Row abschließen
+  
+  return html;
+}
+
 function deletePatient(id) {
   if (!confirm("Soll Patient " + id + " wirklich gelöscht werden?")) return;
   // aus localStorage holen

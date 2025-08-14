@@ -54,6 +54,7 @@ window.alarmConfig = {
         { "word": "Körperverletzung", "resources": [ "Trupp", "RTW", "Info an ASL", "Polizei hinzuziehen" ] },
         { "word": "Reitunfall", "resources": [ "Trupp" ] },
         { "word": "Treppensturz", "resources": [ "Trupp" ] },
+        { "word": "Sturz, geringfügig", "resources": [ "Trupp" ] },
         { "word": "Trauma sonstige", "resources": [ "Trupp" ] }
       ]
     },

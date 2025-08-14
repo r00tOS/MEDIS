@@ -180,13 +180,13 @@ header {
 
 /* Datum */
 #currentDate {
-  font-size: 2.0rem; /* ausreichend groß */
+  font-size: 1.5rem; /* reduziert von 2.0rem */
   font-weight: bold;
 }
 
 /* Uhrzeit */
 #currentTime {
-  font-size: 2.4rem;
+  font-size: 1.8rem; /* reduziert von 2.4rem */
   margin-top: 0.2em;
   font-variant-numeric: tabular-nums; /* gleichmäßiger Abstand */
 }

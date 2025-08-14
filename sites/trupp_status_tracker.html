@@ -15,6 +15,29 @@
     <script src="../scripts/render_trupps.js"></script>
     <script src="../scripts/render_patients.js"></script>
     <script src="../scripts/status_options.js"></script>
+    <style>
+      /* Container Vollbreite */
+      body {
+        margin: 0;
+        padding: 10px;
+        box-sizing: border-box;
+      }
+
+      .max-einsatz-time, .button-row {
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      /* Responsive Trupp Layout */
+      .section {
+        width: 100%;
+        margin-bottom: 20px;
+      }
+
+      #einsatzContainer, #pauseContainer, #nichtContainer {
+        width: 100%;
+      }
+    </style>
   </head>
   <body>
     <script src="../scripts/main.js"></script>
@@ -230,7 +253,7 @@
       }, 10000);
 
       function editOrt(index) {
-  openEinsatzortModal(index);
+        openEinsatzortModal(index);
       }
 
       function editPatient(index) {
@@ -245,6 +268,26 @@
           renderTrupps();
         }
       }
+
+      // Wait for all scripts to load before setting up functions
+      document.addEventListener('DOMContentLoaded', function() {
+        // Ensure functions are available globally
+        if (typeof window.toggleStatusDropdown !== 'function') {
+          console.log('Setting up toggleStatusDropdown fallback');
+          window.toggleStatusDropdown = function(truppId, event) {
+            console.log('toggleStatusDropdown called with:', truppId, event);
+            // The function should be loaded from render_trupps.js
+          };
+        }
+        
+        if (typeof window.onStatusSelected !== 'function') {
+          console.log('Setting up onStatusSelected fallback');
+          window.onStatusSelected = function(truppIndex, newStatus, truppId) {
+            console.log('onStatusSelected called with:', truppIndex, newStatus, truppId);
+            // The function should be loaded from render_trupps.js
+          };
+        }
+      });
     </script>
   </body>
 </html>

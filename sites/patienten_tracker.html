@@ -14,6 +14,40 @@
     <script src="../scripts/status_options.js"></script>
     <script src="../scripts/logic_trupp.js"></script>
     <script src="../scripts/render_trupps.js"></script>
+    <style>
+      /* Ressourcen-Spalte an Inhalt anpassen */
+      .patients-table th:last-child,
+      .patients-table td:last-child {
+        width: auto;
+        min-width: 120px;
+      }
+      
+      /* Verbesserte Tabellen-Responsivität */
+      .table-responsive {
+        overflow-x: auto;
+      }
+      
+      .patients-table {
+        width: 100%;
+        table-layout: auto;
+      }
+      
+      /* Andere Spalten flexible Breiten */
+      .patients-table th:nth-child(4),
+      .patients-table td:nth-child(4) {
+        min-width: 180px;
+      }
+      
+      .patients-table th:nth-child(6),
+      .patients-table td:nth-child(6) {
+        min-width: 100px;
+      }
+      
+      .patients-table th:nth-child(7),
+      .patients-table td:nth-child(7) {
+        min-width: 120px;
+      }
+    </style>
   </head>
   <body>
     <script src="../scripts/main.js"></script>
@@ -21,21 +55,79 @@
     <script src="../scripts/modal.js"></script>
     <header>
       <button id="btnNewPatient">Neuen Patienten erstellen</button>
+      <label style="margin-left: 20px;">
+        <input type="checkbox" id="showDismissedCheckbox" checked>
+        Entlassene/Transportierte anzeigen
+      </label>
     </header>
 
     <!-- Bereich, der für den Export genutzt wird -->
     <main id="exportArea">
       <section id="sectionActive">
         <h2>Aktiv</h2>
-        <div id="activePatients"></div>
+        <div class="table-responsive">
+          <table id="activePatients" class="patients-table">
+            <thead>
+              <tr>
+                <th style="width: 30px;"></th>
+                <th style="width: 80px;">ID</th>
+                <th style="width: 120px;">Status</th>
+                <th style="width: 220px;">Diagnose</th>
+                <th>Alter/Geschl.</th>
+                <th>Standort</th>
+                <th>Disposition</th>
+                <th>Trupp/RTM</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Hier werden die aktiven Patienten eingefügt -->
+            </tbody>
+          </table>
+        </div>
       </section>
       <section id="sectionInUHS">
         <h2>In UHS</h2>
-        <div id="inUhsPatients"></div>
+        <div class="table-responsive">
+          <table id="inUhsPatients" class="patients-table">
+            <thead>
+              <tr>
+                <th style="width: 30px;"></th>
+                <th style="width: 80px;">ID</th>
+                <th style="width: 120px;">Status</th>
+                <th style="width: 220px;">Diagnose</th>
+                <th>Alter/Geschl.</th>
+                <th>Standort</th>
+                <th>Disposition</th>
+                <th>Trupp/RTM</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Hier werden die UHS Patienten eingefügt -->
+            </tbody>
+          </table>
+        </div>
       </section>
       <section id="sectionDismissed">
         <h2>Entlassen</h2>
-        <div id="dismissedPatients"></div>
+        <div class="table-responsive">
+          <table id="dismissedPatients" class="patients-table">
+            <thead>
+              <tr>
+                <th style="width: 30px;"></th>
+                <th style="width: 80px;">ID</th>
+                <th style="width: 120px;">Status</th>
+                <th style="width: 220px;">Diagnose</th>
+                <th>Alter/Geschl.</th>
+                <th>Standort</th>
+                <th>Disposition</th>
+                <th>Trupp/RTM</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Hier werden die entlassenen Patienten eingefügt -->
+            </tbody>
+          </table>
+        </div>
       </section>
     </main>
     <script>
@@ -44,6 +136,11 @@
         const id = newPatient({});
         loadPatients(id);
         openEditModal(id);
+      });
+
+      // Event listener für die Checkbox
+      document.getElementById("showDismissedCheckbox").addEventListener("change", () => {
+        loadPatients();
       });
 
       function formatMS(ms) {
@@ -97,16 +194,24 @@
 
       window.addEventListener("storage", (e) => {
         if (e.key === "trupps") {
-          // 1) Trupps aus dem Storage parsen
+          // 1) Scroll-Position merken
+          const currentScrollY = window.scrollY;
+          
+          // 2) Trupps aus dem Storage parsen
           const newTrupps = JSON.parse(e.newValue || "[]");
-          // 2) immer neu rendern, damit frisch angemeldete Trupps im Patientendropdown auftauchen
+          // 3) immer neu rendern, damit frisch angemeldete Trupps im Patientendropdown auftauchen
           loadPatients();
 
-          // 3) jetzt erst die Patienten aus Storage holen
+          // 4) Scroll-Position wiederherstellen
+          setTimeout(() => {
+            window.scrollTo(0, currentScrollY);
+          }, 100);
+
+          // 5) jetzt erst die Patienten aus Storage holen
           const patients = JSON.parse(localStorage.getItem("patients")) || [];
           let dirty = false;
 
-          // 4) Entferne alle Trupp-Namen, die nicht mehr Status 3 haben
+          // 6) Entferne alle Trupp-Namen, die nicht mehr Status 3 haben
 patients.forEach((patient) => {
   // WICHTIG: Finale Status schützen - erweiterte Prüfung
   const isFinalState = patient.status === "Entlassen" || 
@@ -136,7 +241,7 @@ patients.forEach((patient) => {
             });
           });
 
-          // 5) Falls jetzt keine Trupps oder RTMs mehr dran hängen → zurück auf "gemeldet"
+          // 7) Falls jetzt keine Trupps oder RTMs mehr dran hängen → zurück auf "gemeldet"
           // ABER NUR wenn Patient nicht in finalem Status ist
           patients.forEach((patient) => {
             // WICHTIG: Finale Status schützen - erweiterte Prüfung
@@ -159,7 +264,7 @@ patients.forEach((patient) => {
             }
           });
 
-          // 6) Wenn sich etwas geändert hat, speichern & neu rendern
+          // 8) Wenn sich etwas geändert hat, speichern & neu rendern
           if (dirty) {
             localStorage.setItem("patients", JSON.stringify(patients));
             loadPatients();
@@ -167,8 +272,16 @@ patients.forEach((patient) => {
         }
         
         if (e.key === "patients") {
+          // Scroll-Position merken vor dem Neuladen
+          const currentScrollY = window.scrollY;
+          
           // Bei Patient-Änderungen nur neu laden, KEINE Disposition-Updates
           loadPatients();
+          
+          // Scroll-Position wiederherstellen
+          setTimeout(() => {
+            window.scrollTo(0, currentScrollY);
+          }, 100);
           
           // REMOVED: triggerDispositionUpdate() - was causing save conflicts
           // Disposition updates will be handled through direct logic in assignResource() etc.
@@ -195,6 +308,47 @@ patients.forEach((patient) => {
       
       // Remove the save flag as well
       window.isSavingPatientData = false;
+
+      // Kontextmenü-Funktionen global verfügbar machen
+      window.hidePatientContextMenu = hidePatientContextMenu;
+
+      // NEUE FUNKTION: Periodisches Backup der erweiterten Zustände
+      // Falls das System abstürzt oder neu geladen wird
+      setInterval(() => {
+        if (window.expandedPatients && window.expandedPatients.size > 0) {
+          // Speichere die IDs der aufgeklappten Patienten in sessionStorage
+          const expandedArray = Array.from(window.expandedPatients);
+          sessionStorage.setItem('expandedPatients', JSON.stringify(expandedArray));
+        }
+      }, 2000); // Alle 2 Sekunden speichern
+
+      // NEUE FUNKTION: Wiederherstellen beim Seitenladen
+      document.addEventListener('DOMContentLoaded', () => {
+        // Versuche erweiterte Zustände aus sessionStorage wiederherzustellen
+        const savedExpanded = sessionStorage.getItem('expandedPatients');
+        if (savedExpanded) {
+          try {
+            const expandedArray = JSON.parse(savedExpanded);
+            if (Array.isArray(expandedArray)) {
+              window.expandedPatients = new Set(expandedArray);
+              console.log('Wiederhergestellte aufgeklappte Patienten:', expandedArray);
+            }
+          } catch (e) {
+            console.warn('Fehler beim Wiederherstellen der aufgeklappten Patienten:', e);
+            window.expandedPatients = new Set();
+          }
+        } else {
+          window.expandedPatients = new Set();
+        }
+      });
+
+      // Cleanup bei Page-Unload falls nötig
+      window.addEventListener('beforeunload', () => {
+        if (window.expandedPatients && window.expandedPatients.size > 0) {
+          const expandedArray = Array.from(window.expandedPatients);
+          sessionStorage.setItem('expandedPatients', JSON.stringify(expandedArray));
+        }
+      });
     </script>
   </body>
 </html>
