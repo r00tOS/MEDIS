@@ -303,6 +303,44 @@ function loadPatients(highlightId) {
   const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
   const scrollY = window.scrollY;
 
+  // Reload disposition symbols for all patients
+  patients.forEach(patient => {
+    if (patient.suggestedResources && Array.isArray(patient.suggestedResources)) {
+      const patientRow = document.querySelector(`tr[data-id="${patient.id}"]`);
+      if (patientRow) {
+        const dispositionCell = patientRow.querySelector('td:nth-child(7)');
+        if (dispositionCell) {
+          let symbolsHTML = '<div style="display: flex; flex-wrap: wrap; gap: 3px;">';
+          patient.suggestedResources.forEach(resource => {
+            const abbrev = getResourceAbbreviation(resource);
+            const isDispatched = patient.dispositionStatus && patient.dispositionStatus[resource] === 'dispatched';
+            const isIgnored = patient.dispositionStatus && patient.dispositionStatus[resource + '_ignored'] === true;
+
+            let cssClass = 'disposition-symbol ';
+            if (isDispatched) {
+              cssClass += 'dispatched';
+            } else if (isIgnored) {
+              cssClass += 'ignored';
+            } else {
+              cssClass += 'required';
+            }
+
+            symbolsHTML += `
+              <span class="${cssClass}"
+                    onclick="toggleDispositionStatus(${patient.id}, '${resource.replace(/'/g, "\\'")}')"
+                    oncontextmenu="toggleDispositionIgnore(event, ${patient.id}, '${resource.replace(/'/g, "\\'")}')"
+                    title="${resource}">
+                ${abbrev}
+              </span>
+            `;
+          });
+          symbolsHTML += '</div>';
+          dispositionCell.innerHTML = symbolsHTML;
+        }
+      }
+    }
+  });
+
   // Remove any existing status dropdowns before rendering
   const existingDropdowns = document.querySelectorAll('.status-dropdown-overlay');
   existingDropdowns.forEach(dropdown => dropdown.remove());
@@ -315,6 +353,14 @@ function loadPatients(highlightId) {
   if (window.dropdownClickHandler) {
     document.removeEventListener('click', window.dropdownClickHandler);
   }
+
+  // CRITICAL: Update disposition status for all patients before rendering
+  patients.forEach(patient => {
+    updatePatientDispositionStatus(patient, trupps, rtms);
+  });
+  
+  // Save updated patients with disposition status
+  localStorage.setItem("patients", JSON.stringify(patients));
 
   patients.forEach((p) => {
     // 1) createdAt sicher als Zahl
@@ -386,9 +432,9 @@ function loadPatients(highlightId) {
   const uhsPatients = sorted.filter(p => ["verlegt in UHS", "Behandlung in UHS"].includes(p.status));
   const dismissedPatients = sorted.filter(p => ["Transport in KH", "Entlassen"].includes(p.status));
 
-  // Check if dismissed patients should be shown
-  const showDismissedCheckbox = document.getElementById("showDismissedCheckbox");
-  const showDismissed = showDismissedCheckbox ? showDismissedCheckbox.checked : true;
+  // Check if dismissed patients should be shown - READ FROM LOCALSTORAGE
+  const showDismissedStorage = localStorage.getItem("showDismissedPatients");
+  const showDismissed = showDismissedStorage !== null ? showDismissedStorage === "true" : true;
 
   // Add sections with headers
   if (activePatients.length > 0) {

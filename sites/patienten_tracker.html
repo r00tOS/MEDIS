@@ -138,9 +138,60 @@
         openEditModal(id);
       });
 
-      // Event listener für die Checkbox
-      document.getElementById("showDismissedCheckbox").addEventListener("change", () => {
+      // Event listener für die Checkbox mit localStorage-Speicherung
+      document.getElementById("showDismissedCheckbox").addEventListener("change", (e) => {
+        // Zustand in localStorage speichern
+        localStorage.setItem("showDismissedPatients", e.target.checked);
         loadPatients();
+      });
+
+      // Checkbox-Zustand beim Laden der Seite wiederherstellen
+      document.addEventListener('DOMContentLoaded', () => {
+        // Checkbox-Zustand aus localStorage laden (Standard: true)
+        const showDismissed = localStorage.getItem("showDismissedPatients");
+        const checkbox = document.getElementById("showDismissedCheckbox");
+        
+        if (showDismissed !== null) {
+          checkbox.checked = showDismissed === "true";
+        } else {
+          // Standardwert setzen falls noch nicht gespeichert
+          checkbox.checked = true;
+          localStorage.setItem("showDismissedPatients", "true");
+        }
+
+        // Versuche erweiterte Zustände aus sessionStorage wiederherzustellen
+        const savedExpanded = sessionStorage.getItem('expandedPatients');
+        if (savedExpanded) {
+          try {
+            const expandedArray = JSON.parse(savedExpanded);
+            if (Array.isArray(expandedArray)) {
+              window.expandedPatients = new Set(expandedArray);
+              console.log('Wiederhergestellte aufgeklappte Patienten:', expandedArray);
+            }
+          } catch (e) {
+            console.warn('Fehler beim Wiederherstellen der aufgeklappten Patienten:', e);
+            window.expandedPatients = new Set();
+          }
+        } else {
+          window.expandedPatients = new Set();
+        }
+
+        // Patienten initial laden
+        loadPatients();
+        
+        // Scroll-Position nach Reload wiederherstellen
+        const savedScrollPosition = sessionStorage.getItem('scrollPosition');
+        if (savedScrollPosition) {
+          const scrollY = parseInt(savedScrollPosition, 10);
+          if (!isNaN(scrollY)) {
+            setTimeout(() => {
+              window.scrollTo(0, scrollY);
+              console.log('Scroll-Position nach RTM-Reload wiederhergestellt:', scrollY);
+            }, 300); // Etwas länger warten damit die Patienten vollständig geladen sind
+          }
+          // Position nach Verwendung löschen
+          sessionStorage.removeItem('scrollPosition');
+        }
       });
 
       function formatMS(ms) {
@@ -285,6 +336,128 @@ patients.forEach((patient) => {
           
           // REMOVED: triggerDispositionUpdate() - was causing save conflicts
           // Disposition updates will be handled through direct logic in assignResource() etc.
+        }
+
+        if (e.key === "rtms") {
+          // RTM-Änderungen behandeln
+          const currentScrollY = window.scrollY;
+          
+          // RTMs aus dem Storage parsen
+          const newRtms = JSON.parse(e.newValue || "[]");
+          const oldRtms = JSON.parse(e.oldValue || "[]");
+          
+          // Prüfen ob sich ein Status geändert hat
+          let statusChanged = false;
+          if (oldRtms.length !== newRtms.length) {
+            statusChanged = true;
+          } else {
+            // Vergleiche Status aller RTMs
+            for (let i = 0; i < newRtms.length; i++) {
+              const newRtm = newRtms[i];
+              const oldRtm = oldRtms.find(r => r.name === newRtm.name);
+              if (!oldRtm || oldRtm.status !== newRtm.status) {
+                statusChanged = true;
+                console.log(`RTM Status-Änderung erkannt: ${newRtm.name} von ${oldRtm?.status || 'unbekannt'} zu ${newRtm.status}`);
+                break;
+              }
+            }
+          }
+          
+          // PROBEWEISE: Komplette Seite neu laden bei RTM-Status-Änderung
+          if (statusChanged) {
+            console.log('RTM Status-Änderung erkannt - lade Seite neu');
+            
+            // Scroll-Position für nach dem Reload speichern
+            sessionStorage.setItem('scrollPosition', currentScrollY.toString());
+            
+            // Seite neu laden
+            window.location.reload();
+            return; // Exit early da die Seite neu geladen wird
+          }
+          
+          // Fallback falls keine Status-Änderung erkannt wurde
+          // Patienten trotzdem neu rendern um andere RTM-Änderungen zu reflektieren
+          loadPatients();
+
+          // Scroll-Position wiederherstellen
+          setTimeout(() => {
+            window.scrollTo(0, currentScrollY);
+          }, 100);
+          
+          // Prüfen ob RTMs von Patienten entfernt werden müssen
+          const patients = JSON.parse(localStorage.getItem("patients")) || [];
+          let dirty = false;
+
+          patients.forEach((patient) => {
+            // WICHTIG: Finale Status schützen
+            const isFinalState = patient.status === "Entlassen" || 
+                                patient.status === "Transport in KH" ||
+                                patient.transport ||
+                                patient.discharge;
+            
+            if (isFinalState) return;
+            
+            if (!Array.isArray(patient.rtm)) return;
+
+            const keepStatuses = [3, 4, 7, 8]; // verfügbare RTM-Status
+            const before = [...patient.rtm];
+            patient.rtm = patient.rtm.filter((name) => {
+              const r = newRtms.find((x) => x.name === name);
+              return r && keepStatuses.includes(r.status);
+            });
+
+            before.forEach((name) => {
+              if (!patient.rtm.includes(name)) {
+                patient.history = patient.history || [];
+                patient.history.push(
+                  `${getCurrentTime()} RTM ${name} entfernt (via RTM-Tracker)`
+                );
+                dirty = true;
+              }
+            });
+          });
+
+          // Status auf "gemeldet" zurücksetzen wenn keine Ressourcen mehr
+          patients.forEach((patient) => {
+            const isFinalState = patient.status === "Entlassen" || 
+                                patient.status === "Transport in KH" ||
+                                patient.transport ||
+                                patient.discharge;
+            
+            if (isFinalState) return;
+            
+            const noTrupp = !Array.isArray(patient.team) || patient.team.length === 0;
+            const noRtm = !Array.isArray(patient.rtm) || patient.rtm.length === 0;
+            if (noTrupp && noRtm && patient.status !== "gemeldet") {
+              patient.status = "gemeldet";
+              patient.history = patient.history || [];
+              patient.history.push(`${getCurrentTime()} Status: gemeldet`);
+              dirty = true;
+            }
+          });
+
+          // Disposition-Symbole für alle Patienten aktualisieren - CRITICAL FIX
+          if (typeof updatePatientDispositionStatus === 'function') {
+            const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+            patients.forEach(patient => {
+              updatePatientDispositionStatus(patient, trupps, newRtms);
+            });
+            dirty = true; // Ensure patients are saved after disposition update
+          }
+
+          // Wenn sich etwas geändert hat, speichern & neu rendern
+          if (dirty) {
+            localStorage.setItem("patients", JSON.stringify(patients));
+            loadPatients();
+          }
+          
+          // Zusätzlich: Patienten neu rendern bei jeder RTM-Status-Änderung
+          // um aktuelle Verfügbarkeit/Status in der Anzeige zu reflektieren
+          setTimeout(() => {
+            loadPatients();
+          }, 200);
+          
+          console.log('RTM-Änderung verarbeitet, Disposition-Symbole aktualisiert, Patienten neu geladen');
         }
       });
 
