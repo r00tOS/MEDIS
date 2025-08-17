@@ -244,7 +244,16 @@
       }
 
       window.addEventListener("storage", (e) => {
+        // NEUE FREEZE-LOGIK: Prüfe ob Seite eingefroren ist
+        const isPageFrozen = window.expandedPatients && window.expandedPatients.size > 0;
+        
         if (e.key === "trupps") {
+          // Bei aufgeklappten Patienten nur kritische Updates durchführen
+          if (isPageFrozen) {
+            console.log('Trupp-Update übersprungen - Seite eingefroren');
+            return;
+          }
+          
           // 1) Scroll-Position merken
           const currentScrollY = window.scrollY;
           
@@ -323,6 +332,12 @@ patients.forEach((patient) => {
         }
         
         if (e.key === "patients") {
+          // Bei aufgeklappten Patienten nur bei expliziten Highlights neu laden
+          if (isPageFrozen) {
+            console.log('Patient-Update übersprungen - Seite eingefroren');
+            return;
+          }
+          
           // Scroll-Position merken vor dem Neuladen
           const currentScrollY = window.scrollY;
           
@@ -339,6 +354,12 @@ patients.forEach((patient) => {
         }
 
         if (e.key === "rtms") {
+          // Bei aufgeklappten Patienten RTM-Updates überspringen
+          if (isPageFrozen) {
+            console.log('RTM-Update übersprungen - Seite eingefroren');
+            return;
+          }
+          
           // RTM-Änderungen behandeln
           const currentScrollY = window.scrollY;
           
@@ -522,6 +543,12 @@ patients.forEach((patient) => {
           sessionStorage.setItem('expandedPatients', JSON.stringify(expandedArray));
         }
       });
+
+      // Initialisierung - füge dies in deine Haupt-HTML oder init-Datei ein
+document.addEventListener('DOMContentLoaded', function() {
+  // Stelle sicher, dass expandedPatients Set existiert und leer ist
+  window.expandedPatients = new Set();
+});
     </script>
   </body>
 </html>

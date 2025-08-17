@@ -119,12 +119,13 @@
             height: 60px;
             margin: 10px 0;
             border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: stretch;
         }
         .patient-label {
-            position: absolute;
+            position: sticky;
             left: 0;
             width: 120px;
-            height: 100%;
             display: flex;
             align-items: center;
             font-weight: bold;
@@ -133,12 +134,15 @@
             border-right: 2px solid #ddd;
             padding: 0 10px;
             box-sizing: border-box;
-            z-index: 3;
+            z-index: 10;
+            box-shadow: 2px 0 4px rgba(0,0,0,0.1);
+            flex-shrink: 0;
         }
         .patient-timeline {
             position: relative;
-            margin-left: 140px;
-            height: 100%;
+            flex: 1;
+            height: 60px;
+            margin-left: 20px;
         }
         .status-point {
             position: absolute;
@@ -461,7 +465,7 @@
             // Create content container
             const timelineContent = document.createElement('div');
             timelineContent.className = 'timeline-content';
-            timelineContent.style.width = (timelineWidth + 140) + 'px'; // Add space for labels
+            timelineContent.style.width = (timelineWidth + 140) + 'px';
 
             // Create time axis
             const timeAxis = document.createElement('div');

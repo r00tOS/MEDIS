@@ -690,6 +690,7 @@ function updatePatientData(id, field, value) {
       if (value === "Entlassen" || value === "Transport in KH") {
         clearAssignments(id);
       }
+      // GEÄNDERT: Immer mit highlightId laden um Freeze zu umgehen
       loadPatients(id);
     };
 
@@ -705,7 +706,8 @@ function updatePatientData(id, field, value) {
   // 4) Alle anderen Felder → direkt updaten OHNE Disposition-Update
   // Disposition-Updates erfolgen nur bei Trupp/RTM-Änderungen
   applyUpdate();
-  loadPatients(); // Einfaches Neurendern ohne Disposition-Updates
+  // GEÄNDERT: Bei kritischen Änderungen mit highlightId laden
+  loadPatients(id); // Umgeht Freeze-Schutz für den bearbeiteten Patienten
 }
 
 // Neue Hilfsfunktion: suggestedResources basierend auf Diagnose aktualisieren
@@ -871,6 +873,7 @@ function assignResource(id, type) {
     }
     
     localStorage.setItem("patients", JSON.stringify(updated));
+    // GEÄNDERT: Mit highlightId laden um Freeze zu umgehen
     loadPatients(id);
   }
 }
@@ -932,7 +935,8 @@ function removeTrupp(id, index) {
   patient.history = patient.history || [];
   patient.history.push(`${getCurrentTime()} Trupp ${removed[0]} entfernt`);
   localStorage.setItem("patients", JSON.stringify(patients));
-  loadPatients();
+  // GEÄNDERT: Mit highlightId laden um Freeze zu umgehen
+  loadPatients(id);
 
   // 2) Trupp-Tracker updaten
   const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
@@ -981,6 +985,7 @@ function removeTrupp(id, index) {
 
 function removeRtm(id, index) {
   if (!confirm("Soll dieses RTM wirklich entfernt werden?")) return;
+  
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
   const patient = patients.find((p) => p.id === id);
   
@@ -1038,7 +1043,8 @@ function removeRtm(id, index) {
       triggerDispositionUpdate();
     }
     
-    loadPatients();
+    // GEÄNDERT: Mit highlightId laden um Freeze zu umgehen
+    loadPatients(id);
   }
 }
 

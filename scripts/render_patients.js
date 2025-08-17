@@ -298,6 +298,20 @@ function toggleDispositionIgnore(event, patientId, resource) {
 
 function loadPatients(highlightId) {
   if (!document.getElementById("activePatients")) return;
+  
+  // NEUE FREEZE-LOGIK: Prüfe ob irgendein Patient aufgeklappt ist
+  const hasExpandedPatients = window.expandedPatients && window.expandedPatients.size > 0;
+  
+  if (hasExpandedPatients && !highlightId) {
+    console.log('Seite eingefroren - Patient(en) aufgeklappt:', Array.from(window.expandedPatients));
+    return; // Verhindere Neurendering wenn Patienten aufgeklappt sind
+  }
+  
+  // Stelle sicher, dass expandedPatients Set existiert
+  if (!window.expandedPatients) {
+    window.expandedPatients = new Set();
+  }
+  
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
   const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
   const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
@@ -825,12 +839,28 @@ function loadPatients(highlightId) {
         mainRow.classList.remove('expanded');
         detailsRow.style.display = 'none';
         // Aus der Set entfernen
-        window.expandedPatients.delete(patientId);
+        if (window.expandedPatients) {
+          window.expandedPatients.delete(patientId);
+        }
+        
+        // NEUE LOGIK: Seite wieder freigeben wenn alle Patienten zugeklappt sind
+        if (window.expandedPatients.size === 0) {
+          console.log('Alle Patienten zugeklappt - Seite wieder freigegeben');
+          // Sofort neu laden um verpasste Updates nachzuholen
+          setTimeout(() => {
+            loadPatients();
+          }, 100);
+        }
       } else {
         mainRow.classList.add('expanded');
         detailsRow.style.display = 'table-row';
         // Zur Set hinzufügen
+        if (!window.expandedPatients) {
+          window.expandedPatients = new Set();
+        }
         window.expandedPatients.add(patientId);
+        
+        console.log(`Patient ${patientId} aufgeklappt - Seite eingefroren`);
         
         // Scroll zum Container der Historie
         const historyContainer = detailsRow.querySelector('.history-container');
@@ -841,16 +871,21 @@ function loadPatients(highlightId) {
     }
   };
 
-  // NEUE FUNKTION: Erweiterte Zustände nach dem Rendern wiederherstellen
-  setTimeout(() => {
-    restoreExpandedStates();
-  }, 50); // Kurze Verzögerung damit das DOM vollständig gerendert ist
+  // ENTFERNE die automatische Wiederherstellung oder mache sie optional
+  // Kommentiere diese Zeilen aus:
+  // setTimeout(() => {
+  //   restoreExpandedStates();
+  // }, 50);
 }
 
 /**
- * Stellt die aufgeklappten Zustände der Patienten wieder her
+ * Stellt die aufgeklappten Zustände der Patienten wieder her - nur wenn explizit gewünscht
  */
 function restoreExpandedStates() {
+  if (!window.expandedPatients || window.expandedPatients.size === 0) {
+    return; // Keine gespeicherten aufgeklappten Zustände
+  }
+  
   window.expandedPatients.forEach(patientId => {
     const mainRow = document.querySelector(`tr[data-id="${patientId}"]`);
     const detailsRow = document.getElementById(`details-${patientId}`);
@@ -880,6 +915,21 @@ function restoreExpandedStates() {
     }
   });
 }
+
+// Optional: Funktion zum manuellen Zurücksetzen aller aufgeklappten Zustände
+window.clearAllExpandedPatients = function() {
+  if (window.expandedPatients) {
+    window.expandedPatients.clear();
+  }
+  // Alle aktuell aufgeklappten Patienten zuklappen
+  document.querySelectorAll('.patient-row.expanded').forEach(row => {
+    const patientId = row.dataset.id;
+    if (patientId) {
+      window.toggleExpandRow(patientId);
+    }
+  });
+};
+
 
 /**
  * Zeigt das Kontextmenü für einen Patienten an
