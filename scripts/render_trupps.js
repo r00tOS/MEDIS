@@ -153,7 +153,7 @@ window.addEventListener('storage', e => {
             ${currentDef.text} ▾
           </button>
           <ul class="status-menu" id="status-menu-${trupp.id}">
-            ${statusDefs.map(o => `
+            ${window.getAvailableStatusTransitions(trupp.status).map(o => `
               <li class="${o.status === currentDef.status ? 'active' : ''}" onclick="onStatusSelected(${i}, ${o.status}, '${trupp.id}')">
                 <span class="status-code" style="background: ${o.color}; border: 1px solid ${o.color};">
                   ${o.status}

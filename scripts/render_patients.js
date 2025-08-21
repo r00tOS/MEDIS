@@ -355,18 +355,9 @@ function loadPatients(highlightId) {
     }
   });
 
-  // Remove any existing status dropdowns before rendering
-  const existingDropdowns = document.querySelectorAll('.status-dropdown-overlay');
-  existingDropdowns.forEach(dropdown => dropdown.remove());
-  
   // Remove any existing context menus
   const existingContextMenus = document.querySelectorAll('#patientContextMenu');
   existingContextMenus.forEach(menu => menu.remove());
-
-  // Remove any existing global click handlers to prevent duplicates
-  if (window.dropdownClickHandler) {
-    document.removeEventListener('click', window.dropdownClickHandler);
-  }
 
   // CRITICAL: Update disposition status for all patients before rendering
   patients.forEach(patient => {
@@ -588,9 +579,8 @@ function loadPatients(highlightId) {
         const trupp = trupps.find(tr => tr.name === t);
         const statusDef = trupp ? window.statusOptions?.find(o => o.status === trupp.status) : null;
         const statusIndicator = statusDef ? 
-          `<span class="status-code" style="background: ${statusDef.color}; color: black; padding: 0 3px; border-radius: 2px; font-size: 0.8em; margin-left: 2px; cursor: pointer;" 
-           onclick="openTruppStatusDropdown(event, '${t}')" 
-           title="Klick zum Ändern des Status">${statusDef.status}</span>` : '';
+          `<span class="status-code" style="background: ${statusDef.color}; color: black; padding: 0 3px; border-radius: 2px; font-size: 0.8em; margin-left: 2px;"
+           title="Status">${statusDef.status}</span>` : '';
         
         resourcesCell += `
           <span class="resource-tag trupp-tag">
@@ -607,14 +597,13 @@ function loadPatients(highlightId) {
       patient.rtm.forEach((r, i) => {
         const rtm = rtms.find(rt => rt.name === r);
         const statusDef = rtm ? window.statusOptions?.find(o => o.status === rtm.status) : null;
-        const statusIndicator = statusDef ? 
-          `<span class="status-code" style="background: ${statusDef.color}; color: black; padding: 0 3px; border-radius: 2px; font-size: 0.8em; margin-left: 2px; cursor: pointer;" 
-           onclick="openRtmStatusDropdown(event, '${r}')" 
-           title="Klick zum Ändern des Status">${statusDef.status}</span>` : '';
+        const rtmStatusIndicator = statusDef ? 
+          `<span class="status-code" style="background: ${statusDef.color}; color: black; padding: 0 3px; border-radius: 2px; font-size: 0.8em; margin-left: 2px;"
+           title="Status">${statusDef.status}</span>` : '';
         
         resourcesCell += `
           <span class="resource-tag rtm-tag">
-            R: ${r}${statusIndicator}
+            R: ${r}${rtmStatusIndicator}
           </span>
         `;
       });
@@ -760,16 +749,6 @@ function loadPatients(highlightId) {
     }
   }
 
-  // Setze den globalen Click-Handler für Dropdowns
-  window.dropdownClickHandler = function(e) {
-    if (!e.target.closest('.status-dropdown-overlay') && !e.target.closest('.status-code')) {
-      const dropdowns = document.querySelectorAll('.status-dropdown-overlay');
-      dropdowns.forEach(dropdown => dropdown.remove());
-    }
-  };
-  
-  document.addEventListener('click', window.dropdownClickHandler);
-  
   // Event-Listener für Disposition-Updates
   if (window.dispositionUpdateListener) {
     window.removeEventListener('dispositionUpdate', window.dispositionUpdateListener);

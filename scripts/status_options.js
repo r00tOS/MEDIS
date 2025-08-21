@@ -11,3 +11,23 @@ window.statusOptions = [
   { status: 7, text: 'Transport in UHS', color:'#d7bde2' },
   { status: 8, text: 'Transportziel erreicht', color:'#884ea0' },
 ];
+
+// Status transition rules
+window.getAvailableStatusTransitions = function(currentStatus) {
+  const transitions = {
+    0: [1, 11, 12, 2, 3, 6, 61],
+    1: [11, 12, 2, 3, 6, 61],
+    11: [1, 12, 2, 3, 6, 61],
+    12: [1, 11, 2, 3, 6, 61],
+    2: [1, 11, 12, 3, 6, 61],
+    3: [4, 8],
+    4: [7],
+    6: [1, 11, 12, 2, 3, 61],
+    61: [1, 11, 12, 2, 3, 6],
+    7: [8],
+    8: [] // No transitions allowed from status 8
+  };
+  
+  const allowedStatuses = transitions[currentStatus] || [];
+  return window.statusOptions.filter(option => allowedStatuses.includes(option.status));
+};

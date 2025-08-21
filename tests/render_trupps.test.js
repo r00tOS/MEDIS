@@ -48,6 +48,11 @@ describe('renderTrupps', () => {
       const m = Math.floor(ms / 60000);
       return `${m.toString().padStart(2,'0')}:00`;
     });
+
+    window.getAvailableStatusTransitions = jest.fn(status => {
+      // Rückgabe aller Statusoptionen, wie sie im window.statusOptions stehen
+      return window.statusOptions || [];
+    });
   });
 
   beforeEach(() => {

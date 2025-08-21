@@ -137,7 +137,7 @@ function renderRTMs() {
             ${currentDef.text} ▾
           </button>
           <ul class="status-menu${rtm.id === openId ? ' open' : ''}">
-            ${statusDefs.map(o => `
+            ${window.getAvailableStatusTransitions(rtm.status).map(o => `
               <li class="${o.status === currentDef.status ? 'active' : ''}" onclick="onRTMStatusSelected(${i}, ${o.status}, '${rtm.id}')">
                 <span class="status-code" style="background: ${o.color}; border: 1px solid ${o.color};">
                   ${o.status}
