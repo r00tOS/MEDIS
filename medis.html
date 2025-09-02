@@ -112,10 +112,13 @@
           
           <!-- Bottom section (40% height) with patient tracker across full width -->
           <div style="height: 40%; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; flex-direction: column;">
-            <div style="background: #f0fff0; padding: 6px 10px; font-weight: bold; border-bottom: 1px solid #ddd;">
-              Patienten Übersicht
+            <div style="background: #f0fff0; padding: 6px 10px; font-weight: bold; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center;">
+              <span>Patienten Übersicht</span>
+              <button id="refreshPatientTracker" class="icon-button" title="Patienten Tracker neu laden">
+                <span style="font-size: 1.2rem;">🔄</span>
+              </button>
             </div>
-            <iframe src="sites/patienten_tracker.html" style="flex: 1; border: none;"></iframe>
+            <iframe src="sites/patienten_tracker.html" style="flex: 1; border: none;" id="patientTrackerFrame"></iframe>
           </div>
         </div>
       </div>
@@ -182,6 +185,40 @@ btnSettings.addEventListener('click', () => {
   renderU18List();
   settingsModal.style.display = 'flex';
 });
+
+  // Refresh functionality for Patient Tracker
+  document.addEventListener("DOMContentLoaded", function() {
+    const refreshButton = document.getElementById("refreshPatientTracker");
+    const patientFrame = document.getElementById("patientTrackerFrame");
+    
+    if (refreshButton && patientFrame) {
+      // Function to refresh the patient tracker iframe
+      function refreshPatientTracker() {
+        // Reset any blinking animation
+        refreshButton.classList.remove("blink-red");
+        
+        // Reload the iframe
+        patientFrame.src = patientFrame.src;
+      }
+      
+      // Add click event to the refresh button
+      refreshButton.addEventListener("click", refreshPatientTracker);
+      
+      // Listen for messages from the iframe about freeze state
+      window.addEventListener("message", function(event) {
+        // Check if the message is about freezing the tracker
+        if (event.data && event.data.type === "freezeStateChanged") {
+          if (event.data.frozen) {
+            // If frozen, make the button blink
+            refreshButton.classList.add("blink-red");
+          } else {
+            // If unfrozen, stop blinking
+            refreshButton.classList.remove("blink-red");
+          }
+        }
+      });
+    }
+  });
 
   // 2) Direkt das aktuell gewählte Preset laden (oder Default)
   const initialPreset =
@@ -731,5 +768,37 @@ document.addEventListener("DOMContentLoaded", () => {
         </button>
       </div>
     </div>
+    <style>
+      /* Adding CSS for the refresh button and blinking animation */
+      .icon-button {
+        background: transparent;
+        border: none;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+      
+      .icon-button:hover {
+        background-color: rgba(0,0,0,0.1);
+      }
+      
+      .icon-button:active {
+        background-color: rgba(0,0,0,0.2);
+      }
+      
+      @keyframes blink-red {
+        0%, 100% { background-color: transparent; color: inherit; }
+        50% { background-color: #ff4d4d; color: white; }
+      }
+      
+      .blink-red {
+        animation: blink-red 1s infinite;
+      }
+    </style>
   </body>
 </html>
