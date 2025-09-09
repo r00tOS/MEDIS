@@ -248,9 +248,54 @@
         const isPageFrozen = window.expandedPatients && window.expandedPatients.size > 0;
         
         if (e.key === "trupps") {
-          // Bei aufgeklappten Patienten nur kritische Updates durchführen
+          // Bei aufgeklappten Patienten trotzdem kritische Updates durchführen
           if (isPageFrozen) {
-            console.log('Trupp-Update übersprungen - Seite eingefroren');
+            console.log('Trupp-Update bei eingefrorener Seite - nur Datenlogik ohne UI-Refresh');
+            // Führe die kritische Datenlogik aus ohne UI-Updates
+            const newTrupps = JSON.parse(e.newValue || "[]");
+            const patients = JSON.parse(localStorage.getItem("patients")) || [];
+            let dirty = false;
+
+            // Entferne Trupps von Patienten die nicht mehr verfügbar sind
+            patients.forEach((patient) => {
+              const isFinalState = patient.status === "Entlassen" || 
+                                  patient.status === "Transport in KH" ||
+                                  patient.transport ||
+                                  patient.discharge;
+              
+              if (isFinalState || !Array.isArray(patient.team)) return;
+
+              const keepStatuses = [3, 4, 7, 8];
+              const before = [...patient.team];
+              patient.team = patient.team.filter((name) => {
+                const t = newTrupps.find((x) => x.name === name);
+                return t && keepStatuses.includes(t.status);
+              });
+
+              before.forEach((name) => {
+                if (!patient.team.includes(name)) {
+                  patient.history = patient.history || [];
+                  patient.history.push(
+                    `${getCurrentTime()} Trupp ${name} entfernt (via Trupp-Tracker)`
+                  );
+                  dirty = true;
+                }
+              });
+
+              // Status zurücksetzen falls keine Ressourcen mehr
+              const noTrupp = !Array.isArray(patient.team) || patient.team.length === 0;
+              const noRtm = !Array.isArray(patient.rtm) || patient.rtm.length === 0;
+              if (noTrupp && noRtm && patient.status !== "gemeldet") {
+                patient.status = "gemeldet";
+                patient.history = patient.history || [];
+                patient.history.push(`${getCurrentTime()} Status: gemeldet`);
+                dirty = true;
+              }
+            });
+
+            if (dirty) {
+              localStorage.setItem("patients", JSON.stringify(patients));
+            }
             return;
           }
           
@@ -332,9 +377,34 @@ patients.forEach((patient) => {
         }
         
         if (e.key === "patients") {
-          // Bei aufgeklappten Patienten nur bei expliziten Highlights neu laden
+          // WICHTIGE ÄNDERUNG: Auch bei eingefrorener Seite kritische Patient-Updates durchführen
           if (isPageFrozen) {
-            console.log('Patient-Update übersprungen - Seite eingefroren');
+            console.log('Patient-Update bei eingefrorener Seite - führe kritische Updates durch');
+            
+            // Versuche zu erkennen ob es sich um einen wichtigen Status-Update handelt
+            const newPatients = JSON.parse(e.newValue || "[]");
+            const oldPatients = JSON.parse(e.oldValue || "[]");
+            
+            let hasStatusChanges = false;
+            
+            // Prüfe auf Status-Änderungen
+            newPatients.forEach(newPatient => {
+              const oldPatient = oldPatients.find(p => p.id === newPatient.id);
+              if (oldPatient && oldPatient.status !== newPatient.status) {
+                console.log(`Status-Änderung erkannt: Patient ${newPatient.id} von "${oldPatient.status}" zu "${newPatient.status}"`);
+                hasStatusChanges = true;
+              }
+            });
+            
+            // Bei kritischen Änderungen trotzdem UI aktualisieren
+            if (hasStatusChanges) {
+              console.log('Kritische Status-Änderungen erkannt - aktualisiere UI trotz Freeze');
+              const currentScrollY = window.scrollY;
+              loadPatients();
+              setTimeout(() => {
+                window.scrollTo(0, currentScrollY);
+              }, 100);
+            }
             return;
           }
           
@@ -354,9 +424,102 @@ patients.forEach((patient) => {
         }
 
         if (e.key === "rtms") {
-          // Bei aufgeklappten Patienten RTM-Updates überspringen
+          // Bei aufgeklappten Patienten trotzdem kritische RTM-Updates durchführen
           if (isPageFrozen) {
-            console.log('RTM-Update übersprungen - Seite eingefroren');
+            console.log('RTM-Update bei eingefrorener Seite - führe kritische Updates durch');
+            
+            // RTMs aus dem Storage parsen
+            const newRtms = JSON.parse(e.newValue || "[]");
+            const oldRtms = JSON.parse(e.oldValue || "[]");
+            
+            // Prüfen ob sich ein Status geändert hat
+            let statusChanged = false;
+            if (oldRtms.length !== newRtms.length) {
+              statusChanged = true;
+            } else {
+              // Vergleiche Status aller RTMs
+              for (let i = 0; i < newRtms.length; i++) {
+                const newRtm = newRtms[i];
+                const oldRtm = oldRtms.find(r => r.name === newRtm.name);
+                if (!oldRtm || oldRtm.status !== newRtm.status) {
+                  statusChanged = true;
+                  console.log(`RTM Status-Änderung erkannt: ${newRtm.name} von ${oldRtm?.status || 'unbekannt'} zu ${newRtm.status}`);
+                  break;
+                }
+              }
+            }
+            
+            // Bei Status-Änderungen die Datenlogik ausführen
+            if (statusChanged) {
+              console.log('RTM Status-Änderung erkannt - führe Datenlogik aus');
+              
+              // Prüfen ob RTMs von Patienten entfernt werden müssen
+              const patients = JSON.parse(localStorage.getItem("patients")) || [];
+              let dirty = false;
+
+              patients.forEach((patient) => {
+                // WICHTIG: Finale Status schützen
+                const isFinalState = patient.status === "Entlassen" || 
+                                    patient.status === "Transport in KH" ||
+                                    patient.transport ||
+                                    patient.discharge;
+                
+                if (isFinalState) return;
+                
+                if (!Array.isArray(patient.rtm)) return;
+
+                const keepStatuses = [3, 4, 7, 8]; // verfügbare RTM-Status
+                const before = [...patient.rtm];
+                patient.rtm = patient.rtm.filter((name) => {
+                  const r = newRtms.find((x) => x.name === name);
+                  return r && keepStatuses.includes(r.status);
+                });
+
+                before.forEach((name) => {
+                  if (!patient.rtm.includes(name)) {
+                    patient.history = patient.history || [];
+                    patient.history.push(
+                      `${getCurrentTime()} RTM ${name} entfernt (via RTM-Tracker)`
+                    );
+                    dirty = true;
+                  }
+                });
+              });
+
+              // Status auf "gemeldet" zurücksetzen wenn keine Ressourcen mehr
+              patients.forEach((patient) => {
+                const isFinalState = patient.status === "Entlassen" || 
+                                    patient.status === "Transport in KH" ||
+                                    patient.transport ||
+                                    patient.discharge;
+                
+                if (isFinalState) return;
+                
+                const noTrupp = !Array.isArray(patient.team) || patient.team.length === 0;
+                const noRtm = !Array.isArray(patient.rtm) || patient.rtm.length === 0;
+                if (noTrupp && noRtm && patient.status !== "gemeldet") {
+                  patient.status = "gemeldet";
+                  patient.history = patient.history || [];
+                  patient.history.push(`${getCurrentTime()} Status: gemeldet`);
+                  dirty = true;
+                }
+              });
+
+              // Disposition-Symbole für alle Patienten aktualisieren
+              if (typeof updatePatientDispositionStatus === 'function') {
+                const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
+                patients.forEach(patient => {
+                  updatePatientDispositionStatus(patient, trupps, newRtms);
+                });
+                dirty = true;
+              }
+
+              // Wenn sich etwas geändert hat, speichern
+              if (dirty) {
+                localStorage.setItem("patients", JSON.stringify(patients));
+                console.log('RTM-Änderung verarbeitet, Patientendaten aktualisiert');
+              }
+            }
             return;
           }
           

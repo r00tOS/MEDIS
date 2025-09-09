@@ -65,10 +65,10 @@ function updatePatientDispositionStatus(patient, trupps, rtms) {
 
   console.log('After reset:', patient.dispositionStatus);
 
-  // Finde alle Trupps die diesem Patienten zugewiesen sind (wie im Trupp-Tracker)
+  // Finde alle Trupps die diesem Patienten zugewiesen sind (Status 3=Unterwegs, 4=Am Einsatzort, 7=Transport, 8=Im KH)
   const assignedTrupps = trupps.filter(t => t.patientInput === patient.id && [3, 4, 7, 8].includes(t.status));
   
-  console.log('Assigned trupps:', assignedTrupps.map(t => t.name));
+  console.log('Assigned trupps:', assignedTrupps.map(t => `${t.name} (Status: ${t.status})`));
 
   // Finde alle RTMs die diesem Patienten zugewiesen sind
   const assignedRTMs = rtms.filter(r => (r.patientInput === patient.id || r.patientInput === String(patient.id)) && [3, 4, 7, 8].includes(r.status));
@@ -822,14 +822,7 @@ function loadPatients(highlightId) {
           window.expandedPatients.delete(patientId);
         }
         
-        // NEUE LOGIK: Seite neu laden wenn Patient zugeklappt wird
-        console.log(`Patient ${patientId} zugeklappt - lade Seite neu`);
-        
-        // Scroll-Position für nach dem Reload speichern
-        sessionStorage.setItem('scrollPosition', window.scrollY.toString());
-        
-        // Seite neu laden
-        window.location.reload();
+        console.log(`Patient ${patientId} zugeklappt`);
       } else {
         mainRow.classList.add('expanded');
         detailsRow.style.display = 'table-row';

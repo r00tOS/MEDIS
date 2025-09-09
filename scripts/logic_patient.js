@@ -700,13 +700,21 @@ function updatePatientData(id, field, value) {
     } else {
       finish();
     }
+    
+    // WICHTIG: Auch Storage-Event für Status-Änderung auslösen
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "patients",
+        newValue: JSON.stringify(patients),
+      })
+    );
     return;
   }
 
   // 4) Alle anderen Felder → direkt updaten OHNE Disposition-Update
   // Disposition-Updates erfolgen nur bei Trupp/RTM-Änderungen
   applyUpdate();
-  // GEÄNDERT: Bei kritischen Änderungen mit highlightId laden
+  // GEÄNDERT: Bei kritischen Änderungen mit highlightId laden um Freeze zu umgehen
   loadPatients(id); // Umgeht Freeze-Schutz für den bearbeiteten Patienten
 }
 
