@@ -21,6 +21,9 @@ function openRTMCreationModal() {
   // Spezial-Feld zurücksetzen
   document.getElementById('rtmSpecialPart').value = '';
   
+  // Sonstiges-Feld zurücksetzen
+  document.getElementById('rtmSonstigesPart').value = '';
+  
   // Standard-Modus anzeigen
   handlePrefixChange();
   
@@ -79,10 +82,12 @@ function handleRTMTabNavigation(event, currentField) {
 function handlePrefixChange() {
   const prefix = document.getElementById('rtmPrefix').value;
   const isSpecial = prefix === 'christoph' || prefix === 'sar';
+  const isSonstiges = prefix === 'sonstiges';
   
   // UI umschalten
-  document.getElementById('rtmStandardInput').style.display = isSpecial ? 'none' : 'flex';
+  document.getElementById('rtmStandardInput').style.display = (isSpecial || isSonstiges) ? 'none' : 'flex';
   document.getElementById('rtmSpecialInput').style.display = isSpecial ? 'block' : 'none';
+  document.getElementById('rtmSonstigesInput').style.display = isSonstiges ? 'block' : 'none';
   
   updateRTMPreview();
   
@@ -91,6 +96,9 @@ function handlePrefixChange() {
     if (isSpecial) {
       document.getElementById('rtmSpecialPart').focus();
       document.getElementById('rtmSpecialPart').select();
+    } else if (isSonstiges) {
+      document.getElementById('rtmSonstigesPart').focus();
+      document.getElementById('rtmSonstigesPart').select();
     } else {
       document.getElementById('rtmPart1').focus();
       document.getElementById('rtmPart1').select();
@@ -99,6 +107,13 @@ function handlePrefixChange() {
 }
 
 function handleSpecialRTMNavigation(event) {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    confirmRTMCreation();
+  }
+}
+
+function handleSonstigesRTMNavigation(event) {
   if (event.key === 'Enter') {
     event.preventDefault();
     confirmRTMCreation();
@@ -120,8 +135,12 @@ function updateRTMPreview() {
   
   const prefixText = prefixTexts[prefix];
   const isSpecial = prefix === 'christoph' || prefix === 'sar';
+  const isSonstiges = prefix === 'sonstiges';
   
-  if (isSpecial) {
+  if (isSonstiges) {
+    const sonstigesPart = document.getElementById('rtmSonstigesPart').value || '...';
+    document.getElementById('rtmPreview').textContent = sonstigesPart;
+  } else if (isSpecial) {
     const specialPart = document.getElementById('rtmSpecialPart').value || '...';
     document.getElementById('rtmPreview').textContent = `${prefixText} ${specialPart}`;
   } else {
@@ -135,11 +154,21 @@ function updateRTMPreview() {
 function confirmRTMCreation() {
   const prefix = document.getElementById('rtmPrefix').value;
   const isSpecial = ['christoph', 'sar'].includes(prefix);
+  const isSonstiges = prefix === 'sonstiges';
   
   let rtmName;
   let rtmType = null;
   
-  if (isSpecial) {
+  if (isSonstiges) {
+    const sonstigesPart = document.getElementById('rtmSonstigesPart').value.trim();
+    if (!sonstigesPart) {
+      alert('Bitte RTM-Name eingeben');
+      return;
+    }
+    rtmName = sonstigesPart;
+    // Für Sonstiges keinen spezifischen RTM-Typ setzen
+    rtmType = null;
+  } else if (isSpecial) {
     const specialPart = document.getElementById('rtmSpecialPart').value.trim();
     if (!specialPart) {
       alert('Bitte Kennung eingeben');
@@ -242,6 +271,7 @@ function closeRTMCreationModal() {
   document.getElementById('rtmPart2').value = '';
   document.getElementById('rtmPart3').value = '';
   document.getElementById('rtmSpecialPart').value = '';
+  document.getElementById('rtmSonstigesPart').value = '';
   handlePrefixChange();
   updateRTMPreview();
 }

@@ -594,7 +594,7 @@ function openRTMNameChangeModal(rtmIndex) {
       'SAR': 'sar'
     };
     
-    const prefixValue = prefixMap[prefix] || 'florian';
+    const prefixValue = prefixMap[prefix] || 'sonstiges';
     prefixSelect.value = prefixValue;
     
     // Handle prefix change to show correct input fields
@@ -620,6 +620,11 @@ function openRTMNameChangeModal(rtmIndex) {
     handlePrefixChange();
     
     document.getElementById('rtmSpecialPart').value = specialPart;
+  } else {
+    // Sonstiges - free text format
+    document.getElementById('rtmPrefix').value = 'sonstiges';
+    handlePrefixChange();
+    document.getElementById('rtmSonstigesPart').value = currentName;
   }
   
   updateRTMPreview();

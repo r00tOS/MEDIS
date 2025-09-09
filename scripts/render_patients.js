@@ -822,14 +822,14 @@ function loadPatients(highlightId) {
           window.expandedPatients.delete(patientId);
         }
         
-        // NEUE LOGIK: Seite wieder freigeben wenn alle Patienten zugeklappt sind
-        if (window.expandedPatients.size === 0) {
-          console.log('Alle Patienten zugeklappt - Seite wieder freigegeben');
-          // Sofort neu laden um verpasste Updates nachzuholen
-          setTimeout(() => {
-            loadPatients();
-          }, 100);
-        }
+        // NEUE LOGIK: Seite neu laden wenn Patient zugeklappt wird
+        console.log(`Patient ${patientId} zugeklappt - lade Seite neu`);
+        
+        // Scroll-Position für nach dem Reload speichern
+        sessionStorage.setItem('scrollPosition', window.scrollY.toString());
+        
+        // Seite neu laden
+        window.location.reload();
       } else {
         mainRow.classList.add('expanded');
         detailsRow.style.display = 'table-row';
