@@ -36,7 +36,7 @@ describe('MEDIS Hauptinterface (unit tests)', () => {
     // ────────────────────────────────────────
     // 2) HTML laden
     // ────────────────────────────────────────
-    const htmlPath = path.resolve(__dirname, '../../medis.html');
+    const htmlPath = path.resolve(__dirname, '../../index.html');
     const html     = fs.readFileSync(htmlPath, 'utf8');
     document.documentElement.innerHTML = html;
 
