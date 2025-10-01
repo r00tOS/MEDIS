@@ -76,7 +76,7 @@ window.alarmConfig = {
         { "word": "Thrombose", "resources": [ "Trupp", "RTW" ] },
         { "word": "Exsikkose", "resources": [ "Trupp" ] },
         { "word": "Anaphylaxie / Unverträglichkeitsreaktion", "resources": [ "Trupp", "RTW" ] },
-        { "word": "sonstige internistische Notfälle (Kreislaufprobleme, Unwohlsein, Fieber, etc)", "resources": [ "Trupp" ] }
+        { "word": "sonstige internistische Notfälle (Kreislaufprobleme, Unwohlsein, etc)", "resources": [ "Trupp" ] }
       ]
     },
     {
