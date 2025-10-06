@@ -960,10 +960,11 @@ function removeTrupp(id, index) {
         von: t.patientStart,
         bis: now,
       });
-      // Reset der Patientendaten
-      t.patientInput = "";
-      t.patientStart = null;
     }
+    
+    // Reset der Patientendaten - IMMER, nicht nur wenn Historie gespeichert wird
+    t.patientInput = null;
+    t.patientStart = null;
 
     // Statuswechsel, aber Einsatzzeit weiterlaufen lassen
     t.status = 0;
