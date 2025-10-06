@@ -216,3 +216,147 @@ describe('clearAssignments', () => {
     expect(patients[0].status).toBe('Entlassen');
   });
 });
+
+describe('removeTrupp', () => {
+  let removeTrupp;
+  let loadPatients;
+  let triggerDispositionUpdate;
+  let dispatchSpy;
+
+  beforeAll(() => {
+    // Load getCurrentTime stub
+    global.getCurrentTime = jest.fn(() => '10:00');
+
+    // Load logic_patient.js
+    const logicCode = fs.readFileSync(
+      path.resolve(__dirname, '../scripts/logic_patient.js'),
+      'utf8'
+    );
+    const logicScript = document.createElement('script');
+    logicScript.textContent = logicCode;
+    document.body.appendChild(logicScript);
+
+    removeTrupp = window.removeTrupp;
+    loadPatients = window.loadPatients = jest.fn();
+    triggerDispositionUpdate = window.triggerDispositionUpdate = jest.fn();
+    
+    // Mock confirm to always return true
+    global.confirm = jest.fn(() => true);
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    localStorage.clear();
+    dispatchSpy = jest.spyOn(window, 'dispatchEvent');
+  });
+
+  it('should clear patientInput even when patientStart is null', () => {
+    // Setup patient with trupp
+    localStorage.setItem(
+      'patients',
+      JSON.stringify([{
+        id: 'p1',
+        team: ['T1'],
+        history: []
+      }])
+    );
+
+    // Setup trupp with patientInput but NO patientStart (the bug scenario)
+    localStorage.setItem(
+      'trupps',
+      JSON.stringify([{
+        name: 'T1',
+        patientInput: 'p1',
+        patientStart: null, // This is the key - patientStart is null
+        status: 3,
+        patientHistorie: [],
+        history: []
+      }])
+    );
+
+    jest.spyOn(Date, 'now').mockReturnValue(1000);
+
+    // Remove trupp from patient
+    removeTrupp('p1', 0);
+
+    // Verify trupp patient reference is cleared
+    const trupps = JSON.parse(localStorage.getItem('trupps'));
+    expect(trupps[0].patientInput).toBeNull();
+    expect(trupps[0].patientStart).toBeNull();
+    expect(trupps[0].status).toBe(0);
+  });
+
+  it('should clear patientInput and save history when both patientInput and patientStart exist', () => {
+    // Setup patient with trupp
+    localStorage.setItem(
+      'patients',
+      JSON.stringify([{
+        id: 'p1',
+        team: ['T1'],
+        history: []
+      }])
+    );
+
+    // Setup trupp with both patientInput and patientStart
+    localStorage.setItem(
+      'trupps',
+      JSON.stringify([{
+        name: 'T1',
+        patientInput: 'p1',
+        patientStart: 500,
+        status: 3,
+        patientHistorie: [],
+        history: []
+      }])
+    );
+
+    jest.spyOn(Date, 'now').mockReturnValue(1000);
+
+    // Remove trupp from patient
+    removeTrupp('p1', 0);
+
+    // Verify trupp patient reference is cleared and history is saved
+    const trupps = JSON.parse(localStorage.getItem('trupps'));
+    expect(trupps[0].patientInput).toBeNull();
+    expect(trupps[0].patientStart).toBeNull();
+    expect(trupps[0].status).toBe(0);
+    expect(trupps[0].patientHistorie).toEqual([
+      { nummer: 'p1', von: 500, bis: 1000 }
+    ]);
+  });
+
+  it('should remove trupp from patient team array', () => {
+    // Setup patient with trupp
+    localStorage.setItem(
+      'patients',
+      JSON.stringify([{
+        id: 'p1',
+        team: ['T1', 'T2'],
+        history: []
+      }])
+    );
+
+    // Setup trupp
+    localStorage.setItem(
+      'trupps',
+      JSON.stringify([{
+        name: 'T1',
+        patientInput: 'p1',
+        patientStart: null,
+        status: 3,
+        patientHistorie: [],
+        history: []
+      }])
+    );
+
+    jest.spyOn(Date, 'now').mockReturnValue(1000);
+
+    // Remove first trupp
+    removeTrupp('p1', 0);
+
+    // Verify trupp is removed from patient
+    const patients = JSON.parse(localStorage.getItem('patients'));
+    expect(patients[0].team).toEqual(['T2']);
+    expect(patients[0].history).toContain('10:00 Trupp T1 entfernt');
+  });
+});
