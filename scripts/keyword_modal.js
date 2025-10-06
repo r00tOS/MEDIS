@@ -234,7 +234,7 @@ const modalTemplate = `
       oninput="onSearchInput()"
       tabindex="8"
     />
-    <div style="display:flex; gap:10px; height:400px;">
+    <div style="display:flex; gap:10px; flex:1; min-height:400px;">
       <div id="categoryList" class="list" tabindex="9"></div>
       <div id="keywordList" class="list" tabindex="10"></div>
       <div id="searchResults" class="list" style="display:none" tabindex="11"></div>
