@@ -18,10 +18,7 @@ function clearAssignments(patientId, finalStatus) {
     console.log(`Setting patient status to final: ${finalStatus}`);
     patient.status = finalStatus;
     // Sicherstellen dass der finale Status auch in der Historie steht (falls nicht schon da)
-    if (!patient.history.some(h => h.includes(`Status: ${finalStatus}`))) {
-      patient.history.push(`${getCurrentTime()} Status: ${finalStatus}`);
-      console.log(`Added status history entry: Status: ${finalStatus}`);
-    }
+    addHistoryEvent(patient, "status", finalStatus);
   }
 
   // 2) Trupp-Tracker updaten - BEIDE Wege: über patientInput UND über patient.team Namen
@@ -52,12 +49,7 @@ function clearAssignments(patientId, finalStatus) {
       // c) Status auf 0 setzen
       t.status = 0;
 
-      // d) Eigene Historie ergänzen
-      t.history = t.history || [];
-      t.history.push({
-        when: now,
-        event: 0,
-      });
+      addHistoryEvent(t, "status", "0");
     }
   });
   
@@ -92,11 +84,7 @@ function clearAssignments(patientId, finalStatus) {
           trupp.status = 0;
 
           // d) Eigene Historie ergänzen
-          trupp.history = trupp.history || [];
-          trupp.history.push({
-            when: now,
-            event: 0,
-          });
+          addHistoryEvent(trupp, "status", 0);
         }
       } else {
         console.log(`Trupp ${teamName} NOT FOUND in storage!`);
@@ -133,12 +121,7 @@ function clearAssignments(patientId, finalStatus) {
       // c) Status auf 0 setzen
       r.status = 0;
 
-      // d) Eigene Historie ergänzen
-      r.history = r.history || [];
-      r.history.push({
-        when: now,
-        event: 0,
-      });
+      addHistoryEvent(r, "status", "0");
     }
   });
   
@@ -172,12 +155,7 @@ function clearAssignments(patientId, finalStatus) {
           // c) Status auf 0 setzen
           rtm.status = 0;
 
-          // d) Eigene Historie ergänzen
-          rtm.history = rtm.history || [];
-          rtm.history.push({
-            when: now,
-            event: 0,
-          });
+          addHistoryEvent(rtm, "status", 0);
         }
       } else {
         console.log(`RTM ${rtmName} NOT FOUND in storage!`);
@@ -193,8 +171,7 @@ function clearAssignments(patientId, finalStatus) {
     if (Array.isArray(patient.rtm) && patient.rtm.length > 0) {
       const rtmCount = patient.rtm.length;
       patient.rtm.forEach(rtmName => {
-        patient.history = patient.history || [];
-        patient.history.push(`${getCurrentTime()} RTM ${rtmName} entfernt`);
+        addHistoryEvent(patient, "unassignedRTM", rtmName);
       });
       patient.rtm = []; // Alle RTMs entfernen
       console.log(`Removed ${rtmCount} RTMs from patient`);
@@ -203,8 +180,7 @@ function clearAssignments(patientId, finalStatus) {
     if (Array.isArray(patient.team) && patient.team.length > 0) {
       const teamCount = patient.team.length;
       patient.team.forEach(teamName => {
-        patient.history = patient.history || [];
-        patient.history.push(`${getCurrentTime()} Trupp ${teamName} entfernt`);
+        addHistoryEvent(patient, "unassignedTeam", teamName);
       });
       patient.team = []; // Alle Teams entfernen
       console.log(`Removed ${teamCount} teams from patient`);
@@ -257,7 +233,7 @@ function disposeRequest(id, request) {
   const patient = patients.find((p) => p.id === id);
   patient.additionalRequest = request;
   if (!patient.history) patient.history = [];
-  patient.history.push(`${getCurrentTime()} ${request}`);
+  addHistoryEvent(patient, "resourceRequest", request);
   if (!patient.disposed) patient.disposed = {};
   patient.disposed[request] = false;
   localStorage.setItem("patients", JSON.stringify(patients));
@@ -287,8 +263,8 @@ function dischargePatient(id) {
   patient.discharge = location;
   patient.status = "Entlassen";
   if (!patient.history) patient.history = [];
-  patient.history.push(`${getCurrentTime()} Entlassen: ${location}`);
-  patient.history.push(`${getCurrentTime()} Status: Entlassen`);
+  addHistoryEvent(patient, "discharge", location);
+  addHistoryEvent(patient, "status", "Entlassen");
   
   // STEP 2: ALLE Trupps die zu diesem Patienten gehören auf Status 0 setzen
   const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
@@ -308,8 +284,7 @@ function dischargePatient(id) {
       trupp.patientInput = null;
       trupp.patientStart = null;
       trupp.status = 0;
-      trupp.history = trupp.history || [];
-      trupp.history.push({ when: now, event: 0 });
+      addHistoryEvent(trupp, "status", "0");
     }
   });
   
@@ -329,8 +304,7 @@ function dischargePatient(id) {
         trupp.patientInput = null;
         trupp.patientStart = null;
         trupp.status = 0;
-        trupp.history = trupp.history || [];
-        trupp.history.push({ when: now, event: 0 });
+        addHistoryEvent(trupp, "status", "0");
       }
     });
   }
@@ -352,8 +326,7 @@ function dischargePatient(id) {
       rtm.patientInput = null;
       rtm.patientStart = null;
       rtm.status = 0;
-      rtm.history = rtm.history || [];
-      rtm.history.push({ when: now, event: 0 });
+      addHistoryEvent(rtm, "status", "0");
     }
   });
   
@@ -373,8 +346,7 @@ function dischargePatient(id) {
         rtm.patientInput = null;
         rtm.patientStart = null;
         rtm.status = 0;
-        rtm.history = rtm.history || [];
-        rtm.history.push({ when: now, event: 0 });
+        addHistoryEvent(rtm, "status", "0");
       }
     });
   }
@@ -382,14 +354,14 @@ function dischargePatient(id) {
   // STEP 4: Teams und RTMs aus Patient-Arrays entfernen
   if (Array.isArray(patient.team)) {
     patient.team.forEach(teamName => {
-      patient.history.push(`${getCurrentTime()} Trupp ${teamName} entfernt`);
+      addHistoryEvent(patient, "unassignedTeam", teamName);
     });
     patient.team = [];
   }
   
   if (Array.isArray(patient.rtm)) {
     patient.rtm.forEach(rtmName => {
-      patient.history.push(`${getCurrentTime()} RTM ${rtmName} entfernt`);
+      addHistoryEvent(patient, "unassignedRTM", rtmName);
     });
     patient.rtm = [];
   }
@@ -433,9 +405,9 @@ function transportPatient(id) {
   patient.transport = ziel;
   patient.status = "Transport in KH";
   if (!patient.history) patient.history = [];
-  patient.history.push(`${getCurrentTime()} Transport in KH: ${ziel}`);
-  patient.history.push(`${getCurrentTime()} Status: Transport in KH`);
-  
+  addHistoryEvent(patient, "transport", ziel);
+  addHistoryEvent(patient, "status", "Transport in KH");
+
   // STEP 2: ALLE Trupps die zu diesem Patienten gehören auf Status 0 setzen
   const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
   const now = Date.now();
@@ -454,8 +426,7 @@ function transportPatient(id) {
       trupp.patientInput = null;
       trupp.patientStart = null;
       trupp.status = 0;
-      trupp.history = trupp.history || [];
-      trupp.history.push({ when: now, event: 0 });
+      addHistoryEvent(trupp, "status", "0");
     }
   });
   
@@ -475,8 +446,7 @@ function transportPatient(id) {
         trupp.patientInput = null;
         trupp.patientStart = null;
         trupp.status = 0;
-        trupp.history = trupp.history || [];
-        trupp.history.push({ when: now, event: 0 });
+        addHistoryEvent(trupp, "status", "0");
       }
     });
   }
@@ -498,8 +468,7 @@ function transportPatient(id) {
       rtm.patientInput = null;
       rtm.patientStart = null;
       rtm.status = 0;
-      rtm.history = rtm.history || [];
-      rtm.history.push({ when: now, event: 0 });
+      addHistoryEvent(rtm, "status", "0");
     }
   });
   
@@ -519,8 +488,7 @@ function transportPatient(id) {
         rtm.patientInput = null;
         rtm.patientStart = null;
         rtm.status = 0;
-        rtm.history = rtm.history || [];
-        rtm.history.push({ when: now, event: 0 });
+        addHistoryEvent(rtm, "status", "0");
       }
     });
   }
@@ -528,14 +496,14 @@ function transportPatient(id) {
   // STEP 4: Teams und RTMs aus Patient-Arrays entfernen
   if (Array.isArray(patient.team)) {
     patient.team.forEach(teamName => {
-      patient.history.push(`${getCurrentTime()} Trupp ${teamName} entfernt`);
+      addHistoryEvent(patient, "unassignedTeam", teamName);
     });
     patient.team = [];
   }
   
   if (Array.isArray(patient.rtm)) {
     patient.rtm.forEach(rtmName => {
-      patient.history.push(`${getCurrentTime()} RTM ${rtmName} entfernt`);
+      addHistoryEvent(patient, "unassignedRTM", rtmName);
     });
     patient.rtm = [];
   }
@@ -577,47 +545,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-/**
- * Baut die Text‐Zeile „Patientendaten geändert: Verdachtsdiagnose=…, Alter=…, Geschlecht=…, Standort=…, Bemerkung=…“
- * und hängt sie an patient.history an. Persistiert in localStorage.
- */
-function addCombinedHistoryEntry(patientId) {
-  const stored = JSON.parse(localStorage.getItem("patients")) || [];
-  const patient = stored.find((p) => p.id === patientId);
-  if (!patient) return;
-
-  // Stelle sicher, dass history‐Array existiert
-  if (!patient.history) patient.history = [];
-
-  // Hole aktuellen Zeitstempel (so wie getCurrentTime() ihn formatiert)
-  const nowFormatted = getCurrentTime(); // Voraussetzung: getCurrentTime() existiert
-
-  // Baue den kombinierten Eintrag
-  const line =
-    `${nowFormatted} Patientendaten geändert: ` +
-    `Verdachtsdiagnose=${patient.diagnosis || "–"}, ` +
-    `Alter=${patient.age || "–"}, ` +
-    `Geschlecht=${patient.gender || "–"}, ` +
-    `Standort=${patient.location || "–"}, ` +
-    `Bemerkung=${patient.remarks || "–"}`;
-
-  // Hänge in history an
-  patient.history.push(line);
-
-  // Speichere zurück
-  localStorage.setItem("patients", JSON.stringify(stored));
-
-  // Damit alle UIs (z. B. loadPatients‐Listener) reagieren, feuern wir ein Storage‐Event:
-  window.dispatchEvent(
-    new StorageEvent("storage", {
-      key: "patients",
-      newValue: JSON.stringify(stored),
-    })
-  );
-}
-
-
-
 // 1) Zentrale Update-Funktion
 function updatePatientData(id, field, value) {
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
@@ -644,18 +571,8 @@ function updatePatientData(id, field, value) {
 
   // 2) Update von History, Feld, Triggern von recordStatusChange und Speichern
   function applyUpdate() {
-    // a) History-Eintrag - NUR wenn value nicht leer ist
-    if (field === "status") {
-      patient.history.push(`${getCurrentTime()} Status: ${value}`);
-    } else if (field === "discharge") {
-      patient.history.push(`${getCurrentTime()} Entlassen: ${value}`);
-    } else if (field === "transport") {
-      patient.history.push(`${getCurrentTime()} Transport in KH: ${value}`);
-    } else if (field === "additionalRequest") {
-      patient.history.push(`${getCurrentTime()} ${value}`);
-    } else if (field === "diagnosis" && value) { // Nur wenn diagnosis nicht leer
-      patient.history.push(`${getCurrentTime()} Verdachtsdiagnose: ${value}`);
-      
+    // a) History-Eintrag mit addHistoryEvent - NUR wenn value nicht leer ist
+      addHistoryEvent(patient, field, value);
       // Spezialbehandlung für Diagnose: suggestedResources aktualisieren
       updateSuggestedResourcesForDiagnosis(patient, value);
     }
@@ -678,7 +595,7 @@ function updatePatientData(id, field, value) {
   // 3) Sonderfall Status → Animation + Delayed Update
   if (field === "status") {
     // a) History-Eintrag & Status setzen
-    patient.history.push(`${getCurrentTime()} Status: ${value}`);
+    addHistoryEvent(patient, "status", value);
     patient.status = value;
 
     // c) Persist
@@ -872,7 +789,7 @@ function assignResource(id, type) {
   const p2 = updated.find((p) => p.id === id);
   if (p2) {
     p2.history = p2.history || [];
-    p2.history.push(`${getCurrentTime()} ${label} ${value.trim()} zugeordnet`);
+    addHistoryEvent(p2, type === "team" ? "assignedTeam" : "assignedRTM", value.trim());
     
     // Stelle sicher dass die Disposition-Status-Updates auch in der gespeicherten Version sind
     if (type === "rtm") {
@@ -919,7 +836,7 @@ function assignSelectedTrupp(patientId) {
   const p2 = updated.find((p) => p.id === patientId);
   if (p2) {
     p2.history = p2.history || [];
-    p2.history.push(`${getCurrentTime()} Trupp ${truppName} disponiert`);
+    addHistoryEvent(p2, "assignedTeam", truppName);
     localStorage.setItem("patients", JSON.stringify(updated));
     loadPatients(patientId);
   }
@@ -941,7 +858,7 @@ function removeTrupp(id, index) {
     ? patient.team.splice(index, 1)
     : [];
   patient.history = patient.history || [];
-  patient.history.push(`${getCurrentTime()} Trupp ${removed[0]} entfernt`);
+  addHistoryEvent(patient, "unassignedTeam", removed[0]);
   localStorage.setItem("patients", JSON.stringify(patients));
   // GEÄNDERT: Mit highlightId laden um Freeze zu umgehen
   loadPatients(id);
@@ -969,12 +886,8 @@ function removeTrupp(id, index) {
     // Statuswechsel, aber Einsatzzeit weiterlaufen lassen
     t.status = 0;
 
-    // Eigene Trupp-Historie ergänzen
-    t.history = t.history || [];
-    t.history.push({
-      when: now,
-      event: 0,
-    });
+ 
+    addHistoryEvent(t, "status", 0);
 
     // Speichern und Renderer anstoßen
     localStorage.setItem("trupps", JSON.stringify(trupps));
@@ -1003,7 +916,7 @@ function removeRtm(id, index) {
     const removedRtmName = removed[0];
     
     if (!patient.history) patient.history = [];
-    patient.history.push(`${getCurrentTime()} RTM ${removedRtmName} entfernt`);
+    addHistoryEvent(patient, "unassignedRTM", removedRtmName);
     
     // Save patient changes
     localStorage.setItem("patients", JSON.stringify(patients));
@@ -1030,10 +943,8 @@ function removeRtm(id, index) {
       rtm.patientStart = null;
       rtm.status = 0;
       
-      // Add entry to RTM history
-      rtm.history = rtm.history || [];
-      const timeStr = new Date(now).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      rtm.history.push(`${timeStr} Status: 0`);
+
+      addHistoryEvent(rtm, "status", 0);
       
       // Save RTM changes
       localStorage.setItem("rtms", JSON.stringify(rtms));
@@ -1129,17 +1040,17 @@ function editField(id, field) {
     const timeStr = getCurrentTime();
     
     if (field === "diagnosis") {
-      freshPatient.history.push(`${timeStr} Verdachtsdiagnose: ${value}`);
+      addHistoryEvent(freshPatient, "diagnosis", value);
       // Spezialbehandlung für Diagnose: suggestedResources aktualisieren
       updateSuggestedResourcesForDiagnosis(freshPatient, value);
     } else if (field === "age") {
-      freshPatient.history.push(`${timeStr} Alter: ${value}`);
+      addHistoryEvent(freshPatient, "age", value);
     } else if (field === "gender") {
-      freshPatient.history.push(`${timeStr} Geschlecht: ${value}`);
+      addHistoryEvent(freshPatient, "gender", value);
     } else if (field === "location") {
-      freshPatient.history.push(`${timeStr} Standort: ${value}`);
+      addHistoryEvent(freshPatient, "location", value);
     } else if (field === "remarks") {
-      freshPatient.history.push(`${timeStr} Bemerkungen: ${value}`);
+      addHistoryEvent(freshPatient, "remark", value);
     }
     
     // SOFORT speichern und UI komplett neu laden
@@ -1277,13 +1188,9 @@ function changeTruppStatus(truppName, newStatus) {
   const trupp = trupps.find(t => t.name === truppName);
   if (!trupp) return;
   
-  trupp.status = newStatus;
-  trupp.history = trupp.history || [];
-  trupp.history.push({
-    when: Date.now(),
-    event: newStatus
-  });
-  
+
+  addHistoryEvent(trupp, "status", newStatus);
+
   localStorage.setItem("trupps", JSON.stringify(trupps));
   
   // Update patient status based on trupp status change
@@ -1305,11 +1212,7 @@ function changeRtmStatus(rtmName, newStatus) {
   if (!rtm) return;
   
   rtm.status = newStatus;
-  rtm.history = rtm.history || [];
-  rtm.history.push({
-    when: Date.now(),
-    event: newStatus
-  });
+  addHistoryEvent(rtm, "status", newStatus);
   
   localStorage.setItem("rtms", JSON.stringify(rtms));
   
@@ -1382,7 +1285,7 @@ function updatePatientStatusBasedOnResourceStatus(resourceName, newStatus, resou
     if (newPatientStatus && newPatientStatus !== patient.status) {
       patient.status = newPatientStatus;
       patient.history = patient.history || [];
-      patient.history.push(`${getCurrentTime()} Status: ${newPatientStatus} (via ${resourceType === 'trupp' ? 'Trupp' : 'RTM'} ${resourceName})`);
+      addHistoryEvent(patient, "status", newPatientStatus);
       patientsUpdated = true;
     }
   });
@@ -1435,7 +1338,7 @@ function promptAddEntry(patientId) {
   }
   
   // Eintrag zur Historie hinzufügen
-  patient.history.push(`${timeStr} ${newEntry.trim()}`);
+  addHistoryEvent(patient, "remark", newEntry.trim());
   
   console.log(`Hinzufügen von Eintrag zu Patient ${patientId}:`, patient.history);
   
@@ -1466,7 +1369,7 @@ function addCustomHistory(id, message) {
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
   const patient = patients.find((p) => p.id === id);
   if (!patient.history) patient.history = [];
-  patient.history.push(`${getCurrentTime()} ${message}`);
+  addHistoryEvent(patient, "remark", message);
   localStorage.setItem("patients", JSON.stringify(patients));
   loadPatients();
 }
@@ -1520,8 +1423,7 @@ function releaseTruppFromAssignment(truppName, patientId) {
   
   // Historieneintrag hinzufügen
   if (!patient.history) patient.history = [];
-  const timeStr = getCurrentTime();
-  patient.history.push(`${timeStr} Trupp ${truppName} entfernt`);
+  addHistoryEvent(patient, "unassignedTeam", truppName);
   
   // Patientendaten speichern
   localStorage.setItem("patients", JSON.stringify(patients));
@@ -1551,11 +1453,7 @@ function releaseTruppFromAssignment(truppName, patientId) {
     trupp.status = 0;
     
     // Historieneintrag hinzufügen
-    trupp.history = trupp.history || [];
-    trupp.history.push({
-      when: now,
-      event: 0,
-    });
+    addHistoryEvent(trupp, "status", 0);
     
     // Trupp-Daten speichern
     localStorage.setItem("trupps", JSON.stringify(trupps));
@@ -1608,8 +1506,7 @@ function releaseRtmFromAssignment(rtmName, patientId) {
   
   // Historieneintrag hinzufügen
   if (!patient.history) patient.history = [];
-  const timeStr = getCurrentTime();
-  patient.history.push(`${timeStr} RTM ${rtmName} entfernt`);
+  addHistoryEvent(patient, "unassignedRTM", rtmName);
   
   // Patientendaten speichern
   localStorage.setItem("patients", JSON.stringify(patients));
@@ -1639,13 +1536,8 @@ function releaseRtmFromAssignment(rtmName, patientId) {
     rtm.status = 0;
     
     // Historieneintrag hinzufügen
-    rtm.history = rtm.history || [];
-    const formattedTime = new Date(now).toLocaleTimeString([], { 
-      hour: "2-digit", 
-      minute: "2-digit" 
-    });
-    rtm.history.push(`${formattedTime} Status: 0`);
-    
+    addHistoryEvent(rtm, "status", 0);
+
     // RTM-Daten speichern
     localStorage.setItem("rtms", JSON.stringify(rtms));
     

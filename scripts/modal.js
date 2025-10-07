@@ -51,8 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
         r.einsatzStartOrt = now;
 
         // 2) RTM-Historie ergänzen
-        if (!r.history) r.history = [];
-        r.history.push(`${timeStr} Einsatzort gesetzt: ${ort}`);
+        addHistoryEvent(r, "status", `Einsatzort gesetzt: ${ort}`);
 
         // 3) Speichern & neu rendern
         saveRTMs();
@@ -66,7 +65,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // 2) Trupp-Historie ergänzen
         if (!t.history) t.history = [];
-        t.history.push(`${timeStr} Einsatzort gesetzt: ${ort}`);
+        addHistoryEvent(t, "status", `Einsatzort gesetzt: ${ort}`);
 
         // 3) Speichern & neu rendern
         saveTrupps();
@@ -182,13 +181,12 @@ function confirmDischarge() {
   
   // 1) Discharge-Feld direkt setzen
   patient.discharge = text;
-  if (!patient.history) patient.history = [];
-  patient.history.push(`${getCurrentTime()} Entlassen: ${text}`);
-  
+  addHistoryEvent(patient, "discharge", text);
+
   // 2) Status direkt auf Entlassen setzen
   patient.status = "Entlassen";
-  patient.history.push(`${getCurrentTime()} Status: Entlassen`);
-  
+  addHistoryEvent(patient, "status", "Entlassen");
+
   // Änderungen speichern
   localStorage.setItem("patients", JSON.stringify(patients));
   

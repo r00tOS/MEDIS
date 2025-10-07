@@ -128,9 +128,8 @@ function updateTrupp(index, status) {
   }
 
   // 6) Historie-Eintrag
-  if (!trupp.history) trupp.history = [];
   if (oldStatus !== status) {
-    trupp.history.push(`${timeStr} Status: ${status}`);
+    addHistoryEvent(trupp, "status", status);
   }
 
   // 7) Spezielle Abschlüsse für Patient & Streife
@@ -161,9 +160,8 @@ if (oldStatus === 11 && trupp.currentOrt && trupp.einsatzStartOrt) {
   });
   
   // 2) In die Trupp-History (für Timeline-Log)
-  if (!trupp.history) trupp.history = [];
-  trupp.history.push(`${timeStr} Streife beendet am Ort: ${abgeschlossenerOrt}`);
-  
+  addHistoryEvent(trupp, "status", `Streife beendet am Ort: ${abgeschlossenerOrt}`);
+
   // 3) Felder zurücksetzen
   trupp.currentOrt = null;
   trupp.einsatzStartOrt = null;
@@ -198,8 +196,7 @@ if (status === 11) {
         const idx = p.team.indexOf(trupp.name);
         if (idx >= 0) {
           p.team.splice(idx, 1);
-          p.history = p.history || [];
-          p.history.push(`${timeStr} Trupp ${trupp.name} entfernt`);
+          addHistoryEvent(p, "unassignedTrupp", trupp.name);
         }
       }
     });
@@ -604,14 +601,8 @@ function addHistoryEntry(pid, entry) {
 
   // Wenn der Patient gefunden wird, Historie aktualisieren
   if (patient) {
-    const now = Date.now();
-    const timeStr = new Date(now).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    // Füge den neuen Status zur Historie des Patienten hinzu
-    patient.history.push(`${timeStr} ${entry}`);
+       // Füge den neuen Status zur Historie des Patienten hinzu
+    addHistoryEvent(patient, "status", entry);
 
     // Speichern der aktualisierten Patienten-Daten im lokalen Speicher
     localStorage.setItem("patients", JSON.stringify(allPatients));

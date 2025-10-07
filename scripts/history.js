@@ -6,7 +6,7 @@
 /**
  * Types of history events for patient tracking:
  * - "statusChange": The patient's status has changed.
- * - "noteAdded": A note or comment has been added to the patient's record.
+ * - "remark": A note or comment has been added to the patient's record.
  * - "patientDataChange": Demographic or medical data of the patient was modified.
  * - "assignmentChange": The care team or responsible personnel for the patient has changed.
  * - "resourceRequest": Additional resources or personnel have been requested for the patient.
@@ -14,12 +14,13 @@
 
 const attributeTypeMap = {
   status: "statusChange",
-  noteAdded: "noteAdded",
-  age: "patientDataChange",
+  remark: "remark",
   age: "patientDataChange",
   gender: "patientDataChange",
   diagnosis: "patientDataChange",
   location: "patientDataChange",
+  discharge: "patientDataChange",
+  transport: "patientDataChange",
   assignedTeam: "assignmentChange",
   unassignedTeam: "assignmentChange",
   assignedRTM: "assignmentChange",
@@ -28,6 +29,7 @@ const attributeTypeMap = {
   requestNEF: "resourceRequest",
   requestCarryTeam: "resourceRequest",
   resourceRequest: "resourceRequest",
+  rename: "rename",
   // Add more mappings as needed...
 };
 
@@ -49,7 +51,7 @@ function addHistoryEvent(entity, attribute, message) {
 
   // If it is the type statusChange or patientDataChange there is an oldValue
   // that is the value before the change
-  const type = attributeTypeMap[attribute] || "noteAdded";
+  const type = attributeTypeMap[attribute] || "remark";
   if (type === "statusChange" || type === "patientDataChange") {
     payload.oldValue = entity[attribute];
   }

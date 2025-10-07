@@ -366,8 +366,7 @@ function confirmNachforderungModal() {
     const oldStatus = patient.status;
     if (patient.status === "gemeldet") {
       patient.status = "disponiert";
-      patient.history = patient.history || [];
-      patient.history.push(`${getCurrentTime()} Status: disponiert`);
+      addHistoryEvent(patient, "status", "disponiert")
       
       // Timestamps korrekt setzen
       const now = Date.now();
@@ -433,8 +432,7 @@ function confirmNachforderungModal() {
         oldStatus !== "Entlassen" && 
         oldStatus !== "Transport in KH") {
       patient.status = "disponiert";
-      patient.history = patient.history || [];
-      patient.history.push(`${getCurrentTime()} Status: disponiert`);
+      addHistoryEvent(patient, "status", "disponiert")
       
       // Timestamps korrekt setzen
       const now = Date.now();
@@ -451,7 +449,7 @@ function confirmNachforderungModal() {
   // Nachforderung als "disponiert" markieren, Details speichern
   patient.disposed[nachforderungRequest] = details;
   patient.history = patient.history || [];
-  patient.history.push(`${getCurrentTime()} ${entryText}`);
+  addHistoryEvent(patient, "assignedRTM", entryText);
 
   // Persistieren und UI refresh
   localStorage.setItem("patients", JSON.stringify(patients));
@@ -619,28 +617,28 @@ function confirmEdit() {
   const genderValue = g ? g.value : "";
   if (patient.gender !== genderValue) {
     patient.gender = genderValue;
-    if (genderValue) patient.history.push(`${timeStr} Geschlecht: ${genderValue}`);
+    if (genderValue) addHistoryEvent(patient, "gender", genderValue)
   }
   
   // Age
   const age = document.getElementById("editAge").value.trim();
   if (patient.age !== age) {
     patient.age = age;
-    if (age) patient.history.push(`${timeStr} Alter: ${age}`);
+    if (age) addHistoryEvent(patient, "age", age)
   }
   
   // Location
   const loc = document.getElementById("editLocation").value.trim();
   if (patient.location !== loc) {
     patient.location = loc;
-    if (loc) patient.history.push(`${timeStr} Standort: ${loc}`);
+    if (loc) addHistoryEvent(patient, "location", loc)
   }
   
   // Remarks
   const rem = document.getElementById("editRemarks").value.trim();
   if (patient.remarks !== rem) {
     patient.remarks = rem;
-    if (rem) patient.history.push(`${timeStr} Bemerkungen: ${rem}`);
+    if (rem) addHistoryEvent(patient, "remark", remark)
   }
 
   // Stichwort-Diagnose
@@ -659,7 +657,7 @@ function confirmEdit() {
     // Diagnose und Ressourcen direkt setzen
     patient.diagnosis = finalWord;
     patient.suggestedResources = [...cfg.resources];
-    patient.history.push(`${timeStr} Verdachtsdiagnose: ${finalWord}`);
+    addHistoryEvent(patient, "diagnosis", finalWord)
     
     // Disposition-Status zurücksetzen für neue Ressourcen
     if (patient.dispositionStatus) {
@@ -694,7 +692,4 @@ function confirmEdit() {
     key: 'trupps',
     newValue: localStorage.getItem('trupps')
   }));
-  
-  // Kombinierte Historie hinzufügen
-  addCombinedHistoryEntry(editPatientId);
 }

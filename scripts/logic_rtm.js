@@ -221,9 +221,7 @@ function confirmRTMCreation() {
           const index = patient.rtm.indexOf(oldName);
           if (index !== -1) {
             patient.rtm[index] = rtmName;
-            if (!patient.history) patient.history = [];
-            const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-            patient.history.push(`${timeStr} RTM umbenannt: ${oldName} → ${rtmName}`);
+            addHistoryEvent(patient, "rename", `${oldName} → ${rtmName}`);
             patientsUpdated = true;
           }
         }
@@ -359,8 +357,7 @@ function updateRTM(index, status) {
     });
     
     // 2) In die RTM-Historie (für Timeline-Log)
-    if (!rtm.history) rtm.history = [];
-    rtm.history.push(`${timeStr} Streife beendet am Ort: ${abgeschlossenerOrt}`);
+    addHistoryEvent(rtm, "status", `Streife beendet am Ort: ${abgeschlossenerOrt}`);
     
     // 3) Felder zurücksetzen
     rtm.currentOrt = null;
@@ -442,7 +439,7 @@ function updateRTM(index, status) {
   // 6) Historie-Eintrag
   if (!rtm.history) rtm.history = [];
   if (oldStatus !== status) {
-    rtm.history.push(`${timeStr} Status: ${status}`);
+    addHistoryEvent(rtm, "status", status);
   }
 
   // 7) Spezielle Abschlüsse für Patient & Streife
@@ -473,8 +470,7 @@ if (oldStatus === 11 && rtm.currentOrt && rtm.einsatzStartOrt) {
   });
   
   // 2) In die RTM-Historie (für Timeline-Log)
-  if (!rtm.history) rtm.history = [];
-  rtm.history.push(`${timeStr} Streife beendet am Ort: ${abgeschlossenerOrt}`);
+  addHistoryEvent(rtm, "status", `Streife beendet am Ort: ${abgeschlossenerOrt}`);
   
   // 3) Felder zurücksetzen
   rtm.currentOrt = null;
@@ -511,8 +507,7 @@ if (oldStatus === 11 && rtm.currentOrt && rtm.einsatzStartOrt) {
         const idx = p.rtm.indexOf(rtm.name);
         if (idx >= 0) {
           p.rtm.splice(idx, 1);
-          p.history = p.history || [];
-          p.history.push(`${timeStr} RTM ${rtm.name} entfernt`);
+          addHistoryEvent(p, "unassignedRTM", rtm.name);
         }
       }
     });
