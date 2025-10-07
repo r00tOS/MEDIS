@@ -22,7 +22,8 @@ describe('Trupp-Status-Tracker (unit tests)', () => {
       'render_trupps.js',
       'render_patients.js',
       'main.js',
-      'keyword_modal.js'
+      'keyword_modal.js',
+      'history.js'
     ];
     for (const name of external) {
       const code = fs.readFileSync(
