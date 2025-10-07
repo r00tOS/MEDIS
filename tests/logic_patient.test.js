@@ -15,8 +15,11 @@ describe('clearAssignments', () => {
     
     // 2) Stub für getCurrentTime
     global.getCurrentTime = jest.fn(() => '10:00');
+    
+    // 3) Stub für addHistoryEvent
+    global.addHistoryEvent = jest.fn();
 
-    // 3) Spy auf window.dispatchEvent
+    // 4) Spy auf window.dispatchEvent
     dispatchSpy = jest.spyOn(window, 'dispatchEvent');
 
     // 4) categories.js in DOM ausführen (füllt window.alarmConfig.categories)

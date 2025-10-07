@@ -12,6 +12,7 @@ describe('updateTrupp', () => {
     global.openEditModal      = jest.fn();
     global.openEinsatzortModal = jest.fn();      // <— hier stubben
     global.addHistoryEntry    = jest.fn();
+    global.addHistoryEvent    = jest.fn();       
     global.saveTrupps         = jest.fn();
     global.renderTrupps       = jest.fn();
     window.scrollTo           = jest.fn();
