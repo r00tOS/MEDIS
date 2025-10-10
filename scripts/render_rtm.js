@@ -637,53 +637,8 @@ function showRTMHistorie(rtmIndex) {
   if (!rtm) return;
   
   // Modal HTML erstellen
-  const modalHTML = `
-    <div id="rtmHistorieModal" class="modal" style="display: flex; z-index: 2000;">
-      <div class="modal-content" style="max-width: 700px; max-height: 85vh; overflow-y: auto;">
-        <span class="close" onclick="closeRTMHistorieModal()">&times;</span>
-        <h2>Historie: ${rtm.name}</h2>
-        
-        <div style="margin: 20px 0;">
-          <h3>Einsatzorte:</h3>
-          <div style="max-height: 150px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; border-radius: 4px; background: #f9f9f9;">
-            ${rtm.einsatzHistorie && rtm.einsatzHistorie.length ?
-              rtm.einsatzHistorie.map(h => 
-                `<div style="margin-bottom: 8px; padding: 6px; border-left: 3px solid #007bff; background: white; border-radius: 3px;">
-                  <strong style="font-size: 1em;">${h.ort}</strong><br>
-                  <small style="font-size: 0.9em;">${formatTime(h.von)} - ${formatTime(h.bis)}</small>
-                </div>`
-              ).join("") : "<em>Keine Einsatzorte erfasst</em>"}
-          </div>
-          
-          <h3 style="margin-top: 20px;">Patientennummern:</h3>
-          <div style="max-height: 150px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; border-radius: 4px; background: #f9f9f9;">
-            ${rtm.patientHistorie && rtm.patientHistorie.length ?
-              rtm.patientHistorie.map(h => 
-                `<div style="margin-bottom: 8px; padding: 6px; border-left: 3px solid #28a745; background: white; border-radius: 3px;">
-                  <strong style="font-size: 1em;">Patient ${h.nummer}</strong><br>
-                  <small style="font-size: 0.9em;">${formatTime(h.von)} - ${formatTime(h.bis)}</small>
-                </div>`
-              ).join("") : "<em>Keine Patienten erfasst</em>"}
-          </div>
-          
-          <h3 style="margin-top: 20px;">Status-Historie:</h3>
-          <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; border-radius: 4px; background: #f9f9f9;">
-            ${rtm.history && rtm.history.length ?
-              rtm.history.map(entry => 
-                `<div style="margin-bottom: 6px; padding: 4px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 0.95em; line-height: 1.3; background: white; border-radius: 3px; border-left: 2px solid #6c757d;">
-                  ${entry}
-                </div>`
-              ).join("") : "<em>Keine Status-Änderungen erfasst</em>"}
-          </div>
-        </div>
-
-        <div style="text-align: right; margin-top: 20px;">
-          <button onclick="closeRTMHistorieModal()">Schließen</button>
-        </div>
-      </div>
-    </div>
-  `;
-
+  const modalHTML = generateHistoryModalHTML(rtm, 'rtm');
+  
   document.body.insertAdjacentHTML('beforeend', modalHTML);
 }
 

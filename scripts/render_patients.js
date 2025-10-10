@@ -724,7 +724,7 @@ function loadPatients(highlightId) {
           
           <div class="history-container" style="max-height: 300px; overflow-y: auto;">
             <ul>
-              ${(patient.history || []).map(h => `<li>${h}</li>`).join("")}
+              ${(getEntityHistoryHHMM(patient)).map(h => `<li>${h}</li>`).join("")}
             </ul>
           </div>
           

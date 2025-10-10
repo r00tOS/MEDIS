@@ -616,29 +616,33 @@ function confirmEdit() {
   const g = document.querySelector('input[name="editGender"]:checked');
   const genderValue = g ? g.value : "";
   if (patient.gender !== genderValue) {
+    const oldGender = patient.gender;
     patient.gender = genderValue;
-    if (genderValue) addHistoryEvent(patient, "gender", genderValue)
+    if (genderValue) addHistoryEvent(patient, "gender", genderValue, oldGender)
   }
   
   // Age
   const age = document.getElementById("editAge").value.trim();
   if (patient.age !== age) {
+    const oldAge = patient.age;
     patient.age = age;
-    if (age) addHistoryEvent(patient, "age", age)
+    if (age) addHistoryEvent(patient, "age", age, oldAge)
   }
   
   // Location
   const loc = document.getElementById("editLocation").value.trim();
   if (patient.location !== loc) {
+    const oldLoc = patient.location;
     patient.location = loc;
-    if (loc) addHistoryEvent(patient, "location", loc)
+    if (loc) addHistoryEvent(patient, "location", loc, oldLoc)
   }
   
   // Remarks
   const rem = document.getElementById("editRemarks").value.trim();
   if (patient.remarks !== rem) {
+    const oldRem = patient.remarks;
     patient.remarks = rem;
-    if (rem) addHistoryEvent(patient, "remark", remark)
+    if (rem) addHistoryEvent(patient, "remark", rem, oldRem)
   }
 
   // Stichwort-Diagnose
