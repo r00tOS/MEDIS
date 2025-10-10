@@ -841,8 +841,9 @@ function confirmRtmAssignment() {
           totalPauseTime: 0,
           einsatzHistorie: [],
           patientHistorie: [],
-          addHistoryEvent(newRtm, "status", 3);
         };
+        
+        addHistoryEvent(newRtm, "status", 3);
         
         rtms.push(newRtm);
         localStorage.setItem("rtms", JSON.stringify(rtms));

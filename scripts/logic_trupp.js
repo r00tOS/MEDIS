@@ -156,7 +156,7 @@ if (oldStatus === 11 && trupp.currentOrt && trupp.einsatzStartOrt) {
   });
   
   // 2) In die Trupp-History (für Timeline-Log)
-  addHistoryEvent(trupp, "status", `Streife beendet am Ort: ${abgeschlossenerOrt}`);
+  addHistoryEvent(trupp, "status", "Streife beendet am Ort: ${abgeschlossenerOrt}");
 
   // 3) Felder zurücksetzen
   trupp.currentOrt = null;
