@@ -520,12 +520,12 @@ function openTruppAssignmentModalForRTM(patientId) {
   // Patient-Historie aktualisieren
   if (!patient.history) patient.history = [];
   const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  patient.history.push(`${timeStr} Trupp ${truppName.trim()} disponiert`);
-  
+  addHistoryEvent(patient, "assignedTrupp", truppName.trim());
+
   // Status auf disponiert setzen falls noch gemeldet
   if (patient.status === "gemeldet") {
     patient.status = "disponiert";
-    patient.history.push(`${timeStr} Status: disponiert`);
+    addHistoryEvent(patient, "status", "disponiert");
   }
   
   localStorage.setItem("patients", JSON.stringify(patients));
@@ -547,8 +547,8 @@ function openTruppAssignmentModalForRTM(patientId) {
     rtm.currentEinsatzStart = now;
     rtm.currentPauseStart = null;
     
-    if (!rtm.history) rtm.history = [];
-    rtm.history.push(`${timeStr} Status: 3`);
+
+    addHistoryEvent(rtm, "status", 3);
     
     localStorage.setItem("rtms", JSON.stringify(rtms));
     window.dispatchEvent(new StorageEvent("storage", {

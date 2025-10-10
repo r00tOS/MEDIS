@@ -647,16 +647,13 @@ function confirmTruppAssignment(patientId) {
   }
   patient.team.push(selectedTrupp);
 
-  const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  
   // Patient-Historie aktualisieren
-  if (!patient.history) patient.history = [];
-  patient.history.push(`${timeStr} Trupp ${selectedTrupp} disponiert`);
-  
+  addHistoryEvent(patient, "assignedTrupp", selectedTrupp);
+
   // Status auf "disponiert" setzen, falls noch "gemeldet"
   if (patient.status === "gemeldet") {
     patient.status = "disponiert";
-    patient.history.push(`${timeStr} Status: disponiert`);
+    addHistoryEvent(patient, "status", "disponiert");
   }
   
   // Patientendaten speichern
@@ -689,9 +686,8 @@ function confirmTruppAssignment(patientId) {
     trupp.lastStatusChange = now;
     
     // Trupp-Historie aktualisieren
-    if (!trupp.history) trupp.history = [];
-    trupp.history.push(`${timeStr} Status: 3`);
-    
+    addHistoryEvent(trupp, "status", 3);
+
     localStorage.setItem("trupps", JSON.stringify(trupps));
     
     // Storage-Events auslösen
@@ -739,8 +735,7 @@ function openTruppNameChangeModal(truppIndex) {
         if (index !== -1) {
           patient.team[index] = trupp.name;
           if (!patient.history) patient.history = [];
-          const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-          patient.history.push(`${timeStr} Trupp umbenannt: ${oldName} → ${trupp.name}`);
+          addHistoryEvent(patient, "rename", { oldName, newName: trupp.name });
           patientsUpdated = true;
         }
       }

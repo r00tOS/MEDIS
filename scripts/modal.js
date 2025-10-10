@@ -225,12 +225,11 @@ function confirmTransport() {
   
   // 1) Transport-Feld direkt setzen
   patient.transport = text;
-  if (!patient.history) patient.history = [];
-  patient.history.push(`${getCurrentTime()} Transport in KH: ${text}`);
+  addHistoryEvent(patient, "transport", text);
   
   // 2) Status direkt auf Transport in KH setzen
   patient.status = "Transport in KH";
-  patient.history.push(`${getCurrentTime()} Status: Transport in KH`);
+  addHistoryEvent(patient, "status", "Transport in KH");
   
   // Änderungen speichern
   localStorage.setItem("patients", JSON.stringify(patients));
@@ -403,8 +402,7 @@ function assignRTMToExistingPatient(rtmIndex, patientId) {
   rtm.lastStatusChange = now;
 
   // 2) RTM-Historie ergänzen
-  if (!rtm.history) rtm.history = [];
-  rtm.history.push(`${timeStr} Status: 3`);
+  addHistoryEvent(rtm, "status", 3);
 
   // 3) Patient-Daten aktualisieren
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
@@ -416,13 +414,12 @@ function assignRTMToExistingPatient(rtmIndex, patientId) {
     patient.rtm.push(rtm.name);   // Nur RTM-spezifische Zuordnung
     
     // Patient-Historie ergänzen
-    if (!patient.history) patient.history = [];
-    patient.history.push(`${timeStr} RTM ${rtm.name} zugeordnet`);
+    addHistoryEvent(patient, "assignedRTM", rtm.name); // TODO: wäre hier nicht übergeben von rtm objekt besser anstelle von name?
     
     // Status auf "disponiert" setzen, falls noch "gemeldet"
     if (patient.status === "gemeldet") {
       patient.status = "disponiert";
-      patient.history.push(`${timeStr} Status: disponiert`);
+      addHistoryEvent(patient, "status", "disponiert");
     }
     
     localStorage.setItem("patients", JSON.stringify(patients));
@@ -445,11 +442,6 @@ function assignRTMToExistingPatient(rtmIndex, patientId) {
 function createNewPatientForRTM(rtmIndex) {
   const rtm = rtms[rtmIndex];
   const letzteOrt = rtm.currentOrt || rtm.einsatzHistorie.at(-1)?.ort || "";
-  const now = Date.now();
-  const timeStr = new Date(now).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 
   // Erst den Patienten erstellen mit "disponiert" Status - OHNE Disposition-Timer
   const pid = newPatient({
@@ -468,8 +460,7 @@ function createNewPatientForRTM(rtmIndex) {
     patient.rtm.push(rtm.name);
     
     // Patient-Historie ergänzen
-    if (!patient.history) patient.history = [];
-    patient.history.push(`${timeStr} RTM ${rtm.name} disponiert`);
+    addHistoryEvent(patient, "assignedRTM", rtm.name);
     
     // WICHTIG: Kein recordStatusChange aufrufen, da Patient direkt disponiert erstellt wurde
     // Nur sicherstellen, dass die Timestamps korrekt sind
@@ -496,9 +487,7 @@ function createNewPatientForRTM(rtmIndex) {
   rtm.currentPauseStart = null;
   rtm.lastStatusChange = now;
 
-  // RTM-Historie ergänzen
-  if (!rtm.history) rtm.history = [];
-  rtm.history.push(`${timeStr} Status: 3`);
+  addHistoryEvent(rtm, "status", 3);
 
   // RTM-Daten speichern
   saveRTMs();
@@ -525,8 +514,7 @@ function assignTruppToExistingPatient(truppIndex, patientId) {
   trupp.lastStatusChange = now;
 
   // 2) Trupp-Historie ergänzen
-  if (!trupp.history) trupp.history = [];
-  trupp.history.push(`${timeStr} Status: 3`);
+  addHistoryEvent(trupp, "status", 3);
 
   // 3) Patient-Daten aktualisieren
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
@@ -538,13 +526,12 @@ function assignTruppToExistingPatient(truppIndex, patientId) {
     patient.team.push(trupp.name);
     
     // Patient-Historie ergänzen
-    if (!patient.history) patient.history = [];
-    patient.history.push(`${timeStr} Trupp ${trupp.name} zugeordnet`);
+    addHistoryEvent(patient, "assignedTrupp", trupp.name);
     
     // Status auf "disponiert" setzen, falls noch "gemeldet"
     if (patient.status === "gemeldet") {
       patient.status = "disponiert";
-      patient.history.push(`${timeStr} Status: disponiert`);
+      addHistoryEvent(patient, "status", "disponiert");
     }
     
     localStorage.setItem("patients", JSON.stringify(patients));
@@ -588,8 +575,7 @@ function createNewPatientForTrupp(truppIndex) {
     patient.team.push(trupp.name);
 
     // Patient-Historie ergänzen
-    if (!patient.history) patient.history = [];
-    patient.history.push(`${timeStr} Trupp ${trupp.name} disponiert`);
+    addHistoryEvent(patient, "assignedTrupp", trupp.name);
 
     // WICHTIG: Kein recordStatusChange aufrufen, da Patient direkt disponiert erstellt wurde
     // Nur sicherstellen, dass die Timestamps korrekt sind
@@ -617,8 +603,7 @@ function createNewPatientForTrupp(truppIndex) {
   trupp.lastStatusChange = now;
 
   // Trupp-Historie ergänzen
-  if (!trupp.history) trupp.history = [];
-  trupp.history.push(`${timeStr} Status: 3`);
+  addHistoryEvent(trupp, "status", 3);
 
   // Trupp-Daten speichern
   saveTrupps();
@@ -809,8 +794,8 @@ function confirmRtmAssignment() {
           rtm.currentEinsatzStart = Date.now();
           rtm.currentPauseStart = null;
           
-          if (!rtm.history) rtm.history = [];
-          rtm.history.push(`${timeStr} Status: 3`);
+
+          addHistoryEvent(rtm, "status", 3);
           
           localStorage.setItem("rtms", JSON.stringify(rtms));
           
@@ -856,7 +841,7 @@ function confirmRtmAssignment() {
           totalPauseTime: 0,
           einsatzHistorie: [],
           patientHistorie: [],
-          history: [`${timeStr} Status: 3`]
+          addHistoryEvent(newRtm, "status", 3);
         };
         
         rtms.push(newRtm);
@@ -873,13 +858,12 @@ function confirmRtmAssignment() {
   }
   
   // Patient-Historie aktualisieren
-  if (!patient.history) patient.history = [];
-  patient.history.push(`${timeStr} RTM ${addedRtms.join(', ')} zugeordnet`);
+  addHistoryEntry(patient, "assignedRTM", addedRtms.join(', '));
   
   // Status auf "disponiert" setzen, falls noch "gemeldet"
   if (patient.status === "gemeldet") {
     patient.status = "disponiert";
-    patient.history.push(`${timeStr} Status: disponiert`);
+    addHistoryEntry(patient, "status", "disponiert");
   }
   
   // DIREKT: Disposition-Status für RTMs aktualisieren
@@ -1002,17 +986,14 @@ function confirmTruppAssignment(patientId) {
     patient.team = [];
   }
   patient.team.push(selectedTrupp);
-
-  const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   
   // Patient-Historie aktualisieren
-  if (!patient.history) patient.history = [];
-  patient.history.push(`${timeStr} Trupp ${selectedTrupp} disponiert`);
-  
+  addHistoryEvent(patient, "assignedTrupp", selectedTrupp);
+
   // Status auf "disponiert" setzen, falls noch "gemeldet"
   if (patient.status === "gemeldet") {
     patient.status = "disponiert";
-    patient.history.push(`${timeStr} Status: disponiert`);
+    addHistoryEvent(patient, "status", "disponiert");
   }
   
   // Patientendaten speichern
@@ -1045,9 +1026,8 @@ function confirmTruppAssignment(patientId) {
     trupp.lastStatusChange = now;
     
     // Trupp-Historie aktualisieren
-    if (!trupp.history) trupp.history = [];
-    trupp.history.push(`${timeStr} Status: 3`);
-    
+    addHistoryEvent(trupp, "status", 3);
+
     localStorage.setItem("trupps", JSON.stringify(trupps));
     
     // Storage-Events auslösen

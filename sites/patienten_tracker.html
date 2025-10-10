@@ -13,6 +13,7 @@
     <script src="../scripts/render_patients.js"></script>
     <script src="../scripts/status_options.js"></script>
     <script src="../scripts/logic_trupp.js"></script>
+    <script src="../scripts/history.js"></script>
     <script src="../scripts/render_trupps.js"></script>
     <script src="../scripts/history.js"></script>
     <style>
@@ -275,10 +276,7 @@
 
               before.forEach((name) => {
                 if (!patient.team.includes(name)) {
-                  patient.history = patient.history || [];
-                  patient.history.push(
-                    `${getCurrentTime()} Trupp ${name} entfernt (via Trupp-Tracker)`
-                  );
+                  addHistoryEvent(patient, "removedTrupp", name);
                   dirty = true;
                 }
               });
@@ -288,8 +286,7 @@
               const noRtm = !Array.isArray(patient.rtm) || patient.rtm.length === 0;
               if (noTrupp && noRtm && patient.status !== "gemeldet") {
                 patient.status = "gemeldet";
-                patient.history = patient.history || [];
-                patient.history.push(`${getCurrentTime()} Status: gemeldet`);
+                addHistoryEvent(patient, "status", "gemeldet");
                 dirty = true;
               }
             });
@@ -338,10 +335,7 @@ patients.forEach((patient) => {
 
   before.forEach((name) => {
     if (!patient.team.includes(name)) {
-      patient.history = patient.history || [];
-      patient.history.push(
-        `${getCurrentTime()} Trupp ${name} entfernt (via Trupp-Tracker)`
-      );
+      addHistoryEvent(patient, "unassignedTeam", name);
       dirty = true;
     }
             });
@@ -364,8 +358,7 @@ patients.forEach((patient) => {
               !Array.isArray(patient.rtm) || patient.rtm.length === 0;
             if (noTrupp && noRtm && patient.status !== "gemeldet") {
               patient.status = "gemeldet";
-              patient.history = patient.history || [];
-              patient.history.push(`${getCurrentTime()} Status: gemeldet`);
+              addHistoryEvent(patient, "status", "gemeldet");
               dirty = true;
             }
           });
@@ -478,10 +471,7 @@ patients.forEach((patient) => {
 
                 before.forEach((name) => {
                   if (!patient.rtm.includes(name)) {
-                    patient.history = patient.history || [];
-                    patient.history.push(
-                      `${getCurrentTime()} RTM ${name} entfernt (via RTM-Tracker)`
-                    );
+                    addHistoryEvent(patient, "unassignedRTM", name);
                     dirty = true;
                   }
                 });
@@ -500,8 +490,7 @@ patients.forEach((patient) => {
                 const noRtm = !Array.isArray(patient.rtm) || patient.rtm.length === 0;
                 if (noTrupp && noRtm && patient.status !== "gemeldet") {
                   patient.status = "gemeldet";
-                  patient.history = patient.history || [];
-                  patient.history.push(`${getCurrentTime()} Status: gemeldet`);
+                  addHistoryEvent(patient, "status", "gemeldet");
                   dirty = true;
                 }
               });
@@ -593,10 +582,7 @@ patients.forEach((patient) => {
 
             before.forEach((name) => {
               if (!patient.rtm.includes(name)) {
-                patient.history = patient.history || [];
-                patient.history.push(
-                  `${getCurrentTime()} RTM ${name} entfernt (via RTM-Tracker)`
-                );
+                addHistoryEvent(patient, "removedRTM", name);
                 dirty = true;
               }
             });
@@ -615,8 +601,7 @@ patients.forEach((patient) => {
             const noRtm = !Array.isArray(patient.rtm) || patient.rtm.length === 0;
             if (noTrupp && noRtm && patient.status !== "gemeldet") {
               patient.status = "gemeldet";
-              patient.history = patient.history || [];
-              patient.history.push(`${getCurrentTime()} Status: gemeldet`);
+              addHistoryEvent(patient, "status", "gemeldet");
               dirty = true;
             }
           });
