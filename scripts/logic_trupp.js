@@ -55,10 +55,6 @@ function updateTrupp(index, status) {
   const trupp = trupps[index];
   const oldStatus = trupp.status;
   const now = Date.now();
-  const timeStr = new Date(now).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 
     if (oldStatus === 3 && status === 4 && trupp.patientInput) {
     // …dann setze im zugehörigen Patientendatensatz den Status auf "in Behandlung"

@@ -571,8 +571,10 @@ function updatePatientData(id, field, value) {
 
   // 2) Update von History, Feld, Triggern von recordStatusChange und Speichern
   function applyUpdate() {
-    // a) History-Eintrag mit addHistoryEvent - NUR wenn value nicht leer ist
-      addHistoryEvent(patient, field, value);
+    // a) History-Eintrag - NUR wenn value nicht leer ist
+
+    addHistoryEvent(patient, field, value);
+    if (field === "diagnosis" && value) { // Nur wenn diagnosis nicht leer
       // Spezialbehandlung für Diagnose: suggestedResources aktualisieren
       updateSuggestedResourcesForDiagnosis(patient, value);
     }
@@ -595,8 +597,8 @@ function updatePatientData(id, field, value) {
   // 3) Sonderfall Status → Animation + Delayed Update
   if (field === "status") {
     // a) History-Eintrag & Status setzen
-    addHistoryEvent(patient, "status", value);
     patient.status = value;
+    addHistoryEvent(patient, "status", value);
 
     // c) Persist
     localStorage.setItem("patients", JSON.stringify(patients));

@@ -23,10 +23,6 @@
 
     // Patientendaten zusammenbauen
     const now = Date.now();
-    const timeStr = new Date(now).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
     const patient = {
       id: next,
       createdAt: now,
@@ -37,9 +33,9 @@
       },
       team: Array.isArray(team) ? team : [team],
       location,
-      history: [`${timeStr} Status: gemeldet`],
+      
     };
-
+    addHistoryEvent(patient, "status", "gemeldet")
     // in den Storage schreiben und Event feuern
     const all = JSON.parse(localStorage.getItem("patients") || "[]");
     all.push(patient);
