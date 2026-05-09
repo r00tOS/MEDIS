@@ -22,7 +22,6 @@ document.addEventListener("DOMContentLoaded", () => {
       t.currentOrt = ort;
       // Wichtig: einsatzStartOrt setzen für die Historie
       t.einsatzStartOrt = Date.now();
-      console.log(`Einsatzort gesetzt für ${t.name}: ${ort}, Startzeit: ${new Date(t.einsatzStartOrt)}`);
       
       // Nur wenn ein Patient zugewiesen ist, History-Eintrag hinzufügen
       if (t.patientInput && t.patientInput.trim()) {
@@ -156,7 +155,7 @@ if (oldStatus === 11 && trupp.currentOrt && trupp.einsatzStartOrt) {
   });
   
   // 2) In die Trupp-History (für Timeline-Log)
-  addHistoryEvent(trupp, "status", "Streife beendet am Ort: ${abgeschlossenerOrt}");
+  addHistoryEvent(trupp, "status", `Streife beendet am Ort: ${abgeschlossenerOrt}`);
 
   // 3) Felder zurücksetzen
   trupp.currentOrt = null;
@@ -164,7 +163,6 @@ if (oldStatus === 11 && trupp.currentOrt && trupp.einsatzStartOrt) {
   
   // 4) Sofort speichern um Datenverlust zu vermeiden
   localStorage.setItem("trupps", JSON.stringify(trupps));
-  console.log(`Einsatzort-Historie gespeichert für ${trupp.name}: ${abgeschlossenerOrt}`);
 }
 
   // 8) Wechsel auf Patient → Modal für Zuordnung öffnen
@@ -392,7 +390,6 @@ function deleteTrupp(index) {
 }
 
 function copyToClipboard(entityName, entityType = null) {
-  console.log(`copyToClipboard called with: ${entityName}, type: ${entityType}`);
   let textToCopy = "";
   
   // Auto-detect entity type if not specified
@@ -413,7 +410,6 @@ function copyToClipboard(entityName, entityType = null) {
       console.error(`Entity "${entityName}" nicht gefunden - weder als Trupp noch als RTM`);
       return;
     }
-    console.log(`Entity type auto-detected as: ${entityType}`);
   }
   
   // Handle Patient case
@@ -428,11 +424,11 @@ function copyToClipboard(entityName, entityType = null) {
     
     const teamList = Array.isArray(patient.team) ? patient.team.join(", ") : "–";
     const rtmList = Array.isArray(patient.rtm) ? patient.rtm.join(", ") : "–";
-    const nachf = (patient.history || [])
-      .filter(e => /nachgefordert/.test(e))
-      .join("\n") || "–";
+    const historyEntries = getEntityHistoryHHMM(patient);
+    const nachf =
+      historyEntries.filter((e) => /nachgefordert/.test(e)).join("\n") || "–";
     const remarks = patient.remarks || "–";
-    const historyText = (patient.history || []).join("\n") || "–";
+    const historyText = historyEntries.join("\n") || "–";
     
     textToCopy = `Patient Nr.: ${patient.id}
 Trupp: ${teamList}
@@ -472,11 +468,12 @@ ${historyText}`;
         const rtmList = Array.isArray(patient.rtm)
           ? patient.rtm.join(", ")
           : "–";
-        const nachf = (patient.history || [])
-          .filter((e) => /nachgefordert/.test(e))
-          .join("\n") || "–";
+        const historyEntries = getEntityHistoryHHMM(patient);
+        const nachf =
+          historyEntries.filter((e) => /nachgefordert/.test(e)).join("\n") ||
+          "–";
         const remarks = patient.remarks || "–";
-        const historyText = (patient.history || []).join("\n") || "–";
+        const historyText = historyEntries.join("\n") || "–";
 
         textToCopy = `Patient Nr.: ${patient.id}
 Trupp: ${teamList}
@@ -525,7 +522,6 @@ ${historyText}`;
       return;
     }
 
-    console.log(`RTM gefunden:`, rtm);
 
     // Check if RTM has a patient assigned
     if (rtm.patientInput) {
@@ -538,11 +534,12 @@ ${historyText}`;
         const rtmList = Array.isArray(patient.rtm)
           ? patient.rtm.join(", ")
           : "–";
-        const nachf = (patient.history || [])
-          .filter((e) => /nachgefordert/.test(e))
-          .join("\n") || "–";
+        const historyEntries = getEntityHistoryHHMM(patient);
+        const nachf =
+          historyEntries.filter((e) => /nachgefordert/.test(e)).join("\n") ||
+          "–";
         const remarks = patient.remarks || "–";
-        const historyText = (patient.history || []).join("\n") || "–";
+        const historyText = historyEntries.join("\n") || "–";
 
         textToCopy = `Patient Nr.: ${patient.id}
 Trupp: ${teamList}
@@ -579,7 +576,6 @@ ${historyText}`;
   navigator.clipboard
     .writeText(textToCopy)
     .then(() => {
-      console.log("In Zwischenablage kopiert:", textToCopy);
     })
     .catch((err) => {
       console.error("Fehler beim Kopieren:", err);

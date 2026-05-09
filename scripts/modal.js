@@ -870,25 +870,20 @@ function confirmRtmAssignment() {
   // DIREKT: Disposition-Status für RTMs aktualisieren
   if (!patient.dispositionStatus) patient.dispositionStatus = {};
   
-  console.log('Updating RTM disposition for patient', patient.id, 'with RTMs:', addedRtms);
   
   addedRtms.forEach(rtmName => {
     const rtmLower = rtmName.toLowerCase();
     
-    console.log(`Processing RTM: ${rtmName} (${rtmLower})`);
     
     // Prüfe ob RTM zu bekannten Ressourcen passt
     if (rtmLower.includes('rtw')) {
       patient.dispositionStatus['RTW'] = 'dispatched';
-      console.log('Set RTW to dispatched');
     }
     if (rtmLower.includes('nef')) {
       patient.dispositionStatus['NEF'] = 'dispatched';
       if (!patient.dispositionStatus['NEF']) {
       patient.dispositionStatus['UHS-Notarzt oder NEF'] = 'dispatched';
-      console.log('Set UHS-Notarzt oder NEF to dispatched');
       }
-      console.log('Set NEF to dispatched');
     }
     if (rtmLower.includes('rettungsdienst') || rtmLower.includes('rd')) {
       patient.dispositionStatus['RTW'] = 'dispatched';
@@ -898,7 +893,6 @@ function confirmRtmAssignment() {
     }
   });
   
-  console.log('Final dispositionStatus:', patient.dispositionStatus);
   
   // Patientendaten speichern
   localStorage.setItem("patients", JSON.stringify(patients));

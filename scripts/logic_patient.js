@@ -1,21 +1,16 @@
 function clearAssignments(patientId, finalStatus) {
   const now = Date.now();
   
-  console.log(`=== CLEAR ASSIGNMENTS START ===`);
-  console.log(`Patient ID: ${patientId}, Final Status: ${finalStatus}`);
   
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
   const patient = patients.find((p) => p.id === patientId);
   if (!patient) {
-    console.log(`ERROR: Patient ${patientId} not found!`);
     return;
   }
 
-  console.log(`Patient before update:`, JSON.stringify(patient, null, 2));
 
   // WICHTIG: Bei finalen Status IMMER überschreiben
   if (finalStatus === "Entlassen" || finalStatus === "Transport in KH") {
-    console.log(`Setting patient status to final: ${finalStatus}`);
     patient.status = finalStatus;
     // Sicherstellen dass der finale Status auch in der Historie steht (falls nicht schon da)
     addHistoryEvent(patient, "status", finalStatus);
@@ -23,14 +18,12 @@ function clearAssignments(patientId, finalStatus) {
 
   // 2) Trupp-Tracker updaten - BEIDE Wege: über patientInput UND über patient.team Namen
   const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
-  console.log(`Found ${trupps.length} trupps in storage`);
   
   let truppUpdates = 0;
   
   // 2a) Trupps über patientInput finden
   trupps.forEach((t) => {
     if (t.patientInput === patientId || t.patientInput === String(patientId)) {
-      console.log(`Clearing trupp ${t.name} via patientInput for patient ${patientId}`);
       truppUpdates++;
       
       // a) Patienteneinsatz abschließen
@@ -55,16 +48,13 @@ function clearAssignments(patientId, finalStatus) {
   
   // 2b) ZUSÄTZLICH: Trupps auch über patient.team Namen-Liste finden
   if (Array.isArray(patient.team) && patient.team.length > 0) {
-    console.log(`Patient has ${patient.team.length} teams in team array:`, patient.team);
     
     patient.team.forEach(teamName => {
       const trupp = trupps.find(t => t.name === teamName);
       if (trupp) {
-        console.log(`Found Trupp ${teamName} in storage with status ${trupp.status}`);
         
         // Trupp auf Status 0 setzen, UNABHÄNGIG vom aktuellen Status
         if (trupp.status !== 0) {
-          console.log(`Clearing Trupp ${teamName} via patient.team list for patient ${patientId}`);
           truppUpdates++;
           
           // a) Patienteneinsatz abschließen (falls nicht schon gemacht)
@@ -87,22 +77,18 @@ function clearAssignments(patientId, finalStatus) {
           addHistoryEvent(trupp, "status", 0);
         }
       } else {
-        console.log(`Trupp ${teamName} NOT FOUND in storage!`);
       }
     });
   }
-  console.log(`Updated ${truppUpdates} trupps`);
 
   // 3) RTM-Tracker updaten - ALLE RTMs durchgehen
   const rtms = JSON.parse(localStorage.getItem("rtms")) || [];
-  console.log(`Found ${rtms.length} RTMs in storage`);
   
   let rtmUpdates = 0;
   
   // 3a) RTMs über patientInput finden
   rtms.forEach((r) => {
     if (r.patientInput === patientId || r.patientInput === String(patientId)) {
-      console.log(`Clearing RTM ${r.name} via patientInput for patient ${patientId}`);
       rtmUpdates++;
       
       // a) Patienteneinsatz abschließen
@@ -127,16 +113,13 @@ function clearAssignments(patientId, finalStatus) {
   
   // 3b) ZUSÄTZLICH: RTMs auch über patient.rtm Namen-Liste finden
   if (Array.isArray(patient.rtm) && patient.rtm.length > 0) {
-    console.log(`Patient has ${patient.rtm.length} RTMs in rtm array:`, patient.rtm);
     
     patient.rtm.forEach(rtmName => {
       const rtm = rtms.find(r => r.name === rtmName);
       if (rtm) {
-        console.log(`Found RTM ${rtmName} in storage with status ${rtm.status}`);
         
         // RTM auf Status 0 setzen, UNABHÄNGIG vom aktuellen Status
         if (rtm.status !== 0) {
-          console.log(`Clearing RTM ${rtmName} via patient.rtm list for patient ${patientId}`);
           rtmUpdates++;
           
           // a) Patienteneinsatz abschließen (falls nicht schon gemacht)
@@ -158,15 +141,12 @@ function clearAssignments(patientId, finalStatus) {
           addHistoryEvent(rtm, "status", 0);
         }
       } else {
-        console.log(`RTM ${rtmName} NOT FOUND in storage!`);
       }
     });
   }
-  console.log(`Updated ${rtmUpdates} RTMs total`);
 
   // 4) Bei finalen Status: RTMs und Teams IMMER aus patient Arrays entfernen
   if (finalStatus === "Entlassen" || finalStatus === "Transport in KH") {
-    console.log(`Removing all RTMs and teams from patient ${patientId} due to final status`);
     
     if (Array.isArray(patient.rtm) && patient.rtm.length > 0) {
       const rtmCount = patient.rtm.length;
@@ -174,7 +154,6 @@ function clearAssignments(patientId, finalStatus) {
         addHistoryEvent(patient, "unassignedRTM", rtmName);
       });
       patient.rtm = []; // Alle RTMs entfernen
-      console.log(`Removed ${rtmCount} RTMs from patient`);
     }
     
     if (Array.isArray(patient.team) && patient.team.length > 0) {
@@ -183,18 +162,15 @@ function clearAssignments(patientId, finalStatus) {
         addHistoryEvent(patient, "unassignedTeam", teamName);
       });
       patient.team = []; // Alle Teams entfernen
-      console.log(`Removed ${teamCount} teams from patient`);
     }
   }
 
-  console.log(`Patient after update:`, JSON.stringify(patient, null, 2));
 
   // 5) Alles speichern
   localStorage.setItem("patients", JSON.stringify(patients));
   localStorage.setItem("trupps", JSON.stringify(trupps));
   localStorage.setItem("rtms", JSON.stringify(rtms));
   
-  console.log(`Saved data to localStorage`);
   
   // 6) Storage‐Events feuern
   window.dispatchEvent(
@@ -216,15 +192,12 @@ function clearAssignments(patientId, finalStatus) {
     })
   );
 
-  console.log(`Dispatched storage events`);
 
   // 7) UI neu laden
   if (typeof loadPatients === 'function') {
     loadPatients(patientId);
-    console.log(`Called loadPatients(${patientId})`);
   }
   
-  console.log(`=== CLEAR ASSIGNMENTS END ===`);
 }
 
 
@@ -556,11 +529,9 @@ function updatePatientData(id, field, value) {
   if (field === "status" && (patient.status === "Entlassen" || patient.status === "Transport in KH")) {
     // Erlaube Änderung nur wenn es auch ein finaler Status ist
     if (value !== "Entlassen" && value !== "Transport in KH") {
-      console.log(`Status-Änderung von ${patient.status} zu ${value} blockiert für Patient ${id}`);
       return; // Keine Status-Änderung von finalen Zuständen zu nicht-finalen Zuständen
     }
     // Ansonsten erlauben wir die Änderung zwischen finalen Zuständen
-    console.log(`Status-Änderung von ${patient.status} zu ${value} erlaubt für Patient ${id}`);
   }
   
   // History-Array initialisieren, falls nötig
@@ -735,7 +706,6 @@ function assignResource(id, type) {
     rtmList.forEach(rtmName => {
       const rtmLower = rtmName.toLowerCase();
       
-      console.log(`Processing RTM: ${rtmName} (${rtmLower})`);
       
       // KORRIGIERTE LOGIK: Bei Fahrzeugnummern ist die MITTLERE Nummer entscheidend
       // XX-83-XX = RTW
@@ -748,7 +718,6 @@ function assignResource(id, type) {
           /\b83\/\d+/.test(rtmName) || // Alternative Notation 83/XX
           /\b83\b/.test(rtmName)) {    // Einfache Nennung der 83
         patient.dispositionStatus['RTW'] = 'dispatched';
-        console.log('Set RTW to dispatched - matched RTW pattern (83)');
       }
       
       if (rtmLower.includes('nef') || 
@@ -759,7 +728,6 @@ function assignResource(id, type) {
         patient.dispositionStatus['NEF'] = 'dispatched';
         patient.dispositionStatus['UHS-Notarzt oder NEF'] = 'dispatched';
         patient.dispositionStatus['Ggf. UHS-Notarzt oder NEF'] = 'dispatched';
-        console.log('Set NEF and UHS-Notarzt oder NEF to dispatched - matched NEF pattern (82)');
       }
       
       if (rtmLower.includes('rettungsdienst') || rtmLower.includes('rd')) {
@@ -772,7 +740,6 @@ function assignResource(id, type) {
       }
     });
     
-    console.log('Updated dispositionStatus:', patient.dispositionStatus);
   } else if (type === "team") {
     // Trupp wurde zugeordnet
     patient.dispositionStatus['Trupp'] = 'dispatched';
@@ -1023,7 +990,6 @@ function editField(id, field) {
   }
 
   if (value !== null && value !== current) {
-    console.log(`Updating ${field} from "${current}" to "${value}" for patient ${id}`);
     
     // WICHTIG: Frische Kopie der Patientendaten holen
     const freshPatients = JSON.parse(localStorage.getItem("patients")) || [];
@@ -1034,13 +1000,9 @@ function editField(id, field) {
       return;
     }
     
-    // DIREKTE Datenaktualisierung
-    freshPatient[field] = value;
-    
-    // History-Eintrag hinzufügen
+    // History-Eintrag VOR dem Setzen des Feldes (damit oldValue korrekt erfasst wird)
     if (!freshPatient.history) freshPatient.history = [];
-    const timeStr = getCurrentTime();
-    
+
     if (field === "diagnosis") {
       addHistoryEvent(freshPatient, "diagnosis", value);
       // Spezialbehandlung für Diagnose: suggestedResources aktualisieren
@@ -1054,11 +1016,13 @@ function editField(id, field) {
     } else if (field === "remarks") {
       addHistoryEvent(freshPatient, "remark", value);
     }
+
+    // DIREKTE Datenaktualisierung
+    freshPatient[field] = value;
     
     // SOFORT speichern und UI komplett neu laden
     try {
       localStorage.setItem("patients", JSON.stringify(freshPatients));
-      console.log(`Patient ${id} - ${field} erfolgreich gespeichert:`, value);
       
       // WICHTIG: Komplettes Neurendern erzwingen
       loadPatients();
@@ -1189,7 +1153,8 @@ function changeTruppStatus(truppName, newStatus) {
   const trupps = JSON.parse(localStorage.getItem("trupps")) || [];
   const trupp = trupps.find(t => t.name === truppName);
   if (!trupp) return;
-  
+
+  trupp.status = newStatus;
 
   addHistoryEvent(trupp, "status", newStatus);
 
@@ -1330,19 +1295,10 @@ function promptAddEntry(patientId) {
   // History-Array sicherstellen
   if (!patient.history) patient.history = [];
   
-  // Aktuellen Zeitstempel holen - mit Fallback
-  let timeStr;
-  try {
-    timeStr = getCurrentTime();
-  } catch (e) {
-    timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    console.warn("getCurrentTime() nicht verfügbar, verwende Fallback");
-  }
   
   // Eintrag zur Historie hinzufügen
   addHistoryEvent(patient, "remark", newEntry.trim());
   
-  console.log(`Hinzufügen von Eintrag zu Patient ${patientId}:`, patient.history);
   
   // Zurück in localStorage speichern
   localStorage.setItem("patients", JSON.stringify(patients));
@@ -1357,13 +1313,11 @@ function promptAddEntry(patientId) {
   
   // UI aktualisieren - auch hier ID als String übergeben
   if (typeof loadPatients === 'function') {
-    console.log(`loadPatients(${strPatientId}) wird aufgerufen`);
     loadPatients(strPatientId);
   } else {
     console.warn("loadPatients() nicht verfügbar");
   }
   
-  console.log(`Eintrag hinzugefügt für Patient ${patientId}: ${newEntry.trim()}`);
 }
 
 function addCustomHistory(id, message) {
@@ -1403,7 +1357,6 @@ function copyPatientData(patientId) {
 function releaseTruppFromAssignment(truppName, patientId) {
   if (!confirm(`Soll ${truppName} wirklich aus dem Einsatz entlassen werden?`)) return;
 
-  console.log(`Entlasse Trupp ${truppName} von Patient ${patientId}`);
   
   // 1) Patient finden und Trupp aus team-Array entfernen
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
@@ -1486,7 +1439,6 @@ function releaseTruppFromAssignment(truppName, patientId) {
 function releaseRtmFromAssignment(rtmName, patientId) {
   if (!confirm(`Soll ${rtmName} wirklich aus dem Einsatz entlassen werden?`)) return;
 
-  console.log(`Entlasse RTM ${rtmName} von Patient ${patientId}`);
   
   // 1) Patient finden und RTM aus rtm-Array entfernen
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
@@ -1566,7 +1518,6 @@ function releaseRtmFromAssignment(rtmName, patientId) {
  * Wichtig, um bereits zugewiesene RTMs korrekt zu erkennen (z.B. mit Nummern wie 10-83-XX)
  */
 function updateDispositionStatusFromAssignedResources() {
-  console.log("Updating disposition status from assigned resources...");
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
   let updatesCount = 0;
   
@@ -1594,8 +1545,6 @@ function updateDispositionStatusFromAssignedResources() {
       let updates = 0;
       
       // Debug-Log für das Pattern-Matching
-      console.log(`Analyzing RTM: ${rtmName} (${rtmLower})`);
-      console.log(`Pattern check: contains '-83-'?: ${/-83-/.test(rtmName)}`);
       
       // RTW Erkennung
       if (rtmLower.includes('rtw') || 
@@ -1608,7 +1557,6 @@ function updateDispositionStatusFromAssignedResources() {
             patient.dispositionStatus['RTW'] !== 'dispatched') {
           patient.dispositionStatus['RTW'] = 'dispatched';
           updates++;
-          console.log(`Set RTW to dispatched for patient ${patient.id} based on RTM ${rtmName}`);
         }
       }
       
@@ -1630,7 +1578,6 @@ function updateDispositionStatusFromAssignedResources() {
               patient.dispositionStatus[resource] !== 'dispatched') {
             patient.dispositionStatus[resource] = 'dispatched';
             updates++;
-            console.log(`Set ${resource} to dispatched for patient ${patient.id} based on RTM ${rtmName}`);
           }
         });
       }
@@ -1641,7 +1588,6 @@ function updateDispositionStatusFromAssignedResources() {
             patient.dispositionStatus['RTW'] !== 'dispatched') {
           patient.dispositionStatus['RTW'] = 'dispatched';
           updates++;
-          console.log(`Set RTW to dispatched for patient ${patient.id} based on general RD mention in ${rtmName}`);
         }
       }
       
@@ -1657,7 +1603,6 @@ function updateDispositionStatusFromAssignedResources() {
               patient.dispositionStatus[resource] !== 'dispatched') {
             patient.dispositionStatus[resource] = 'dispatched';
             updates++;
-            console.log(`Set ${resource} to dispatched for patient ${patient.id} based on NA mention in ${rtmName}`);
           }
         });
       }
@@ -1668,7 +1613,6 @@ function updateDispositionStatusFromAssignedResources() {
   
   // Wenn es Änderungen gab, speichern und events auslösen
   if (updatesCount > 0) {
-    console.log(`Updated ${updatesCount} disposition status entries`);
     localStorage.setItem("patients", JSON.stringify(patients));
     
     window.dispatchEvent(
@@ -1683,7 +1627,6 @@ function updateDispositionStatusFromAssignedResources() {
       loadPatients();
     }
   } else {
-    console.log("No disposition status updates needed");
   }
 }
 

@@ -71,8 +71,14 @@ describe('newPatient & nextPatientNumber', () => {
     expect(p.createdAt).toBe(1_700_000_000_000);
     // statusTimestamps.gemeldet gesetzt
     expect(p.statusTimestamps.gemeldet).toBe(1_700_000_000_000);
-    // History-Eintrag mit getCurrentTime()
-    expect(p.history).toEqual(['12:34 Status: gemeldet']);
+    // History-Eintrag als JSON-Objekt (seit Refactoring #13)
+    expect(p.history).toEqual([
+      {
+        timestamp: 1_700_000_000_000,
+        type: "statusChange",
+        payload: { field: "status", newValue: "gemeldet" },
+      },
+    ]);
 
     // Storage-Event wurde gefeuert mit key 'patients'
     expect(window.dispatchEvent).toHaveBeenCalled();

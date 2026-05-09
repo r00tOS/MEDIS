@@ -519,7 +519,6 @@ function openTruppAssignmentModalForRTM(patientId) {
   
   // Patient-Historie aktualisieren
   if (!patient.history) patient.history = [];
-  const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   addHistoryEvent(patient, "assignedTrupp", truppName.trim());
 
   // Status auf disponiert setzen falls noch gemeldet

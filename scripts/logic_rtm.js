@@ -294,7 +294,6 @@ document.addEventListener("DOMContentLoaded", () => {
         rtm.currentOrt = ort;
         // Wichtig: einsatzStartOrt setzen für die Historie
         rtm.einsatzStartOrt = Date.now();
-        console.log(`Einsatzort gesetzt für ${rtm.name}: ${ort}, Startzeit: ${new Date(rtm.einsatzStartOrt)}`);
         
         // Nur wenn ein Patient zugewiesen ist, History-Eintrag hinzufügen
         if (rtm.patientInput && rtm.patientInput.trim()) {
@@ -365,7 +364,6 @@ function updateRTM(index, status) {
     
     // 4) Sofort speichern um Datenverlust zu vermeiden
     localStorage.setItem("rtms", JSON.stringify(rtms));
-    console.log(`Einsatzort-Historie gespeichert für ${rtm.name}: ${abgeschlossenerOrt}`);
   }
 
   // Normale Statusupdates folgen hier...
@@ -478,7 +476,6 @@ if (oldStatus === 11 && rtm.currentOrt && rtm.einsatzStartOrt) {
   
   // 4) Sofort speichern um Datenverlust zu vermeiden
   localStorage.setItem("rtms", JSON.stringify(rtms));
-  console.log(`Einsatzort-Historie gespeichert für ${rtm.name}: ${abgeschlossenerOrt}`);
 }
 
   // 8) Wechsel auf Patient → Modal für Zuordnung öffnen

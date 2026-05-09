@@ -43,9 +43,6 @@ function updatePatientDispositionStatus(patient, trupps, rtms) {
     patient.dispositionStatus = {};
   }
 
-  console.log('=== UPDATE DISPOSITION STATUS ===');
-  console.log('Patient ID:', patient.id);
-  console.log('Before reset:', patient.dispositionStatus);
 
   // WICHTIG: Manuelle Status-Setzungen beibehalten!
   const manualStatus = {};
@@ -63,12 +60,10 @@ function updatePatientDispositionStatus(patient, trupps, rtms) {
     patient.dispositionStatus[resource] = undefined;
   });
 
-  console.log('After reset:', patient.dispositionStatus);
 
   // Finde alle Trupps die diesem Patienten zugewiesen sind (Status 3=Unterwegs, 4=Am Einsatzort, 7=Transport, 8=Im KH)
   const assignedTrupps = trupps.filter(t => t.patientInput === patient.id && [3, 4, 7, 8].includes(t.status));
   
-  console.log('Assigned trupps:', assignedTrupps.map(t => `${t.name} (Status: ${t.status})`));
 
   // Finde alle RTMs die diesem Patienten zugewiesen sind
   const assignedRTMs = rtms.filter(r => (r.patientInput === patient.id || r.patientInput === String(patient.id)) && [3, 4, 7, 8].includes(r.status));
@@ -167,10 +162,8 @@ function updatePatientDispositionStatus(patient, trupps, rtms) {
       patient.dispositionStatus[resource + '_ignored'] = true;
     }
     
-    console.log(`Resource ${resource}: shouldDispatch=${shouldDispatch}, final status=${patient.dispositionStatus[resource]}`);
   });
   
-  console.log('Final disposition status:', patient.dispositionStatus);
 }
 
 /**
@@ -185,9 +178,6 @@ function triggerDispositionUpdate() {
  * Toggle disposition status (dispatched/required)
  */
 function toggleDispositionStatus(patientId, resource) {
-  console.log('=== TOGGLE DISPOSITION STATUS ===');
-  console.log('Patient ID:', patientId);
-  console.log('Resource:', resource);
   
   const patients = JSON.parse(localStorage.getItem("patients")) || [];
   const patient = patients.find(p => p.id === patientId);
@@ -196,7 +186,6 @@ function toggleDispositionStatus(patientId, resource) {
     if (!patient.dispositionStatus) patient.dispositionStatus = {};
   }
   
-  console.log('Before toggle:', patient.dispositionStatus[resource]);
   
   // Toggle zwischen dispatched und undefined
   if (patient.dispositionStatus[resource] === 'dispatched') {
@@ -205,21 +194,13 @@ function toggleDispositionStatus(patientId, resource) {
     patient.dispositionStatus[resource] = 'dispatched';
   }
   
-  console.log('After toggle:', patient.dispositionStatus[resource]);
   
   localStorage.setItem("patients", JSON.stringify(patients));
   
   // Finde das geklickte Element und schaue dir seine aktuellen Styles an
   const clickedElements = document.querySelectorAll(`[onclick*="${patientId}"][onclick*="${resource}"]`);
-  console.log('Found elements:', clickedElements.length);
   
   clickedElements.forEach((element, index) => {
-    console.log(`Element ${index}:`, element);
-    console.log('Tag name:', element.tagName);
-    console.log('Classes:', element.className);
-    console.log('Computed styles:', window.getComputedStyle(element));
-    console.log('Background color:', window.getComputedStyle(element).backgroundColor);
-    console.log('Color:', window.getComputedStyle(element).color);
   });
   
   // Patient-Cards neu laden
@@ -303,7 +284,6 @@ function loadPatients(highlightId) {
   const hasExpandedPatients = window.expandedPatients && window.expandedPatients.size > 0;
   
   if (hasExpandedPatients && !highlightId) {
-    console.log('Seite eingefroren - Patient(en) aufgeklappt:', Array.from(window.expandedPatients));
     return; // Verhindere Neurendering wenn Patienten aufgeklappt sind
   }
   
@@ -755,7 +735,6 @@ function loadPatients(highlightId) {
   }
   
   window.dispositionUpdateListener = function() {
-    console.log('Disposition update received - updating relevant patients only');
     
     const currentPatients = JSON.parse(localStorage.getItem("patients")) || [];
     const currentTrupps = JSON.parse(localStorage.getItem("trupps")) || [];
@@ -822,7 +801,6 @@ function loadPatients(highlightId) {
           window.expandedPatients.delete(patientId);
         }
         
-        console.log(`Patient ${patientId} zugeklappt`);
       } else {
         mainRow.classList.add('expanded');
         detailsRow.style.display = 'table-row';
@@ -832,7 +810,6 @@ function loadPatients(highlightId) {
         }
         window.expandedPatients.add(patientId);
         
-        console.log(`Patient ${patientId} aufgeklappt - Seite eingefroren`);
         
         // Scroll zum Container der Historie
         const historyContainer = detailsRow.querySelector('.history-container');

@@ -755,8 +755,6 @@ function openTruppNameChangeModal(truppIndex) {
 }
 
 function renderDispositionSymbols(patient) {
-    console.log('Rendering disposition symbols for patient:', patient.id);
-    console.log('Patient disposition status:', patient.dispositionStatus);
     
     if (!patient.suggestedResources || !Array.isArray(patient.suggestedResources)) {
         return '';
@@ -773,14 +771,12 @@ function renderDispositionSymbols(patient) {
         const isDispatched = patient.dispositionStatus && patient.dispositionStatus[resource] === 'dispatched';
         const isIgnored = patient.dispositionStatus && patient.dispositionStatus[resource + '_ignored'] === true;
         
-        console.log(`Resource: ${resource}, isDispatched: ${isDispatched}, isIgnored: ${isIgnored}`);
         
         let cssClass = 'disposition-symbol ' + (isDispatched ? 'dispatched' : 'required');
         if (isIgnored) {
             cssClass += ' ignored';
         }
         
-        console.log('Applied CSS class:', cssClass);
         
         symbolsHtml += '<span class="' + cssClass + '"' +
                       ' onclick="toggleDispositionStatus(' + patient.id + ', \'' + resource.replace(/'/g, "\\'") + '\')"' +
@@ -794,7 +790,6 @@ function renderDispositionSymbols(patient) {
 
 // Enhanced status dropdown toggle function
 function toggleStatusDropdown(truppId, event) {
-  console.log('toggleStatusDropdown called:', truppId, event);
   
   // Close all other open dropdowns first
   document.querySelectorAll('.status-menu.open').forEach(menu => {
@@ -806,9 +801,6 @@ function toggleStatusDropdown(truppId, event) {
   const menu = document.getElementById(`status-menu-${truppId}`);
   const button = event.target.closest('.status-toggle');
   
-  console.log('Menu found:', menu);
-  console.log('Button found:', button);
-  console.log('Menu has open class:', menu?.classList.contains('open'));
   
   if (!menu || !button) {
     console.warn('Menu or button not found for trupp:', truppId);
@@ -816,7 +808,6 @@ function toggleStatusDropdown(truppId, event) {
   }
   
   if (menu.classList.contains('open')) {
-    console.log('Closing menu');
     menu.classList.remove('open');
     localStorage.removeItem("openTruppId");
     // Clear any inline styles that might interfere
@@ -826,7 +817,6 @@ function toggleStatusDropdown(truppId, event) {
     menu.style.minWidth = '';
     menu.style.visibility = '';
   } else {
-    console.log('Opening menu');
     // Position the menu relative to the button
     const buttonRect = button.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
@@ -872,14 +862,11 @@ function toggleStatusDropdown(truppId, event) {
     menu.classList.add('open');
     localStorage.setItem("openTruppId", truppId);
     
-    console.log('Menu positioned at:', top, left);
-    console.log('Menu now has open class:', menu.classList.contains('open'));
   }
 }
 
 // Update onStatusSelected to close dropdown - define immediately
 function onStatusSelected(truppIndex, newStatus, truppId) {
-  console.log('onStatusSelected called:', truppIndex, newStatus, truppId);
   
   // Close the dropdown
   const menu = document.getElementById(`status-menu-${truppId}`);
